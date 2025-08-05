@@ -103,16 +103,13 @@ async def get_context(
         canvas_data = {}
 
     # Allow partial rendering: missing keys will be replaced with empty string
-    from collections import UserDict
+    import re
+    def _replace_placeholder(match):
+        key = match.group(1)
+        return str(canvas_data.get(key, "")) if isinstance(canvas_data, dict) else ""
 
-    class _SafeDict(UserDict):
-        def __missing__(self, key):
-            return ""
-
-    try:
-        section_prompt = section_prompt.format_map(_SafeDict(canvas_data))
-    except Exception as e:
-        logger.warning(f"TEMPLATE_DEBUG: Failed safe render of section_prompt: {e}")
+    # 只替换形如 {identifier} 的简单占位符，其他大括号保持原样
+    section_prompt = re.sub(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", _replace_placeholder, section_prompt)
     
     system_prompt = f"{base_prompt}\\n\\n---\\n\\n{section_prompt}"
     
