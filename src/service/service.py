@@ -137,7 +137,13 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
         )
         
         # Save the new state to the checkpointer to get a thread_id
-        saved_config = await agent.checkpointer.aput(initial_state, config) # type: ignore
+        # Adapt to new AsyncSqliteSaver.aput signature (state, config, metadata, new_versions)
+        saved_config = await agent.checkpointer.aput(
+            initial_state,
+            config,
+            metadata={},
+            new_versions=None,
+        )  # type: ignore
         thread_id = saved_config["configurable"]["thread_id"]
         logger.info(f"Initialized new thread with ID: {thread_id}")
     else:

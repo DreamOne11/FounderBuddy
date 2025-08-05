@@ -995,13 +995,28 @@ async def initialize_value_canvas_state(user_id: str = None, doc_id: str = None)
     """
     import uuid
     
-    # Generate UUIDs if not provided
+    # Ensure user_id is a valid UUID string
     if not user_id:
         user_id = str(uuid.uuid4())
         logger.info(f"Generated new user_id: {user_id}")
+    else:
+        try:
+            uuid.UUID(user_id)
+        except ValueError:
+            # Deterministically derive a UUID from provided string
+            user_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, user_id))
+            logger.info(f"Converted non-UUID user_id to UUID: {user_id}")
+
+    # Ensure doc_id is a valid UUID string
     if not doc_id:
         doc_id = str(uuid.uuid4())
         logger.info(f"Generated new doc_id: {doc_id}")
+    else:
+        try:
+            uuid.UUID(doc_id)
+        except ValueError:
+            doc_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, doc_id))
+            logger.info(f"Converted non-UUID doc_id to UUID: {doc_id}")
     
     initial_state = ValueCanvasState(
         user_id=user_id,
