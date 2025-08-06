@@ -124,38 +124,26 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
         # Determine the initial user_id and doc_id from the newly created state
         user_id = initial_state.get("user_id")
         doc_id = initial_state.get("doc_id")
-
-        # Create a configuration for the new thread
-        config = RunnableConfig(
-            configurable={
-                "model": user_input.model,
-                "user_id": user_id,
-                "doc_id": doc_id,
-            },
-            run_id=run_id,
-            callbacks=callbacks,
-        )
+        import uuid as _uuid
+        thread_id = str(_uuid.uuid4())
         
-        # Save the new state to the checkpointer to get a thread_id
-        # Adapt to new AsyncSqliteSaver.aput signature (state, config, metadata, new_versions)
-        saved_config = await agent.checkpointer.aput(
-            initial_state,
-            config,
-            metadata={},
-            new_versions=None,
-        )  # type: ignore
-        thread_id = saved_config["configurable"]["thread_id"]
         logger.info(f"Initialized new thread with ID: {thread_id}")
     else:
         # This is an existing conversation, so we load the state
         logger.info(f"Loading existing thread with ID: {thread_id}")
-
-    # Now we have a thread_id, so we can configure the agent invocation
-    configurable = {"thread_id": thread_id, "model": user_input.model}
     
-    if user_id:
-        configurable["user_id"] = user_id
-        
+    # Build the configurable dict
+    configurable = {
+        "thread_id": thread_id,
+        "model": user_input.model,
+        "user_id": user_id,
+    }
+    
+    # Add doc_id if it exists (from new conversation initialization)
+    if not user_input.thread_id and 'doc_id' in locals():
+        configurable["doc_id"] = doc_id
+    
+    # Add user's custom agent config if provided
     if user_input.agent_config:
         if overlap := configurable.keys() & user_input.agent_config.keys():
             raise HTTPException(
@@ -163,7 +151,8 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
                 detail=f"agent_config contains reserved keys: {overlap}",
             )
         configurable.update(user_input.agent_config)
-
+    
+    # Create a configuration for the thread
     config = RunnableConfig(
         configurable=configurable,
         run_id=run_id,

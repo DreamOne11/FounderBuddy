@@ -265,10 +265,10 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
     messages.append(SystemMessage(content=json_schema_instruction))
     
     # Check if we should add summary instruction
-    # Only add summary if:
+    # Add summary instruction when:
     # 1. We're not already awaiting user input
     # 2. User hasn't provided a rating
-    # 3. Current section already has some content to summarize
+    # 3. We have collected enough information in the conversation (check short_memory)
     awaiting = state.get("awaiting_user_input", False)
     current_section = state["current_section"]
     section_state = state.get("section_states", {}).get(current_section.value, {})
@@ -277,21 +277,26 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
     # DEBUG: Log detailed section state info
     logger.info(f"SUMMARY_DEBUG: Current section: {current_section.value}")
     logger.info(f"SUMMARY_DEBUG: Section states keys: {list(state.get('section_states', {}).keys())}")
+    logger.info(f"SUMMARY_DEBUG: Short memory length: {len(state.get('short_memory', []))}")
     if section_state:
         logger.info(f"SUMMARY_DEBUG: Section {current_section.value} state exists with status: {section_state.get('status')}")
         logger.info(f"SUMMARY_DEBUG: Section {current_section.value} has content: {section_has_content}")
-        
-    add_summary = (not awaiting) and (user_rating is None) and section_has_content
     
-    logger.info(f"SUMMARY_DEBUG: awaiting_user_input={awaiting}, section_has_content={section_has_content}, will_add_summary_instruction={add_summary}")
-
-    if add_summary:
-        summary_instruction = (
-            "First, generate a concise summary (3-5 bullet points) of the user's latest inputs *for the current section*. "
-            "Then, ask them to rate their satisfaction with this summary on a 0-5 scale, explaining what each range means. "
-            "IMPORTANT: Return a valid JSON object **including** a non-null `section_update` field that holds the Tiptap-JSON representation of the summary you just wrote."
+    # IMPORTANT: Do NOT automatically trigger summary instructions
+    # According to the design document, the Agent should decide when to show summary
+    # based on whether it has collected all required information for the section.
+    # The prompts in prompts.py already contain the logic for when to show summaries.
+    # Forcing summary instructions here causes premature summaries.
+    
+    # Only add summary reminder if section already has saved content that needs rating
+    if section_has_content and user_rating is None and not awaiting:
+        # This is for sections that were previously saved but need rating
+        summary_reminder = (
+            "The user has previously worked on this section. "
+            "Review the saved content and ask for their satisfaction rating if not already provided."
         )
-        messages.append(SystemMessage(content=summary_instruction))
+        messages.append(SystemMessage(content=summary_reminder))
+        logger.info(f"SUMMARY_REMINDER: Added reminder to check existing content for section {current_section.value}")
 
     # 2) Section-specific system prompt from context packet
     if state.get("context_packet"):
@@ -346,7 +351,8 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
             messages.append(SystemMessage(content=new_section_instruction))
 
     # 3) Recent conversation memory
-    messages.extend(state.get("short_memory", [])[-10:])
+    # Keep all messages from short_memory. Note: This might lead to context window issues with very long conversations.
+    messages.extend(state.get("short_memory", []))
 
     # 4) Last human message (if any and agent hasn't replied yet)
     if state.get("messages"):
@@ -566,8 +572,8 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
         # Add AI reply to conversation history
         state["messages"].append(AIMessage(content=agent_output.reply))
 
-        # Update short-term memory (last 10 exchanges)
-        base_mem = state.get("short_memory", [])[-8:]
+        # Update short-term memory by appending new messages
+        base_mem = state.get("short_memory", [])
         if last_human_msg is not None:
             base_mem.append(last_human_msg)
         base_mem.append(AIMessage(content=agent_output.reply))
@@ -700,20 +706,56 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
 
         # ----------------------------------------------------------
         # NEW: Extract Interview basics and update canvas_data
+        # Better approach: Use LLM to extract structured data
         # ----------------------------------------------------------
         if state.get("current_section") == SectionID.INTERVIEW:
             try:
-                # Convert rich (Tiptap) JSON to plain text
-                # convert TiptapDocument → dict for extractor
+                # Use LLM to extract structured information from the content
                 plain_text = await extract_plain_text.ainvoke(agent_out.section_update.content.model_dump())
-                import re
-                def _grab(label):
-                    match = re.search(fr"{label}:\s*(.+)", plain_text, re.IGNORECASE)
-                    return match.group(1).strip() if match else None
-
-                name_val = _grab("Name")
-                company_val = _grab("Company")
-                industry_val = _grab("Industry")
+                
+                # Create a simple extraction prompt for the LLM
+                extraction_prompt = f"""
+                Extract the following information from this interview summary:
+                {plain_text}
+                
+                Important instructions:
+                - Extract the ACTUAL values provided by the user
+                - If you see "Not provided" or similar placeholders, return null
+                - Look for real names, company names, and industries
+                
+                Return ONLY a JSON object with these fields (use null if not found or if placeholder text):
+                {{"name": "...", "company": "...", "industry": "..."}}
+                """
+                
+                # Use the same LLM to extract structured data
+                from core import get_model, settings
+                llm = get_model(settings.DEFAULT_MODEL)
+                extraction_response = await llm.ainvoke(extraction_prompt)
+                
+                import json
+                try:
+                    extracted_data = json.loads(extraction_response.content)
+                    name_val = extracted_data.get("name")
+                    company_val = extracted_data.get("company")
+                    industry_val = extracted_data.get("industry")
+                    
+                    # Don't save "Not provided" or similar placeholders
+                    if name_val and "not provided" in name_val.lower():
+                        name_val = None
+                    if company_val and "not provided" in company_val.lower():
+                        company_val = None
+                    if industry_val and "not provided" in industry_val.lower():
+                        industry_val = None
+                except:
+                    # Fallback to regex if LLM extraction fails
+                    import re
+                    def _grab(label):
+                        match = re.search(fr"{label}:\s*(.+)", plain_text, re.IGNORECASE)
+                        return match.group(1).strip() if match else None
+                    
+                    name_val = _grab("Name")
+                    company_val = _grab("Company")
+                    industry_val = _grab("Industry")
 
                 canvas_data = state.get("canvas_data")
                 if canvas_data:
