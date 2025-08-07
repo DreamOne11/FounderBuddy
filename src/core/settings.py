@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     MODE: str | None = None
 
     HOST: str = "0.0.0.0"
-    PORT: int = 8080
+    PORT: int = Field(default=8080, description="Port to run the server on")
 
     AUTH_SECRET: SecretStr | None = None
 

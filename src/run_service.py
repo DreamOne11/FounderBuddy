@@ -1,4 +1,5 @@
 import asyncio
+import os
 import sys
 
 import uvicorn
@@ -23,4 +24,7 @@ if __name__ == "__main__":
     # https://www.psycopg.org/psycopg3/docs/advanced/async.html#asynchronous-operations
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    uvicorn.run("service.service:app", host=settings.HOST, port=settings.PORT, reload=settings.is_dev())
+    
+    # Use Heroku's PORT if available, otherwise use settings.PORT
+    port = int(os.environ.get("PORT", settings.PORT))
+    uvicorn.run("service.service:app", host=settings.HOST, port=port, reload=settings.is_dev())
