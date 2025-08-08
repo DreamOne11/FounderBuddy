@@ -253,8 +253,8 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
     logger.info(f"DEBUG_CHAT_AGENT: Context Packet received: {state.get('context_packet')}")
 
     # Get LLM - no tools for chat agent per design doc
-    # Use default GPT-5 model configuration
-    llm = get_model(OpenAIModelName.GPT_5)
+    # Use GPT-4O model configuration
+    llm = get_model(OpenAIModelName.GPT_4O)
     
     messages: List[BaseMessage] = []
     last_human_msg: Optional[HumanMessage] = None
@@ -311,13 +311,9 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
         section_names = {
             "interview": "Interview",
             "icp": "Ideal Client Persona (ICP)",
-            "pain_1": "Pain Point 1",
-            "pain_2": "Pain Point 2", 
-            "pain_3": "Pain Point 3",
+            "pain": "The Pain",
             "deep_fear": "Deep Fear",
-            "payoff_1": "Payoff 1",
-            "payoff_2": "Payoff 2",
-            "payoff_3": "Payoff 3",
+            "payoffs": "The Payoffs",
             "signature_method": "Signature Method",
             "mistakes": "Mistakes",
             "prize": "Prize"
@@ -333,7 +329,7 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
         
         progress_info = (
             f"\n\nSYSTEM STATUS:\n"
-            f"- Total sections: 13\n"
+            f"- Total sections: 9\n"
             f"- Completed: {len(completed_sections)} sections"
         )
         if completed_sections:
@@ -732,8 +728,8 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
                 {{"name": "...", "company": "...", "industry": "..."}}
                 """
                 
-                # Use GPT-5 for data extraction accuracy
-                llm = get_model(OpenAIModelName.GPT_5)
+                # Use GPT-4O for data extraction accuracy
+                llm = get_model(OpenAIModelName.GPT_4O)
                 extraction_response = await llm.ainvoke(extraction_prompt)
                 
                 import json

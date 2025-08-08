@@ -30,20 +30,14 @@ class SectionID(str, Enum):
     # Initial Interview
     INTERVIEW = "interview"
 
-    # Core Value Canvas Sections (9 total)
+    # Core Value Canvas Sections (7 total according to document)
     ICP = "icp"  # Ideal Customer Persona
-    PAIN_1 = "pain_1"
-    PAIN_2 = "pain_2"
-    PAIN_3 = "pain_3"
-    PAYOFF_1 = "payoff_1"
-    PAYOFF_2 = "payoff_2"
-    PAYOFF_3 = "payoff_3"
-    SIGNATURE_METHOD = "signature_method"
-    MISTAKES = "mistakes"
-    PRIZE = "prize"
-
-    # Deep Fear (internal understanding)
-    DEEP_FEAR = "deep_fear"
+    PAIN = "pain"  # The Pain (contains 3 pain points)
+    DEEP_FEAR = "deep_fear"  # The Deep Fear
+    PAYOFFS = "payoffs"  # The Payoffs (contains 3 payoff points)
+    SIGNATURE_METHOD = "signature_method"  # Signature Method
+    MISTAKES = "mistakes"  # The Mistakes
+    PRIZE = "prize"  # The Prize
 
     # Implementation/Export
     IMPLEMENTATION = "implementation"
