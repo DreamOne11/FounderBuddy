@@ -133,19 +133,22 @@ async def get_context(
     
     # Try DentApp API first (if enabled)
     if settings.USE_DENTAPP_API:
-        logger.debug("DATABASE_DEBUG: ✅ DentApp API enabled, attempting API fetch")
+        logger.info("=== TOOLS_API_CALL: get_context() using DentApp API ===")
+        logger.info(f"TOOLS_API_CALL: section_id='{section_id}', user_id='{user_id}', doc_id='{doc_id}'")
         try:
             # Convert section_id for DentApp API (MVP: always use user_id=1)
             section_id_int = get_section_id_int(section_id)
             
             if section_id_int is None:
-                logger.error(f"DATABASE_DEBUG: ❌ Invalid section_id: {section_id}")
+                logger.error(f"TOOLS_API_CALL: ❌ Invalid section_id: {section_id}")
                 raise ValueError(f"Unknown section ID: {section_id}")
             
+            logger.info(f"TOOLS_API_CALL: Mapped section_id '{section_id}' -> {section_id_int}")
             log_api_operation("get_context", user_id=user_id, section_id=section_id, 
                             user_id_int=MVP_USER_ID, section_id_int=section_id_int)
             
             # Call DentApp API (MVP: always use user_id=1)
+            logger.info(f"TOOLS_API_CALL: Calling get_section_state(agent_id={AGENT_ID}, section_id={section_id_int}, user_id={MVP_USER_ID})")
             dentapp_client = get_dentapp_client()
             async with dentapp_client as client:
                 result = await client.get_section_state(
@@ -153,6 +156,7 @@ async def get_context(
                     section_id=section_id_int,
                     user_id=MVP_USER_ID
                 )
+            logger.info(f"TOOLS_API_CALL: get_section_state returned: {result is not None}")
             
             if result:
                 # Extract data from DentApp API response
@@ -315,23 +319,27 @@ async def save_section(
     
     # Try DentApp API first (if enabled)
     if settings.USE_DENTAPP_API:
-        logger.debug("DATABASE_DEBUG: ✅ DentApp API enabled, attempting API save")
+        logger.info("=== TOOLS_API_CALL: save_section() using DentApp API ===")
+        logger.info(f"TOOLS_API_CALL: section_id='{section_id}', user_id='{user_id}', doc_id='{doc_id}', score={score}, status='{status}'")
         try:
             # Convert section_id for DentApp API (MVP: always use user_id=1)
             section_id_int = get_section_id_int(section_id)
             
             if section_id_int is None:
-                logger.error(f"DATABASE_DEBUG: ❌ Invalid section_id: {section_id}")
+                logger.error(f"TOOLS_API_CALL: ❌ Invalid section_id: {section_id}")
                 raise ValueError(f"Unknown section ID: {section_id}")
             
             # Convert Tiptap content to plain text
             plain_text = tiptap_to_plain_text(content) if content else ""
+            logger.info(f"TOOLS_API_CALL: Mapped section_id '{section_id}' -> {section_id_int}")
+            logger.info(f"TOOLS_API_CALL: Converted content length: {len(plain_text)} chars")
             
             log_api_operation("save_section", user_id=user_id, section_id=section_id, 
                             user_id_int=MVP_USER_ID, section_id_int=section_id_int,
                             content_length=len(plain_text), score=score, status=status)
             
             # Call DentApp API (MVP: always use user_id=1)
+            logger.info(f"TOOLS_API_CALL: Calling save_section_state(agent_id={AGENT_ID}, section_id={section_id_int}, user_id={MVP_USER_ID})")
             dentapp_client = get_dentapp_client()
             async with dentapp_client as client:
                 result = await client.save_section_state(
@@ -341,6 +349,7 @@ async def save_section(
                     content=plain_text,
                     metadata={}  # Empty metadata for MVP
                 )
+            logger.info(f"TOOLS_API_CALL: save_section_state returned: {result is not None}")
             
             if result:
                 logger.info(f"DATABASE_DEBUG: ✅ Successfully saved section {section_id} via DentApp API")
@@ -991,16 +1000,27 @@ async def extract_plain_text(tiptap_json: Dict[str, Any]) -> str:
     def extract_text_from_node(node: Dict[str, Any]) -> str:
         text_parts = []
         
-        if node.get("type") == "text":
-            text_parts.append(node.get("text", ""))
+        node_type = node.get("type")
         
+        if node_type == "text":
+            text_parts.append(node.get("text", ""))
+        elif node_type == "hardBreak":
+            text_parts.append("\\n")
+
         if "content" in node and isinstance(node["content"], list):
             for child in node["content"]:
                 text_parts.append(extract_text_from_node(child))
         
-        return " ".join(text_parts)
+        return "".join(text_parts)
     
-    return extract_text_from_node(tiptap_json).strip()
+    # Validate input with Pydantic model
+    try:
+        doc = TiptapDocument.model_validate(tiptap_json)
+        return extract_text_from_node(doc.model_dump()).strip()
+    except Exception as e:
+        logger.error(f"Error validating or extracting text from Tiptap JSON: {e}")
+        # Fallback for old format if validation fails
+        return extract_text_from_node(tiptap_json).strip()
 
 
 # Helper function to execute SQL queries

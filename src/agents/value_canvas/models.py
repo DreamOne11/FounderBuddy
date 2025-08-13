@@ -216,4 +216,117 @@ class SectionTemplate(BaseModel):
     system_prompt_template: str
     validation_rules: List[ValidationRule] = Field(default_factory=list)
     required_fields: List[str] = Field(default_factory=list)
-    next_section: Optional[SectionID] = None 
+    next_section: Optional[SectionID] = None
+
+
+# --- Structured Output Models for Data Extraction ---
+
+class InterviewData(BaseModel):
+    """A data structure to hold extracted information from the user interview."""
+    
+    client_name: Optional[str] = Field(
+        None, 
+        description="The user's full name. Exclude any mention of a preferred name."
+    )
+    preferred_name: Optional[str] = Field(
+        None, 
+        description="The user's preferred name or nickname, often found in parentheses."
+    )
+    company_name: Optional[str] = Field(
+        None, 
+        description="The name of the user's company."
+    )
+    industry: Optional[str] = Field(
+        None, 
+        description="The industry the user works in."
+    )
+    specialty: Optional[str] = Field(
+        None, 
+        description="The user's specialty or 'zone of genius'."
+    )
+    career_highlight: Optional[str] = Field(
+        None, 
+        description="A career achievement the user is proud of."
+    )
+    client_outcomes: Optional[str] = Field(
+        None, 
+        description="The typical results or outcomes clients get from working with the user."
+    )
+    specialized_skills: Optional[str] = Field(
+        None, 
+        description="Specific skills or qualifications the user mentioned."
+    )
+
+
+class ICPData(BaseModel):
+    """Structured data for the Ideal Client Persona (ICP) section."""
+    nickname: Optional[str] = Field(None, description="A short, memorable nickname for the ICP.")
+    role_and_sector: Optional[str] = Field(None, description="The ICP's professional role and the sector they operate in.")
+    demographics: Optional[str] = Field(None, description="Key demographic information about the ICP (e.g., age, income, family status).")
+    geography: Optional[str] = Field(None, description="The geographic location where the ICP is typically found.")
+    affinity: Optional[str] = Field(None, description="Assessment of whether you would enjoy working with this ICP.")
+    affordability: Optional[str] = Field(None, description="Assessment of the ICP's ability to afford premium pricing.")
+    impact: Optional[str] = Field(None, description="Assessment of the potential significance of your solution's impact on the ICP.")
+    access: Optional[str] = Field(None, description="Assessment of how easily you can reach and connect with this ICP.")
+
+
+class PainPoint(BaseModel):
+    """Structured data for a single pain point."""
+    symptom: Optional[str] = Field(None, description="The observable problem or symptom of the pain (1-3 words).")
+    struggle: Optional[str] = Field(None, description="How this pain shows up in their daily work life (1-2 sentences).")
+    cost: Optional[str] = Field(None, description="The immediate, tangible cost of this pain.")
+    consequence: Optional[str] = Field(None, description="The long-term, future consequence if this pain is not solved.")
+
+
+class PainData(BaseModel):
+    """Structured data for the Pain section, containing three distinct pain points."""
+    pain_points: List[PainPoint] = Field(description="A list of three distinct pain points.")
+
+
+class DeepFearData(BaseModel):
+    """Structured data for the Deep Fear section."""
+    deep_fear: Optional[str] = Field(None, description="The private doubt or self-question the client has that they rarely voice.")
+
+
+class PayoffPoint(BaseModel):
+    """Structured data for a single payoff point."""
+    objective: Optional[str] = Field(None, description="What the client wants to achieve (1-3 words).")
+    desire: Optional[str] = Field(None, description="A description of what the client specifically wants (1-2 sentences).")
+    without: Optional[str] = Field(None, description="A statement that pre-handles common objections or concerns.")
+    resolution: Optional[str] = Field(None, description="A statement that directly resolves the corresponding pain symptom.")
+
+
+class PayoffsData(BaseModel):
+    """Structured data for the Payoffs section, containing three distinct payoff points."""
+    payoffs: List[PayoffPoint] = Field(description="A list of three distinct payoff points that mirror the pain points.")
+
+
+class Principle(BaseModel):
+    """A single principle within the Signature Method."""
+    name: Optional[str] = Field(None, description="The name of the principle (2-4 words).")
+    description: Optional[str] = Field(None, description="A brief description of what the principle means in practice (1-2 sentences).")
+
+
+class SignatureMethodData(BaseModel):
+    """Structured data for the Signature Method section."""
+    method_name: Optional[str] = Field(None, description="A memorable name for the method (2-4 words).")
+    principles: List[Principle] = Field(description="A list of 4-6 core principles that form the method.")
+
+
+class Mistake(BaseModel):
+    """Structured data for a single mistake."""
+    related_to: str = Field(description="The pain point or method principle this mistake is related to.")
+    root_cause: Optional[str] = Field(None, description="The non-obvious reason this mistake keeps happening.")
+    error_in_thinking: Optional[str] = Field(None, description="The flawed belief that makes the problem worse.")
+    error_in_action: Optional[str] = Field(None, description="What they do that feels right but creates more problems.")
+
+
+class MistakesData(BaseModel):
+    """Structured data for the Mistakes section."""
+    mistakes: List[Mistake] = Field(description="A list of mistakes related to pain points and method principles.")
+
+
+class PrizeData(BaseModel):
+    """Structured data for the Prize section."""
+    category: Optional[str] = Field(None, description="The category of the prize (e.g., Identity-Based, Outcome-Based).")
+    statement: Optional[str] = Field(None, description="The 1-5 word prize statement.") 

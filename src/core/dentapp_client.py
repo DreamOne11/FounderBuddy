@@ -18,6 +18,7 @@ class DentAppClient:
         self.base_url = base_url or getattr(settings, 'DENTAPP_API_URL', 'https://dentappaibuilder.enspirittech.co.uk')
         self.timeout = timeout
         self._client: Optional[AsyncClient] = None
+        logger.info(f"=== DENTAPP_CLIENT_INIT: Initialized with base_url={self.base_url}, timeout={timeout}s ===")
         
     async def __aenter__(self):
         """Async context manager entry."""
@@ -45,6 +46,12 @@ class DentAppClient:
         retries: int = 3
     ) -> Dict[str, Any]:
         """Make HTTP request with retry logic."""
+        logger.info(f"=== DENTAPP_API_REQUEST: {method} {self.base_url}{url} ===")
+        if json:
+            logger.info(f"DENTAPP_API_REQUEST: Request payload keys: {list(json.keys())}")
+        if params:
+            logger.info(f"DENTAPP_API_REQUEST: Request params: {params}")
+            
         for attempt in range(retries):
             try:
                 logger.debug(f"DentApp API {method} {url} - Attempt {attempt + 1}")
@@ -58,11 +65,21 @@ class DentAppClient:
                 response.raise_for_status()
                 
                 result = response.json()
-                logger.debug(f"DentApp API response successful: {response.status_code}")
+                logger.info(f"=== DENTAPP_API_RESPONSE: Status {response.status_code} SUCCESS ===")
+                logger.info(f"DENTAPP_API_RESPONSE: Response keys: {list(result.keys()) if isinstance(result, dict) else 'Non-dict response'}")
+                if isinstance(result, dict) and 'success' in result:
+                    logger.info(f"DENTAPP_API_RESPONSE: success={result.get('success')}, message='{result.get('message', 'No message')}'")
+                logger.debug(f"DENTAPP_API_RESPONSE: Full response: {result}")
                 return result
                 
             except HTTPStatusError as e:
-                logger.warning(f"DentApp API HTTP error {e.response.status_code}: {e.response.text}")
+                logger.error(f"=== DENTAPP_API_ERROR: HTTP {e.response.status_code} FAILED ===")
+                logger.error(f"DENTAPP_API_ERROR: Response text: {e.response.text}")
+                try:
+                    error_json = e.response.json()
+                    logger.error(f"DENTAPP_API_ERROR: Parsed JSON: {error_json}")
+                except:
+                    logger.error("DENTAPP_API_ERROR: Could not parse error response as JSON")
                 if attempt == retries - 1:
                     raise
                 await asyncio.sleep(2 ** attempt)  # Exponential backoff

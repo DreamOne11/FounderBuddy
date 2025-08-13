@@ -22,6 +22,14 @@ from .models import (
     SectionStatus,
     ValueCanvasData,
     ValueCanvasState,
+    InterviewData, # Import the new structured output model
+    ICPData,
+    PainData,
+    DeepFearData,
+    PayoffsData,
+    SignatureMethodData,
+    MistakesData,
+    PrizeData,
 )
 from .prompts import (
     get_next_section,
@@ -328,8 +336,34 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
 
     # 2) Section-specific system prompt from context packet
     if state.get("context_packet"):
-        messages.append(SystemMessage(content=state["context_packet"].system_prompt))
-        
+        # NEW: Prioritize displaying existing section content if available
+        current_section_id = state["current_section"].value
+        section_state = state.get("section_states", {}).get(current_section_id)
+
+        if section_state and section_state.get("content"):
+            logger.info(f"MEMORY_DEBUG: Found existing content for {current_section_id}. Prioritizing it.")
+            try:
+                # Use the plain_text version if available, otherwise extract it.
+                # Note: content in section_states is a dict, not a SectionContent object.
+                content_dict = section_state["content"]
+                plain_text_summary = await extract_plain_text.ainvoke({"tiptap_json": content_dict})
+
+                review_prompt = (
+                    "CRITICAL CONTEXT: The user is reviewing a section they have already completed. "
+                    "Their previous answers have been saved. Your primary task is to present this saved information back to them if they ask for it. "
+                    "DO NOT ask the interview questions again. "
+                    "Here is the exact summary of their previously provided answers. You MUST use this information:\n\n"
+                    f"--- PREVIOUSLY SAVED SUMMARY ---\n{plain_text_summary}\n--- END SUMMARY ---"
+                )
+                messages.append(SystemMessage(content=review_prompt))
+            except Exception as e:
+                logger.error(f"MEMORY_DEBUG: Failed to extract plain text from existing state for {current_section_id}: {e}")
+                # Fallback to the original prompt if extraction fails
+                messages.append(SystemMessage(content=state["context_packet"].system_prompt))
+        else:
+            # Original behavior: use the default system prompt for the section
+            messages.append(SystemMessage(content=state["context_packet"].system_prompt))
+
         # Add progress information based on section_states
         section_names = {
             "interview": "Interview",
@@ -730,69 +764,60 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
 
         # ----------------------------------------------------------
         # NEW: Extract Interview basics and update canvas_data
-        # Better approach: Use LLM to extract structured data
+        # This now uses a modern, reliable structured output approach.
         # ----------------------------------------------------------
-        if state.get("current_section") == SectionID.INTERVIEW:
+        # Create a mapping from SectionID to the Pydantic model for structured data extraction
+        section_to_model_map = {
+            SectionID.INTERVIEW: InterviewData,
+            SectionID.ICP: ICPData,
+            SectionID.PAIN: PainData,
+            SectionID.DEEP_FEAR: DeepFearData,
+            SectionID.PAYOFFS: PayoffsData,
+            SectionID.SIGNATURE_METHOD: SignatureMethodData,
+            SectionID.MISTAKES: MistakesData,
+            SectionID.PRIZE: PrizeData,
+        }
+
+        current_section = state.get("current_section")
+        extraction_model = section_to_model_map.get(current_section)
+
+        if extraction_model:
             try:
-                # Use LLM to extract structured information from the content
-                plain_text = await extract_plain_text.ainvoke(agent_out.section_update.content.model_dump())
+                # 1. Extract plain text from the Tiptap JSON content
+                plain_text = await extract_plain_text.ainvoke({"tiptap_json": agent_out.section_update.content.model_dump()})
+                logger.info(f"EXTRACTION_DEBUG: Plain text for {current_section.value} extraction:\\n---\\n{plain_text}\\n---")
                 
-                # Create a simple extraction prompt for the LLM
+                # 2. Define a simple prompt for the LLM
                 extraction_prompt = f"""
-                Extract the following information from this interview summary:
+                Extract the required information from the following user-provided text for the '{current_section.name}' section of a Value Canvas.
+                ---
                 {plain_text}
-                
-                Important instructions:
-                - Extract the ACTUAL values provided by the user
-                - If you see "Not provided" or similar placeholders, return null
-                - Look for real names, company names, and industries
-                
-                Return ONLY a JSON object with these fields (use null if not found or if placeholder text):
-                {{"name": "...", "company": "...", "industry": "..."}}
+                ---
                 """
                 
-                # Use GPT-4O for data extraction accuracy
+                # 3. Get the LLM and bind it to our desired structured output model
                 llm = get_model(OpenAIModelName.GPT_4O)
-                extraction_response = await llm.ainvoke(extraction_prompt)
+                structured_llm = llm.with_structured_output(extraction_model)
                 
-                import json
-                try:
-                    extracted_data = json.loads(extraction_response.content)
-                    name_val = extracted_data.get("name")
-                    company_val = extracted_data.get("company")
-                    industry_val = extracted_data.get("industry")
-                    
-                    # Don't save "Not provided" or similar placeholders
-                    if name_val and "not provided" in name_val.lower():
-                        name_val = None
-                    if company_val and "not provided" in company_val.lower():
-                        company_val = None
-                    if industry_val and "not provided" in industry_val.lower():
-                        industry_val = None
-                except:
-                    # Fallback to regex if LLM extraction fails
-                    import re
-                    def _grab(label):
-                        match = re.search(fr"{label}:\s*(.+)", plain_text, re.IGNORECASE)
-                        return match.group(1).strip() if match else None
-                    
-                    name_val = _grab("Name")
-                    company_val = _grab("Company")
-                    industry_val = _grab("Industry")
+                # 4. Invoke the LLM to get a structured Pydantic object directly
+                logger.info(f"EXTRACTION_DEBUG: Calling LLM with structured_output for {extraction_model.__name__}.")
+                extracted_data = await structured_llm.ainvoke(extraction_prompt)
+                logger.info(f"EXTRACTION_DEBUG: Successfully extracted structured data for {current_section.value}: {extracted_data}")
 
+                # 5. Safely update canvas_data with the extracted, validated data
                 canvas_data = state.get("canvas_data")
-                if canvas_data:
-                    if name_val:
-                        canvas_data.client_name = name_val
-                    if company_val:
-                        canvas_data.company_name = company_val
-                    if industry_val:
-                        canvas_data.industry = industry_val
-                    # Log for debugging
-                    logger.info("CANVAS_DEBUG: Updated canvas_data with Interview info → "
-                                f"name={name_val}, company={company_val}, industry={industry_val}")
+                if canvas_data and extracted_data:
+                    for field, value in extracted_data.model_dump().items():
+                        if hasattr(canvas_data, field) and value is not None:
+                            setattr(canvas_data, field, value)
+                    
+                    logger.info(
+                        "CANVAS_DEBUG: Updated canvas_data with structured info for section "
+                        f"'{current_section.value}'"
+                    )
             except Exception as e:
-                logger.warning(f"CANVAS_DEBUG: Failed to extract Interview basics: {e}")
+                logger.warning(f"CANVAS_DEBUG: Failed to extract structured data for {current_section.value}: {e}")
+            
         logger.info(f"DATABASE_DEBUG: ✅ Section {section_id} updated with structured content")
         
         # Extract plain text and update canvas data
