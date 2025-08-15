@@ -11,18 +11,18 @@ _next_user_id = 1  # Start from 1 to match existing DentApp test user
 
 # Section ID mapping: agent section -> DentApp API section_id
 SECTION_ID_MAPPING = {
-    "interview": 1,
-    "icp": 2,
-    "pain": 3,
-    "deep_fear": 4,
-    "payoffs": 5,
-    "signature_method": 6,
-    "mistakes": 7,
-    "prize": 8,
+    "interview": 9,
+    "icp": 10,
+    "pain": 11,
+    "deep_fear": 12,
+    "payoffs": 13,
+    "signature_method": 14,
+    "mistakes": 15,
+    "prize": 16,
 }
 
 # Fixed agent ID for MVP
-AGENT_ID = 1
+AGENT_ID = 2
 
 
 def get_user_id_int(uuid_str: str) -> int:

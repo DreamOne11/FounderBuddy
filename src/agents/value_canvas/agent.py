@@ -231,11 +231,15 @@ async def router_node(state: ValueCanvasState, config: RunnableConfig) -> ValueC
         try:
             new_section = SectionID(section_id)
             logger.info(f"Jumping to section: {new_section}")
+            prev_section = state.get("current_section")
             state["current_section"] = new_section
             
-            # Clear short_memory when jumping to a different section
-            state["short_memory"] = []
-            logger.info(f"Cleared short_memory for jumped section {new_section.value}")
+            # Only clear short_memory when switching to a different section
+            if prev_section != new_section:
+                state["short_memory"] = []
+                logger.info(f"Cleared short_memory for jumped section {new_section.value}")
+            else:
+                logger.info(f"Preserved short_memory for same-section refresh {new_section.value}")
             
             # Get context for new section
             logger.debug(f"DATABASE_DEBUG: Router calling get_context for modify section {new_section.value}")
