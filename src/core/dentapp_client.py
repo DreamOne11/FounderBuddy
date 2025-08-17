@@ -2,9 +2,8 @@
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
-import httpx
 from httpx import AsyncClient, HTTPStatusError, RequestError, TimeoutException
 
 from core.settings import settings
@@ -17,7 +16,7 @@ class DentAppClient:
     def __init__(self, base_url: str = None, timeout: int = 30):
         self.base_url = base_url or getattr(settings, 'DENTAPP_API_URL', 'https://dentappaibuilder.enspirittech.co.uk')
         self.timeout = timeout
-        self._client: Optional[AsyncClient] = None
+        self._client: AsyncClient | None = None
         logger.info(f"=== DENTAPP_CLIENT_INIT: Initialized with base_url={self.base_url}, timeout={timeout}s ===")
         
     async def __aenter__(self):
@@ -41,10 +40,10 @@ class DentAppClient:
         self, 
         method: str, 
         url: str, 
-        json: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, Any]] = None,
+        json: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
         retries: int = 3
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Make HTTP request with retry logic."""
         logger.info(f"=== DENTAPP_API_REQUEST: {method} {self.base_url}{url} ===")
         if json:
@@ -101,7 +100,7 @@ class DentAppClient:
         agent_id: int, 
         section_id: int, 
         user_id: int
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Get section state from DentApp API."""
         logger.info(f"Getting section state for agent={agent_id}, section={section_id}, user={user_id}")
         
@@ -111,7 +110,7 @@ class DentAppClient:
                 url=f"/section_states/{agent_id}/{section_id}",
                 params={"user_id": user_id}
             )
-            logger.info(f"Successfully retrieved section state")
+            logger.info("Successfully retrieved section state")
             return result
             
         except Exception as e:
@@ -124,8 +123,8 @@ class DentAppClient:
         section_id: int, 
         user_id: int, 
         content: str,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Optional[Dict[str, Any]]:
+        metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any] | None:
         """Save section state to DentApp API."""
         logger.info(f"Saving section state for agent={agent_id}, section={section_id}, user={user_id}")
         
@@ -144,7 +143,7 @@ class DentAppClient:
                 url=f"/section_states/{agent_id}/{section_id}",
                 json=payload
             )
-            logger.info(f"Successfully saved section state")
+            logger.info("Successfully saved section state")
             return result
             
         except Exception as e:
@@ -155,7 +154,7 @@ class DentAppClient:
         self, 
         agent_id: int, 
         user_id: int
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Get all sections status from DentApp API."""
         logger.info(f"Getting all sections status for agent={agent_id}, user={user_id}")
         
@@ -167,7 +166,7 @@ class DentAppClient:
                 url=f"/agent/get-all-sections-status/{agent_id}",
                 json=payload
             )
-            logger.info(f"Successfully retrieved all sections status")
+            logger.info("Successfully retrieved all sections status")
             return result
             
         except Exception as e:
@@ -178,7 +177,7 @@ class DentAppClient:
         self, 
         user_id: int, 
         agent_id: int
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Export agent data from DentApp API."""
         logger.info(f"Exporting agent data for user={user_id}, agent={agent_id}")
         
@@ -193,7 +192,7 @@ class DentAppClient:
                 url="/agent/export",
                 json=payload
             )
-            logger.info(f"Successfully exported agent data")
+            logger.info("Successfully exported agent data")
             return result
             
         except Exception as e:
@@ -202,7 +201,7 @@ class DentAppClient:
 
 
 # Global client instance for easy access
-_dentapp_client: Optional[DentAppClient] = None
+_dentapp_client: DentAppClient | None = None
 
 def get_dentapp_client() -> DentAppClient:
     """Get configured DentApp client instance."""

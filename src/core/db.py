@@ -1,4 +1,5 @@
-from supabase import create_client, Client
+from supabase import Client, create_client
+
 from core.settings import settings
 
 # Supabase client with anonymous key (for general operations)
@@ -88,7 +89,7 @@ async def get_user_context(user_id: str) -> str:
             print(f"[DEBUG] User data keys: {list(user_data.keys()) if isinstance(user_data, dict) else 'Not a dict'}")
             return format_user_context(user_data)
         else:
-            print(f"[DEBUG] No data returned from RPC call")
+            print("[DEBUG] No data returned from RPC call")
             return "## User Context\n\nUser not found or no data available - using default system prompt."
             
     except Exception as e:
@@ -121,7 +122,7 @@ def format_user_context(user_data: dict) -> str:
         context += "```json\n"
         context += formatted_json
         context += "\n```\n\n"
-    except Exception as e:
+    except Exception:
         # Fallback to string representation if JSON serialization fails
         context += f"```\n{str(user_data)}\n```\n\n"
     

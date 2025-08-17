@@ -1,12 +1,12 @@
 """Utility functions for DentApp AI Builder API integration."""
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # Global UUID to integer mapping cache (in-memory for MVP)
-_uuid_to_int_cache: Dict[str, int] = {}
+_uuid_to_int_cache: dict[str, int] = {}
 _next_user_id = 1  # Start from 1 to match existing DentApp test user
 
 # Section ID mapping: agent section -> DentApp API section_id
@@ -44,7 +44,7 @@ def get_user_id_int(uuid_str: str) -> int:
     return _uuid_to_int_cache[uuid_str]
 
 
-def get_section_id_int(section_id_str: str) -> Optional[int]:
+def get_section_id_int(section_id_str: str) -> int | None:
     """
     Convert agent section ID string to DentApp API section_id integer.
     
@@ -60,7 +60,7 @@ def get_section_id_int(section_id_str: str) -> Optional[int]:
     return section_id_int
 
 
-def tiptap_to_plain_text(tiptap_json: Dict[str, Any]) -> str:
+def tiptap_to_plain_text(tiptap_json: dict[str, Any]) -> str:
     """
     Convert Tiptap JSON content to plain text for DentApp API.
     
@@ -70,7 +70,7 @@ def tiptap_to_plain_text(tiptap_json: Dict[str, Any]) -> str:
     Returns:
         Plain text string
     """
-    def extract_text_from_node(node: Dict[str, Any]) -> str:
+    def extract_text_from_node(node: dict[str, Any]) -> str:
         text_parts = []
         
         if node.get("type") == "text":
@@ -90,7 +90,7 @@ def tiptap_to_plain_text(tiptap_json: Dict[str, Any]) -> str:
     return plain_text
 
 
-def plain_text_to_tiptap(plain_text: str) -> Dict[str, Any]:
+def plain_text_to_tiptap(plain_text: str) -> dict[str, Any]:
     """
     Convert plain text to basic Tiptap JSON format.
     
@@ -151,7 +151,7 @@ def convert_dentapp_status_to_agent(dentapp_status: str) -> str:
     return agent_status
 
 
-def convert_agent_score_to_dentapp(score: Optional[int]) -> Optional[int]:
+def convert_agent_score_to_dentapp(score: int | None) -> int | None:
     """
     Convert agent score to DentApp API format.
     
@@ -182,7 +182,7 @@ def log_api_operation(operation: str, **kwargs):
         logger.debug(f"  {key}: {value}")
 
 
-def get_mapping_stats() -> Dict[str, Any]:
+def get_mapping_stats() -> dict[str, Any]:
     """
     Get current UUID mapping statistics for debugging.
     

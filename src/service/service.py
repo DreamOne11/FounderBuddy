@@ -34,7 +34,6 @@ from schema import (
     ServiceMetadata,
     StreamInput,
     UserInput,
-
 )
 from service.utils import (
     convert_message_content_to_string,
@@ -464,42 +463,22 @@ async def notify_section_update(
     section_id: str,
     user_id: str,
     thread_id: str | None = None,
-    trigger: bool = True,
 ):
     """
-    Notify that a section has been edited.
+    Notify agent that a section has been edited and trigger a minimal sync run.
 
-    - trigger=false: Only fetch latest draft/status for the section; no graph run.
-    - trigger=true : Simulate a minimal user notification to refresh context and return an AI prompt + latest draft.
+    This endpoint always:
+    - Triggers a minimal Agent run to reload latest content for the section
+    - Returns an AI prompt (single message) and the latest section status/draft
     """
+    # Require thread_id to ensure updates are scoped to the correct document/thread
+    if not thread_id:
+        raise HTTPException(status_code=422, detail="Missing required parameter: thread_id")
     # Validate section_id
     if section_id not in SECTION_TEMPLATES:
         raise HTTPException(status_code=422, detail=f"Unknown section_id: {section_id}")
 
-    # Only fetch, no side effects
-    if not trigger:
-        # Lazy import to avoid cycles
-        from agents.value_canvas.tools import get_context
-        context = await get_context.ainvoke({
-            "user_id": user_id,
-            "doc_id": thread_id or "",
-            "section_id": section_id,
-            "canvas_data": {},
-        })
-        name = SECTION_TEMPLATES.get(section_id).name if SECTION_TEMPLATES.get(section_id) else "Unknown Section"
-        return {
-            "section": {
-                "id": section_id,
-                "name": name,
-                "database_id": SECTION_ID_MAPPING.get(section_id),
-                "status": context.get("status", "pending"),
-            },
-            "draft": context.get("draft"),
-            "thread_id": thread_id,
-            "user_id": user_id,
-        }
-
-    # Trigger a minimal graph run to refresh and prompt
+    # Trigger a minimal graph run to refresh context
     agent: AgentGraph = get_agent(agent_id)
     notify_msg = (
         f"I just updated section '{section_id}' in the UI. "
@@ -509,46 +488,14 @@ async def notify_section_update(
     user_input = UserInput(message=notify_msg, user_id=user_id, thread_id=thread_id)
     kwargs, run_id = await _handle_input(user_input, agent)
 
-    # Run once
-    response_events: list[tuple[str, Any]] = await agent.ainvoke(**kwargs, stream_mode=["updates", "values"])  # type: ignore
+    # Execute once; ignore content and return minimal success
+    try:
+        await agent.ainvoke(**kwargs, stream_mode=["updates", "values"])  # type: ignore
+    except Exception as e:
+        logger.error(f"Section notify run failed: {e}")
+        raise HTTPException(status_code=500, detail="Agent sync failed")
 
-    # Parse output
-    response_type, response = response_events[-1]
-    if response_type == "values":
-        output = langchain_to_chat_message(response["messages"][-1])
-    elif response_type == "updates" and "__interrupt__" in response:
-        output = langchain_to_chat_message(AIMessage(content=response["__interrupt__"][0].value))
-    else:
-        raise HTTPException(status_code=500, detail="Unexpected agent response")
-
-    output.run_id = str(run_id)
-
-    # Read latest state and assemble section/draft
-    state = await agent.aget_state(config=kwargs["config"])
-    section_template = SECTION_TEMPLATES.get(section_id)
-    section_state = state.values.get("section_states", {}).get(section_id)
-    context_packet = state.values.get("context_packet")
-
-    status_value = "pending"
-    if section_state and section_state.get("status"):
-        status_value = section_state["status"]
-    elif context_packet and getattr(context_packet, "status", None) and getattr(context_packet, "section_id", None) == section_id:
-        status_value = context_packet.status
-
-    section_data = {
-        "database_id": SECTION_ID_MAPPING.get(section_id),
-        "name": section_template.name if section_template else "Unknown Section",
-        "status": status_value,
-    }
-    output.custom_data["section"] = section_data
-
-    return {
-        "invoke_output": output.model_dump(),
-        "section": {"id": section_id, **section_data},
-        "draft": (getattr(context_packet, "draft", None) if context_packet and getattr(context_packet, "section_id", None) == section_id else None),
-        "thread_id": kwargs["config"]["configurable"]["thread_id"],
-        "user_id": kwargs["config"]["configurable"]["user_id"],
-    }
+    return {"success": True}
 
 
 @app.get("/health")

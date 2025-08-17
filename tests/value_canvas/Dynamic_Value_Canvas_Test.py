@@ -5,13 +5,12 @@ Creates an intelligent test agent that can read documentation and respond dynami
 """
 
 import asyncio
-import sys
-import os
-from pathlib import Path
-from datetime import datetime
 import json
+import os
 import re
-from typing import Dict, List, Optional, Tuple
+import sys
+from datetime import datetime
+from pathlib import Path
 
 # Load env vars
 env_path = Path('.env')
@@ -24,10 +23,12 @@ if env_path.exists():
 
 sys.path.append('src')
 
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
-from agents.value_canvas.agent import graph as value_canvas_agent, initialize_value_canvas_state
+
+from agents.value_canvas.agent import graph as value_canvas_agent
+from agents.value_canvas.agent import initialize_value_canvas_state
 
 
 class IntelligentTestUser:
@@ -128,7 +129,7 @@ class IntelligentTestUser:
             return doc_path.read_text(encoding='utf-8')
         return ""
     
-    async def generate_dynamic_response(self, agent_message: str, context: Dict) -> Tuple[str, Dict]:
+    async def generate_dynamic_response(self, agent_message: str, context: dict) -> tuple[str, dict]:
         """
         Generate a dynamic response based on what the agent is asking
         and the current flow expectations from documentation
@@ -179,7 +180,7 @@ Generate only your response as Sarah Chen (no meta-commentary):
         
         return user_response, flow_analysis
     
-    def _analyze_agent_message(self, message: str) -> Dict:
+    def _analyze_agent_message(self, message: str) -> dict:
         """Analyze agent message to understand what section/info they're requesting"""
         
         # Pattern matching for different sections and questions
@@ -260,7 +261,7 @@ Generate only your response as Sarah Chen (no meta-commentary):
         
         return "No specific documentation found for this section"
     
-    def _validate_flow_compliance(self, agent_message: str, context: Dict) -> Dict:
+    def _validate_flow_compliance(self, agent_message: str, context: dict) -> dict:
         """Validate if agent is following the documented flow"""
         violations = []
         
@@ -283,7 +284,7 @@ Generate only your response as Sarah Chen (no meta-commentary):
             'expected_next': self._predict_next_question(context)
         }
     
-    def _predict_next_question(self, context: Dict) -> str:
+    def _predict_next_question(self, context: dict) -> str:
         """Predict what the agent should ask next based on documentation flow"""
         section = context.get('section', 'unknown')
         
@@ -336,7 +337,7 @@ class DynamicValueCanvasTest:
         print(f"🔧 Dynamic test initialized, log will be saved to: {self.log_file}")
     
     def log_interaction(self, round_num: int, user_input: str, agent_response: str, 
-                       flow_analysis: Dict, duration: float):
+                       flow_analysis: dict, duration: float):
         """Log each interaction with flow analysis"""
         
         with open(self.log_file, 'a', encoding='utf-8') as f:
@@ -427,7 +428,7 @@ class DynamicValueCanvasTest:
             
             # Final summary
             with open(self.log_file, 'a', encoding='utf-8') as f:
-                f.write(f"\n## 🎉 Dynamic Test Complete\n\n")
+                f.write("\n## 🎉 Dynamic Test Complete\n\n")
                 f.write(f"**End Time**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write(f"**Total Rounds**: {round_num - 1}\n")
                 f.write(f"**Flow Violations**: {len(self.test_user.flow_violations)}\n")
@@ -436,7 +437,7 @@ class DynamicValueCanvasTest:
         except Exception as e:
             print(f"\n❌ Test error at round {round_num}: {e}")
             with open(self.log_file, 'a', encoding='utf-8') as f:
-                f.write(f"\n## ❌ Test Error\n")
+                f.write("\n## ❌ Test Error\n")
                 f.write(f"**Round**: {round_num}\n")
                 f.write(f"**Error**: {str(e)}\n")
     

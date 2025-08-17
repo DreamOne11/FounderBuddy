@@ -2,7 +2,7 @@
 
 import json
 import logging
-from typing import Any, Dict, List, Literal, Optional, Sequence
+from typing import Literal
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
@@ -11,30 +11,27 @@ from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
 
 from core.llm import get_model
-from core.settings import settings
 from schema.models import OpenAIModelName
 
 from .models import (
     ChatAgentOutput,
     ContextPacket,
+    DeepFearData,
+    ICPData,
+    InterviewData,  # Import the new structured output model
+    MistakesData,
+    PainData,
+    PayoffsData,
+    PrizeData,
     RouterDirective,
     SectionID,
     SectionStatus,
+    SignatureMethodData,
     ValueCanvasData,
     ValueCanvasState,
-    InterviewData, # Import the new structured output model
-    ICPData,
-    PainData,
-    DeepFearData,
-    PayoffsData,
-    SignatureMethodData,
-    MistakesData,
-    PrizeData,
 )
 from .prompts import (
-    get_next_section,
     get_next_unfinished_section,
-    SECTION_TEMPLATES,
 )
 from .tools import (
     create_tiptap_content,
@@ -277,7 +274,7 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
     logger.info(f"Chat agent node - Section: {state['current_section']}")
     
     # DEBUG: Log recent message history
-    logger.info(f"MESSAGE_HISTORY_DEBUG: Last 3 messages:")
+    logger.info("MESSAGE_HISTORY_DEBUG: Last 3 messages:")
     recent_msgs = state.get("messages", [])[-3:]
     for i, msg in enumerate(recent_msgs):
         msg_type = "Human" if hasattr(msg, '__class__') and 'Human' in msg.__class__.__name__ else "AI"
@@ -291,9 +288,9 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
     # Use GPT-4O model configuration
     llm = get_model(OpenAIModelName.GPT_4O)
     
-    messages: List[BaseMessage] = []
-    last_human_msg: Optional[HumanMessage] = None
-    user_rating: Optional[int] = None  # capture explicit 0-5 rating if provided
+    messages: list[BaseMessage] = []
+    last_human_msg: HumanMessage | None = None
+    user_rating: int | None = None  # capture explicit 0-5 rating if provided
 
     # 1) Hard system instruction per design doc – MUST output pure JSON.
     json_schema_instruction = (
@@ -459,7 +456,7 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
         
         if calculated_directive == RouterDirective.NEXT:
             # Get the next section name for the transition message
-            from .prompts import get_next_section, SECTION_TEMPLATES
+            from .prompts import SECTION_TEMPLATES, get_next_section
             next_section = get_next_section(current_section)
             if next_section:
                 next_section_name = SECTION_TEMPLATES.get(next_section.value).name
@@ -522,7 +519,7 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
         agent_output = ChatAgentOutput(**output_data)
 
         # DEBUG: Log the full agent output
-        logger.info(f"AGENT_OUTPUT_DEBUG: Full output from LLM:")
+        logger.info("AGENT_OUTPUT_DEBUG: Full output from LLM:")
         logger.info(f"AGENT_OUTPUT_DEBUG: - reply: {agent_output.reply[:100]}...")
         logger.info(f"AGENT_OUTPUT_DEBUG: - router_directive: {agent_output.router_directive}")
         logger.info(f"AGENT_OUTPUT_DEBUG: - score: {agent_output.score}")
@@ -653,7 +650,7 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
             if state.get('agent_output'):
                 logger.debug(f"SAVE_SECTION_DEBUG: Agent output exists but section_update is: {state['agent_output'].section_update}")
             else:
-                logger.debug(f"SAVE_SECTION_DEBUG: No agent output exists at all")
+                logger.debug("SAVE_SECTION_DEBUG: No agent output exists at all")
 
     except Exception as e:
         logger.error(f"Failed to parse structured output: {e}\nResponse: {response.content if 'response' in locals() else ''}")
@@ -705,14 +702,14 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
         return SectionStatus.IN_PROGRESS.value
 
     # [SAVE_SECTION_DEBUG] Track decision path in memory_updater_node
-    logger.info(f"SAVE_SECTION_DEBUG: memory_updater_node decision analysis:")
+    logger.info("SAVE_SECTION_DEBUG: memory_updater_node decision analysis:")
     logger.info(f"SAVE_SECTION_DEBUG: - agent_out exists: {bool(agent_out)}")
     if agent_out:
         logger.info(f"SAVE_SECTION_DEBUG: - agent_out.section_update exists: {bool(agent_out.section_update)}")
         logger.info(f"SAVE_SECTION_DEBUG: - agent_out.score: {agent_out.score}")
         logger.info(f"SAVE_SECTION_DEBUG: - agent_out.router_directive: {agent_out.router_directive}")
     else:
-        logger.info(f"SAVE_SECTION_DEBUG: - No agent_out, will not call save_section")
+        logger.info("SAVE_SECTION_DEBUG: - No agent_out, will not call save_section")
     
     if agent_out and agent_out.section_update:
         section_id = state["current_section"].value
@@ -730,15 +727,15 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
                     first_text = first_para.content[0].get('text', 'No text')
                     logger.warning(f"CONTENT_DEBUG: First paragraph starts with: {first_text[:100]}...")
             except:
-                logger.warning(f"CONTENT_DEBUG: Could not extract content preview")
+                logger.warning("CONTENT_DEBUG: Could not extract content preview")
         
         # Save to database using save_section tool
-        logger.info(f"SAVE_SECTION_DEBUG: ✅ CALLING save_section with structured content")
+        logger.info("SAVE_SECTION_DEBUG: ✅ CALLING save_section with structured content")
         logger.debug("DATABASE_DEBUG: Calling save_section tool with structured content")
         
         # [CRITICAL DEBUG] Log the exact parameters being passed to save_section
         computed_status = _status_from_output(agent_out.score, agent_out.router_directive)
-        logger.info(f"SAVE_SECTION_DEBUG: About to call save_section with:")
+        logger.info("SAVE_SECTION_DEBUG: About to call save_section with:")
         logger.info(f"SAVE_SECTION_DEBUG: - user_id: {state['user_id']}")
         logger.info(f"SAVE_SECTION_DEBUG: - doc_id: {state['doc_id']}")
         logger.info(f"SAVE_SECTION_DEBUG: - section_id: {section_id}")
@@ -830,7 +827,7 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
         
     # Handle cases where agent provides score/status but no structured section_update  
     elif agent_out:
-        logger.info(f"SAVE_SECTION_DEBUG: ✅ ENTERING BRANCH 2: Processing agent output without section_update")
+        logger.info("SAVE_SECTION_DEBUG: ✅ ENTERING BRANCH 2: Processing agent output without section_update")
         logger.info("DATABASE_DEBUG: Processing agent output without section_update (likely score/status only)")
         
         if state.get("context_packet"):
@@ -893,13 +890,13 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
 
     # [SAVE_SECTION_DEBUG] Final decision summary
     if not agent_out:
-        logger.info(f"SAVE_SECTION_DEBUG: ❌ FINAL RESULT: No agent_out - save_section was NEVER called")
+        logger.info("SAVE_SECTION_DEBUG: ❌ FINAL RESULT: No agent_out - save_section was NEVER called")
     elif agent_out.section_update:
-        logger.info(f"SAVE_SECTION_DEBUG: ✅ FINAL RESULT: Had section_update - save_section was called in BRANCH 1")
+        logger.info("SAVE_SECTION_DEBUG: ✅ FINAL RESULT: Had section_update - save_section was called in BRANCH 1")
     elif agent_out:
-        logger.info(f"SAVE_SECTION_DEBUG: ✅ FINAL RESULT: Had agent_out but no section_update - save_section was called in BRANCH 2 (if conditions met)")
+        logger.info("SAVE_SECTION_DEBUG: ✅ FINAL RESULT: Had agent_out but no section_update - save_section was called in BRANCH 2 (if conditions met)")
     else:
-        logger.info(f"SAVE_SECTION_DEBUG: ❌ FINAL RESULT: Unknown state - save_section may not have been called")
+        logger.info("SAVE_SECTION_DEBUG: ❌ FINAL RESULT: Unknown state - save_section may not have been called")
     
     # [DIAGNOSTIC] Log state after update
     logger.info(f"DATABASE_DEBUG: section_states AFTER update: {state.get('section_states', {})}")
@@ -955,7 +952,9 @@ def route_decision(state: ValueCanvasState) -> Literal["implementation", "chat_a
         if not msgs:
             return False
         last_msg = msgs[-1]
-        from langchain_core.messages import HumanMessage, AIMessage  # local import to avoid circular
+        from langchain_core.messages import (  # local import to avoid circular
+            HumanMessage,
+        )
         # If last message is from user, agent hasn't replied yet
         return isinstance(last_msg, HumanMessage)
     

@@ -1,36 +1,31 @@
 """Tools for Value Canvas Agent with Supabase integration."""
 
 import asyncio
-import json
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain_core.tools import tool
-from supabase import create_client, Client
+from supabase import Client, create_client
 
-from .models import (
-    ContextPacket,
-    SectionContent,
-    SectionID,
-    SectionState,
-    SectionStatus,
-    TiptapDocument,
-    ValidationRule,
-)
-from .prompts import SECTION_PROMPTS, SECTION_TEMPLATES
-from core.settings import settings
 from core.dentapp_client import get_dentapp_client
 from core.dentapp_utils import (
-    get_section_id_int,
-    tiptap_to_plain_text,
-    plain_text_to_tiptap,
-    convert_dentapp_status_to_agent,
-    log_api_operation,
     AGENT_ID,
     SECTION_ID_MAPPING,
+    get_section_id_int,
+    log_api_operation,
+    plain_text_to_tiptap,
+    tiptap_to_plain_text,
 )
+from core.settings import settings
+
+from .models import (
+    SectionID,
+    SectionStatus,
+    TiptapDocument,
+)
+from .prompts import SECTION_PROMPTS, SECTION_TEMPLATES
 
 # MVP: Fixed user_id for all users in DentApp API
 MVP_USER_ID = 1
@@ -79,8 +74,8 @@ async def get_context(
     user_id: str,
     doc_id: str,
     section_id: str,
-    canvas_data: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    canvas_data: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Get context packet for a specific Value Canvas section.
     
@@ -96,7 +91,7 @@ async def get_context(
     Returns:
         Context packet with system prompt and draft content
     """
-    logger.info(f"=== DATABASE_DEBUG: get_context() ENTRY ===")
+    logger.info("=== DATABASE_DEBUG: get_context() ENTRY ===")
     logger.info(f"DATABASE_DEBUG: Section: {section_id}, User: {user_id}, Doc: {doc_id}")
     logger.debug(f"DATABASE_DEBUG: User ID type: {type(user_id)}, Doc ID type: {type(doc_id)}")
     logger.debug(f"DATABASE_DEBUG: Canvas data provided: {bool(canvas_data)}")
@@ -176,7 +171,7 @@ async def get_context(
                         "content": tiptap_content,
                         "plain_text": raw_content
                     }
-                    logger.info(f"DATABASE_DEBUG: ✅ Successfully loaded existing draft from DentApp API")
+                    logger.info("DATABASE_DEBUG: ✅ Successfully loaded existing draft from DentApp API")
                 else:
                     logger.debug("DATABASE_DEBUG: DentApp API content is empty, no draft loaded")
                     
@@ -220,7 +215,7 @@ async def get_context(
                                 "content": content_data,
                                 "plain_text": await extract_plain_text.ainvoke(content_data)
                             }
-                            logger.info(f"DATABASE_DEBUG: ✅ Successfully loaded existing draft content")
+                            logger.info("DATABASE_DEBUG: ✅ Successfully loaded existing draft content")
                         else:
                             logger.debug("DATABASE_DEBUG: Content data is empty or default, no draft loaded")
                         logger.info(f"DATABASE_DEBUG: RPC fetch result - status={status}, has_draft={draft is not None}")
@@ -253,7 +248,7 @@ async def get_context(
                                     "content": content_data,
                                     "plain_text": await extract_plain_text.ainvoke(content_data)
                                 }
-                                logger.info(f"DATABASE_DEBUG: ✅ Successfully loaded draft via table query")
+                                logger.info("DATABASE_DEBUG: ✅ Successfully loaded draft via table query")
                             else:
                                 logger.debug("DATABASE_DEBUG: Table content data is empty, no draft loaded")
                             logger.info(f"DATABASE_DEBUG: Table fetch result - status={status}, has_draft={draft is not None}")
@@ -283,10 +278,10 @@ async def save_section(
     user_id: str,
     doc_id: str,
     section_id: str,
-    content: Dict[str, Any],
-    score: Optional[int] = None,
+    content: dict[str, Any],
+    score: int | None = None,
     status: str = "done",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Save or update a Value Canvas section in the database.
     
@@ -301,7 +296,7 @@ async def save_section(
     Returns:
         Updated section state
     """
-    logger.info(f"=== DATABASE_DEBUG: save_section() ENTRY ===")
+    logger.info("=== DATABASE_DEBUG: save_section() ENTRY ===")
     logger.info(f"DATABASE_DEBUG: Saving section {section_id} for user {user_id}, doc {doc_id}")
     logger.debug(f"DATABASE_DEBUG: User ID type: {type(user_id)}, Doc ID type: {type(doc_id)}")
     logger.debug(f"DATABASE_DEBUG: Content type: {type(content)}, Score: {score}, Status: {status}")
@@ -380,7 +375,7 @@ async def save_section(
                 logger.debug("DATABASE_DEBUG: ✅ Supabase client available, proceeding with legacy upsert")
                 try:
                     # Use upsert for save_section (wrapped in asyncio.to_thread)
-                    logger.debug(f"DATABASE_DEBUG: Preparing legacy upsert data payload")
+                    logger.debug("DATABASE_DEBUG: Preparing legacy upsert data payload")
                     
                     upsert_data = {
                         'user_id': user_id,
@@ -393,10 +388,10 @@ async def save_section(
                     }
                     logger.debug(f"DATABASE_DEBUG: Legacy upsert payload prepared - keys: {list(upsert_data.keys())}")
                     logger.info(f"DATABASE_DEBUG: Legacy upsert payload values - user_id={user_id}, section_id={section_id}, score={score}, status={status}")
-                    logger.debug(f"DATABASE_DEBUG: About to execute legacy upsert on section_states table")
+                    logger.debug("DATABASE_DEBUG: About to execute legacy upsert on section_states table")
                     
                     def _update_or_insert_call():
-                        logger.info(f"DATABASE_DEBUG: TRYING UPDATE first for existing record")
+                        logger.info("DATABASE_DEBUG: TRYING UPDATE first for existing record")
                         
                         # First try UPDATE
                         update_result = supabase.table('section_states').update({
@@ -432,7 +427,7 @@ async def save_section(
                     
                     logger.debug("DATABASE_DEBUG: Calling asyncio.to_thread for legacy update/insert operation...")
                     result = await asyncio.to_thread(_update_or_insert_call)
-                    logger.debug(f"DATABASE_DEBUG: Legacy upsert operation completed")
+                    logger.debug("DATABASE_DEBUG: Legacy upsert operation completed")
                     logger.debug(f"DATABASE_DEBUG: Legacy result data count: {len(result.data) if result.data else 0}")
                     
                     if result.data and len(result.data) > 0:
@@ -459,7 +454,7 @@ async def save_section(
                         }
                     else:
                         logger.error(f"DATABASE_DEBUG: ❌ Legacy upsert succeeded but no data returned for section {section_id}")
-                        logger.error(f"DATABASE_DEBUG: This means the legacy upsert didn't actually save anything!")
+                        logger.error("DATABASE_DEBUG: This means the legacy upsert didn't actually save anything!")
                         logger.debug("DATABASE_DEBUG: Returning constructed response with generated ID")
                         # Return what we tried to save
                         return {
@@ -522,8 +517,8 @@ async def save_section(
 async def validate_field(
     field_name: str,
     value: Any,
-    validation_rules: List[Dict[str, Any]],
-) -> Dict[str, Any]:
+    validation_rules: list[dict[str, Any]],
+) -> dict[str, Any]:
     """
     Validate a field value against defined rules.
     
@@ -566,7 +561,7 @@ async def validate_field(
 async def get_all_sections_status(
     user_id: str,
     doc_id: str,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Get status of all Value Canvas sections for a document.
     
@@ -577,7 +572,7 @@ async def get_all_sections_status(
     Returns:
         List of section states with status
     """
-    logger.info(f"=== DATABASE_DEBUG: get_all_sections_status() ENTRY ===")
+    logger.info("=== DATABASE_DEBUG: get_all_sections_status() ENTRY ===")
     logger.info(f"DATABASE_DEBUG: Getting all section status for user {user_id}, doc {doc_id}")
     
     try:
@@ -598,7 +593,7 @@ async def get_all_sections_status(
                     )
                 
                 if api_result:
-                    logger.info(f"DATABASE_DEBUG: ✅ Retrieved DentApp API response")
+                    logger.info("DATABASE_DEBUG: ✅ Retrieved DentApp API response")
                     
                     # Extract sections data from DentApp API response
                     # The API returns a structured response with sections information
@@ -734,8 +729,8 @@ async def get_all_sections_status(
 async def export_checklist(
     user_id: str,
     doc_id: str,
-    canvas_data: Dict[str, Any],
-) -> Dict[str, Any]:
+    canvas_data: dict[str, Any],
+) -> dict[str, Any]:
     """
     Export completed Value Canvas as a checklist/PDF.
     
@@ -787,7 +782,7 @@ async def export_checklist(
                     )
                 
                 if export_result:
-                    logger.info(f"DATABASE_DEBUG: ✅ Successfully exported via DentApp API")
+                    logger.info("DATABASE_DEBUG: ✅ Successfully exported via DentApp API")
                     
                     # Return export result using DentApp API response
                     return {
@@ -823,7 +818,7 @@ async def export_checklist(
                             }).eq('id', doc_id).eq('user_id', user_id).execute()
                         
                         await asyncio.to_thread(_update_call)
-                        logger.info(f"DATABASE_DEBUG: ✅ Legacy export updated document status")
+                        logger.info("DATABASE_DEBUG: ✅ Legacy export updated document status")
                     except Exception as e:
                         logger.error(f"DATABASE_DEBUG: ❌ Legacy Supabase update failed: {e}")
                 else:
@@ -861,7 +856,7 @@ async def export_checklist(
         }
 
 
-def _generate_checklist_content(canvas_data: Dict[str, Any]) -> str:
+def _generate_checklist_content(canvas_data: dict[str, Any]) -> str:
     """
     Generate implementation checklist content from canvas data.
     
@@ -922,7 +917,7 @@ def _generate_checklist_content(canvas_data: Dict[str, Any]) -> str:
 async def create_tiptap_content(
     text: str,
     format_type: str = "paragraph",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Create Tiptap JSON content from plain text.
     
@@ -987,7 +982,7 @@ async def create_tiptap_content(
 
 
 @tool
-async def extract_plain_text(tiptap_json: Dict[str, Any]) -> str:
+async def extract_plain_text(tiptap_json: dict[str, Any]) -> str:
     """
     Extract plain text from Tiptap JSON content.
     
@@ -997,7 +992,7 @@ async def extract_plain_text(tiptap_json: Dict[str, Any]) -> str:
     Returns:
         Plain text string
     """
-    def extract_text_from_node(node: Dict[str, Any]) -> str:
+    def extract_text_from_node(node: dict[str, Any]) -> str:
         text_parts = []
         
         node_type = node.get("type")
@@ -1024,7 +1019,7 @@ async def extract_plain_text(tiptap_json: Dict[str, Any]) -> str:
 
 
 # Helper function to execute SQL queries
-async def _execute_sql_query(query: str) -> List[Dict[str, Any]]:
+async def _execute_sql_query(query: str) -> list[dict[str, Any]]:
     """
     Execute SQL query using Supabase MCP tool.
     

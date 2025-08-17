@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import re
-import json
+
 
 def extract_conversation_from_logs(filename):
     """Extract conversation from Heroku logs"""
     
-    with open(filename, 'r') as f:
+    with open(filename) as f:
         content = f.read()
     
     # Find all complete conversation arrays in the logs

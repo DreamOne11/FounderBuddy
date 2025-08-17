@@ -55,7 +55,7 @@ This is the fundamental lifecycle for handling  `user_id` and `thread_id` betwee
 
 This endpoint handles both sending messages to an existing conversation and starting a new one. To start a new thread, send the first message with a `user_id` but **omit the `thread_id`**. The agent service will create a new thread and return its unique `thread_id` in the response. For all subsequent messages in that thread, include the `thread_id` you received.
 
--   **Endpoint**: `POST /value-canvas/invoke` or `POST /value_canvas/invoke`
+-   **Endpoint**: `POST /value-canvas/invoke`
 -   **Request Body (`UserInput`)**:
     ```json
     {
@@ -69,17 +69,21 @@ This endpoint handles both sending messages to an existing conversation and star
     {
       "output": {
         "type": "ai",
-        "content": "That's great! Let's talk about your ideal customer.",
-        "run_id": "run-uuid"
+        "content": "Hello! Let's begin by gathering some information for your Value Canvas. What's your full name, and what would you like me to call you during our conversation?",
+        "tool_calls": [],
+        "tool_call_id": null,
+        "run_id": "c66481a3-c7d9-441e-9f96-8a522babf5ec",
+        "response_metadata": {},
+        "custom_data": {}
       },
-      "thread_id": "a-unique-thread-uuid",
-      "user_id": "some-unique-user-id"
+      "thread_id": "15442997-03b4-40e3-b3f6-27bd41a10ab1",
+      "user_id": "b6c48d70-c44f-446f-99e1-8423a7dbd7c2"
     }
     ```
 
 **2. Streaming a Response (`/value-canvas/stream`)**
 
--   **Endpoint**: `POST /value-canvas/stream` or `POST /value_canvas/stream`
+-   **Endpoint**: `POST /value-canvas/stream`
 -   **Request Body (`StreamInput`)**: Same as `/value-canvas/invoke`.
 -   **Success Response (200 OK)**: A stream of `text/event-stream` data.
 
@@ -100,6 +104,24 @@ This endpoint handles both sending messages to an existing conversation and star
         { "type": "ai", "content": "Hello! How can I help you?" }
       ]
     }
+    ```
+
+**4. Section State Notification (`/section_states/{agent_id}/{section_id}`)**
+
+-   **Endpoint**: `GET /section_states/{agent_id}/{section_id}`
+-   **Description**: Notify the agent that the specified section was updated and trigger a minimal sync run. Returns one AI message plus the latest section status and draft.
+
+-   **Path Parameters**:
+    -   `agent_id`: The agent identifier (e.g., `value-canvas`)
+    -   `section_id`: The section identifier (e.g., `interview`)
+
+-   **Query Parameters**:
+    -   `user_id`: User identifier (required)
+    -   `thread_id`: Thread identifier (required)
+    
+-   **Success Response (200 OK)**:
+    ```json
+    { "success": true }
     ```
 
 ### <a id="agent-ui-collaboration-database-as-the-single-source-of-truth"></a>Agent-UI Collaboration: Database as the Single Source of Truth

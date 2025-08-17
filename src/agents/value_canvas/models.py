@@ -1,7 +1,7 @@
 '''Pydantic models for Value Canvas Agent.'''
 
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 from uuid import UUID
 
 from langchain_core.messages import BaseMessage
@@ -46,22 +46,22 @@ class SectionID(str, Enum):
 class TiptapNode(BaseModel):
     """Base Tiptap node structure."""
     type: str
-    content: Optional[List[Dict[str, Any]]] = None
-    text: Optional[str] = None
-    attrs: Optional[Dict[str, Any]] = None
-    marks: Optional[List[Dict[str, Any]]] = None
+    content: list[dict[str, Any]] | None = None
+    text: str | None = None
+    attrs: dict[str, Any] | None = None
+    marks: list[dict[str, Any]] | None = None
 
 
 class TiptapDocument(BaseModel):
     """Tiptap document structure."""
     type: Literal["doc"] = "doc"
-    content: List[TiptapNode] = Field(default_factory=list)
+    content: list[TiptapNode] = Field(default_factory=list)
 
 
 class SectionContent(BaseModel):
     """Content for a Value Canvas section."""
     content: TiptapDocument  # Rich text content in Tiptap JSON format
-    plain_text: Optional[str] = None  # Plain text version for LLM processing
+    plain_text: str | None = None  # Plain text version for LLM processing
 
 
 class SectionState(BaseModel):
@@ -70,10 +70,10 @@ class SectionState(BaseModel):
     user_id: UUID
     doc_id: UUID
     section_id: SectionID
-    content: Optional[SectionContent] = None
-    score: Optional[int] = Field(None, ge=0, le=5)  # 0-5 rating
+    content: SectionContent | None = None
+    score: int | None = Field(None, ge=0, le=5)  # 0-5 rating
     status: SectionStatus = SectionStatus.PENDING
-    updated_at: Optional[str] = None  # ISO timestamp
+    updated_at: str | None = None  # ISO timestamp
 
 
 class ContextPacket(BaseModel):
@@ -81,93 +81,93 @@ class ContextPacket(BaseModel):
     section_id: SectionID
     status: SectionStatus
     system_prompt: str
-    draft: Optional[SectionContent] = None
-    section_template: Optional[str] = None
-    validation_rules: Optional[Dict[str, Any]] = None
+    draft: SectionContent | None = None
+    section_template: str | None = None
+    validation_rules: dict[str, Any] | None = None
 
 
 class ValueCanvasData(BaseModel):
     """Complete Value Canvas data structure."""
     # Basic information from initial interview
-    client_name: Optional[str] = None
-    preferred_name: Optional[str] = None  # 添加昵称字段
-    company_name: Optional[str] = None
-    industry: Optional[str] = None
-    standardized_industry: Optional[str] = None
-    specialty: Optional[str] = None
-    career_highlight: Optional[str] = None
-    client_outcomes: Optional[str] = None
-    awards_media: Optional[str] = None
-    published_content: Optional[str] = None
-    published_content_types: Optional[str] = None  # 添加发布内容类型字段
-    specialized_skills: Optional[str] = None
-    notable_partners: Optional[str] = None
+    client_name: str | None = None
+    preferred_name: str | None = None  # 添加昵称字段
+    company_name: str | None = None
+    industry: str | None = None
+    standardized_industry: str | None = None
+    specialty: str | None = None
+    career_highlight: str | None = None
+    client_outcomes: str | None = None
+    awards_media: str | None = None
+    published_content: str | None = None
+    published_content_types: str | None = None  # 添加发布内容类型字段
+    specialized_skills: str | None = None
+    notable_partners: str | None = None
 
     # ICP data
-    icp_standardized_role: Optional[str] = None
-    icp_demographics: Optional[str] = None
-    icp_geography: Optional[str] = None
-    icp_nickname: Optional[str] = None
-    icp_affinity: Optional[str] = None
-    icp_affordability: Optional[str] = None
-    icp_impact: Optional[str] = None
-    icp_access: Optional[str] = None
+    icp_standardized_role: str | None = None
+    icp_demographics: str | None = None
+    icp_geography: str | None = None
+    icp_nickname: str | None = None
+    icp_affinity: str | None = None
+    icp_affordability: str | None = None
+    icp_impact: str | None = None
+    icp_access: str | None = None
 
     # Pain points (3)
-    pain1_symptom: Optional[str] = None
-    pain1_struggle: Optional[str] = None
-    pain1_cost: Optional[str] = None
-    pain1_consequence: Optional[str] = None
+    pain1_symptom: str | None = None
+    pain1_struggle: str | None = None
+    pain1_cost: str | None = None
+    pain1_consequence: str | None = None
 
-    pain2_symptom: Optional[str] = None
-    pain2_struggle: Optional[str] = None
-    pain2_cost: Optional[str] = None
-    pain2_consequence: Optional[str] = None
+    pain2_symptom: str | None = None
+    pain2_struggle: str | None = None
+    pain2_cost: str | None = None
+    pain2_consequence: str | None = None
 
-    pain3_symptom: Optional[str] = None
-    pain3_struggle: Optional[str] = None
-    pain3_cost: Optional[str] = None
-    pain3_consequence: Optional[str] = None
+    pain3_symptom: str | None = None
+    pain3_struggle: str | None = None
+    pain3_cost: str | None = None
+    pain3_consequence: str | None = None
 
     # Deep Fear
-    deep_fear: Optional[str] = None
+    deep_fear: str | None = None
 
     # Payoffs (3)
-    payoff1_objective: Optional[str] = None
-    payoff1_desire: Optional[str] = None
-    payoff1_without: Optional[str] = None
-    payoff1_resolution: Optional[str] = None
+    payoff1_objective: str | None = None
+    payoff1_desire: str | None = None
+    payoff1_without: str | None = None
+    payoff1_resolution: str | None = None
 
-    payoff2_objective: Optional[str] = None
-    payoff2_desire: Optional[str] = None
-    payoff2_without: Optional[str] = None
-    payoff2_resolution: Optional[str] = None
+    payoff2_objective: str | None = None
+    payoff2_desire: str | None = None
+    payoff2_without: str | None = None
+    payoff2_resolution: str | None = None
 
-    payoff3_objective: Optional[str] = None
-    payoff3_desire: Optional[str] = None
-    payoff3_without: Optional[str] = None
-    payoff3_resolution: Optional[str] = None
+    payoff3_objective: str | None = None
+    payoff3_desire: str | None = None
+    payoff3_without: str | None = None
+    payoff3_resolution: str | None = None
 
     # Signature Method
-    method_name: Optional[str] = None
-    sequenced_principles: Optional[List[str]] = None
-    principle_descriptions: Optional[Dict[str, str]] = None
+    method_name: str | None = None
+    sequenced_principles: list[str] | None = None
+    principle_descriptions: dict[str, str] | None = None
 
     # Mistakes
-    mistakes: Optional[List[Dict[str, Any]]] = None
+    mistakes: list[dict[str, Any]] | None = None
 
     # Prize
-    prize_category: Optional[str] = None
-    prize_statement: Optional[str] = None
-    refined_prize: Optional[str] = None
+    prize_category: str | None = None
+    prize_statement: str | None = None
+    refined_prize: str | None = None
 
 
 class ChatAgentOutput(BaseModel):
     """Output from Chat Agent node."""
     reply: str  # Response to user
     router_directive: str  # Navigation control
-    score: Optional[int] = Field(None, ge=0, le=5)  # Section score
-    section_update: Optional[SectionContent] = None  # Content update
+    score: int | None = Field(None, ge=0, le=5)  # Section score
+    section_update: SectionContent | None = None  # Content update
 
 
 class ValueCanvasState(MessagesState):
@@ -178,8 +178,8 @@ class ValueCanvasState(MessagesState):
 
     # Navigation and progress
     current_section: SectionID = SectionID.INTERVIEW
-    context_packet: Optional[ContextPacket] = None
-    section_states: Dict[str, SectionState] = Field(default_factory=dict)
+    context_packet: ContextPacket | None = None
+    section_states: dict[str, SectionState] = Field(default_factory=dict)
     # 初次进入希望 Router 直接调用 get_context，所以默认 NEXT
     router_directive: str = RouterDirective.NEXT
     finished: bool = False
@@ -188,16 +188,16 @@ class ValueCanvasState(MessagesState):
     canvas_data: ValueCanvasData = Field(default_factory=ValueCanvasData)
 
     # Memory management
-    short_memory: List[BaseMessage] = Field(default_factory=list)
+    short_memory: list[BaseMessage] = Field(default_factory=list)
 
     # Agent output
-    agent_output: Optional[ChatAgentOutput] = None
+    agent_output: ChatAgentOutput | None = None
     # Flag indicating the agent has asked a question and is waiting for user's reply
     awaiting_user_input: bool = False
 
     # Error tracking
     error_count: int = 0
-    last_error: Optional[str] = None
+    last_error: str | None = None
 
 
 class ValidationRule(BaseModel):
@@ -214,9 +214,9 @@ class SectionTemplate(BaseModel):
     name: str
     description: str
     system_prompt_template: str
-    validation_rules: List[ValidationRule] = Field(default_factory=list)
-    required_fields: List[str] = Field(default_factory=list)
-    next_section: Optional[SectionID] = None
+    validation_rules: list[ValidationRule] = Field(default_factory=list)
+    required_fields: list[str] = Field(default_factory=list)
+    next_section: SectionID | None = None
 
 
 # --- Structured Output Models for Data Extraction ---
@@ -224,35 +224,35 @@ class SectionTemplate(BaseModel):
 class InterviewData(BaseModel):
     """A data structure to hold extracted information from the user interview."""
     
-    client_name: Optional[str] = Field(
+    client_name: str | None = Field(
         None, 
         description="The user's full name. Exclude any mention of a preferred name."
     )
-    preferred_name: Optional[str] = Field(
+    preferred_name: str | None = Field(
         None, 
         description="The user's preferred name or nickname, often found in parentheses."
     )
-    company_name: Optional[str] = Field(
+    company_name: str | None = Field(
         None, 
         description="The name of the user's company."
     )
-    industry: Optional[str] = Field(
+    industry: str | None = Field(
         None, 
         description="The industry the user works in."
     )
-    specialty: Optional[str] = Field(
+    specialty: str | None = Field(
         None, 
         description="The user's specialty or 'zone of genius'."
     )
-    career_highlight: Optional[str] = Field(
+    career_highlight: str | None = Field(
         None, 
         description="A career achievement the user is proud of."
     )
-    client_outcomes: Optional[str] = Field(
+    client_outcomes: str | None = Field(
         None, 
         description="The typical results or outcomes clients get from working with the user."
     )
-    specialized_skills: Optional[str] = Field(
+    specialized_skills: str | None = Field(
         None, 
         description="Specific skills or qualifications the user mentioned."
     )
@@ -260,73 +260,73 @@ class InterviewData(BaseModel):
 
 class ICPData(BaseModel):
     """Structured data for the Ideal Client Persona (ICP) section."""
-    nickname: Optional[str] = Field(None, description="A short, memorable nickname for the ICP.")
-    role_and_sector: Optional[str] = Field(None, description="The ICP's professional role and the sector they operate in.")
-    demographics: Optional[str] = Field(None, description="Key demographic information about the ICP (e.g., age, income, family status).")
-    geography: Optional[str] = Field(None, description="The geographic location where the ICP is typically found.")
-    affinity: Optional[str] = Field(None, description="Assessment of whether you would enjoy working with this ICP.")
-    affordability: Optional[str] = Field(None, description="Assessment of the ICP's ability to afford premium pricing.")
-    impact: Optional[str] = Field(None, description="Assessment of the potential significance of your solution's impact on the ICP.")
-    access: Optional[str] = Field(None, description="Assessment of how easily you can reach and connect with this ICP.")
+    nickname: str | None = Field(None, description="A short, memorable nickname for the ICP.")
+    role_and_sector: str | None = Field(None, description="The ICP's professional role and the sector they operate in.")
+    demographics: str | None = Field(None, description="Key demographic information about the ICP (e.g., age, income, family status).")
+    geography: str | None = Field(None, description="The geographic location where the ICP is typically found.")
+    affinity: str | None = Field(None, description="Assessment of whether you would enjoy working with this ICP.")
+    affordability: str | None = Field(None, description="Assessment of the ICP's ability to afford premium pricing.")
+    impact: str | None = Field(None, description="Assessment of the potential significance of your solution's impact on the ICP.")
+    access: str | None = Field(None, description="Assessment of how easily you can reach and connect with this ICP.")
 
 
 class PainPoint(BaseModel):
     """Structured data for a single pain point."""
-    symptom: Optional[str] = Field(None, description="The observable problem or symptom of the pain (1-3 words).")
-    struggle: Optional[str] = Field(None, description="How this pain shows up in their daily work life (1-2 sentences).")
-    cost: Optional[str] = Field(None, description="The immediate, tangible cost of this pain.")
-    consequence: Optional[str] = Field(None, description="The long-term, future consequence if this pain is not solved.")
+    symptom: str | None = Field(None, description="The observable problem or symptom of the pain (1-3 words).")
+    struggle: str | None = Field(None, description="How this pain shows up in their daily work life (1-2 sentences).")
+    cost: str | None = Field(None, description="The immediate, tangible cost of this pain.")
+    consequence: str | None = Field(None, description="The long-term, future consequence if this pain is not solved.")
 
 
 class PainData(BaseModel):
     """Structured data for the Pain section, containing three distinct pain points."""
-    pain_points: List[PainPoint] = Field(description="A list of three distinct pain points.")
+    pain_points: list[PainPoint] = Field(description="A list of three distinct pain points.")
 
 
 class DeepFearData(BaseModel):
     """Structured data for the Deep Fear section."""
-    deep_fear: Optional[str] = Field(None, description="The private doubt or self-question the client has that they rarely voice.")
+    deep_fear: str | None = Field(None, description="The private doubt or self-question the client has that they rarely voice.")
 
 
 class PayoffPoint(BaseModel):
     """Structured data for a single payoff point."""
-    objective: Optional[str] = Field(None, description="What the client wants to achieve (1-3 words).")
-    desire: Optional[str] = Field(None, description="A description of what the client specifically wants (1-2 sentences).")
-    without: Optional[str] = Field(None, description="A statement that pre-handles common objections or concerns.")
-    resolution: Optional[str] = Field(None, description="A statement that directly resolves the corresponding pain symptom.")
+    objective: str | None = Field(None, description="What the client wants to achieve (1-3 words).")
+    desire: str | None = Field(None, description="A description of what the client specifically wants (1-2 sentences).")
+    without: str | None = Field(None, description="A statement that pre-handles common objections or concerns.")
+    resolution: str | None = Field(None, description="A statement that directly resolves the corresponding pain symptom.")
 
 
 class PayoffsData(BaseModel):
     """Structured data for the Payoffs section, containing three distinct payoff points."""
-    payoffs: List[PayoffPoint] = Field(description="A list of three distinct payoff points that mirror the pain points.")
+    payoffs: list[PayoffPoint] = Field(description="A list of three distinct payoff points that mirror the pain points.")
 
 
 class Principle(BaseModel):
     """A single principle within the Signature Method."""
-    name: Optional[str] = Field(None, description="The name of the principle (2-4 words).")
-    description: Optional[str] = Field(None, description="A brief description of what the principle means in practice (1-2 sentences).")
+    name: str | None = Field(None, description="The name of the principle (2-4 words).")
+    description: str | None = Field(None, description="A brief description of what the principle means in practice (1-2 sentences).")
 
 
 class SignatureMethodData(BaseModel):
     """Structured data for the Signature Method section."""
-    method_name: Optional[str] = Field(None, description="A memorable name for the method (2-4 words).")
-    principles: List[Principle] = Field(description="A list of 4-6 core principles that form the method.")
+    method_name: str | None = Field(None, description="A memorable name for the method (2-4 words).")
+    principles: list[Principle] = Field(description="A list of 4-6 core principles that form the method.")
 
 
 class Mistake(BaseModel):
     """Structured data for a single mistake."""
     related_to: str = Field(description="The pain point or method principle this mistake is related to.")
-    root_cause: Optional[str] = Field(None, description="The non-obvious reason this mistake keeps happening.")
-    error_in_thinking: Optional[str] = Field(None, description="The flawed belief that makes the problem worse.")
-    error_in_action: Optional[str] = Field(None, description="What they do that feels right but creates more problems.")
+    root_cause: str | None = Field(None, description="The non-obvious reason this mistake keeps happening.")
+    error_in_thinking: str | None = Field(None, description="The flawed belief that makes the problem worse.")
+    error_in_action: str | None = Field(None, description="What they do that feels right but creates more problems.")
 
 
 class MistakesData(BaseModel):
     """Structured data for the Mistakes section."""
-    mistakes: List[Mistake] = Field(description="A list of mistakes related to pain points and method principles.")
+    mistakes: list[Mistake] = Field(description="A list of mistakes related to pain points and method principles.")
 
 
 class PrizeData(BaseModel):
     """Structured data for the Prize section."""
-    category: Optional[str] = Field(None, description="The category of the prize (e.g., Identity-Based, Outcome-Based).")
-    statement: Optional[str] = Field(None, description="The 1-5 word prize statement.") 
+    category: str | None = Field(None, description="The category of the prize (e.g., Identity-Based, Outcome-Based).")
+    statement: str | None = Field(None, description="The 1-5 word prize statement.") 

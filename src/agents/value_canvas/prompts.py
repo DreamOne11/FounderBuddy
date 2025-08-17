@@ -1,6 +1,6 @@
 """Prompts and templates for Value Canvas sections."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .models import SectionID, SectionTemplate, ValidationRule
 
@@ -133,7 +133,7 @@ When asking for satisfaction ratings, explain to users:
 - The rating helps ensure we capture accurate information before proceeding""",
 }
 
-def get_progress_info(section_states: Dict[str, Any]) -> Dict[str, Any]:
+def get_progress_info(section_states: dict[str, Any]) -> dict[str, Any]:
     """Get progress information for Value Canvas completion."""
     all_sections = [
         SectionID.INTERVIEW,
@@ -161,7 +161,7 @@ def get_progress_info(section_states: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # Section-specific templates
-SECTION_TEMPLATES: Dict[str, SectionTemplate] = {
+SECTION_TEMPLATES: dict[str, SectionTemplate] = {
     SectionID.INTERVIEW.value: SectionTemplate(
         section_id=SectionID.INTERVIEW,
         name="Initial Interview",
@@ -1173,7 +1173,7 @@ Would you like me to generate your implementation checklist and export your Valu
 }
 
 # Helper function to get all section IDs in order
-def get_section_order() -> List[SectionID]:
+def get_section_order() -> list[SectionID]:
     """Get the ordered list of Value Canvas sections."""
     return [
         SectionID.INTERVIEW,
@@ -1188,7 +1188,7 @@ def get_section_order() -> List[SectionID]:
     ]
 
 
-def get_next_section(current_section: SectionID) -> Optional[SectionID]:
+def get_next_section(current_section: SectionID) -> SectionID | None:
     """Get the next section in the Value Canvas flow."""
     order = get_section_order()
     try:
@@ -1200,7 +1200,7 @@ def get_next_section(current_section: SectionID) -> Optional[SectionID]:
     return None
 
 
-def get_next_unfinished_section(section_states: Dict[str, Any]) -> Optional[SectionID]:
+def get_next_unfinished_section(section_states: dict[str, Any]) -> SectionID | None:
     """Find the next section that hasn't been completed."""
     order = get_section_order()
     for section in order:
