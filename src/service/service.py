@@ -1,14 +1,16 @@
 import inspect
 import json
 import logging
+import time
 import warnings
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
@@ -43,6 +45,100 @@ from service.utils import (
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 logger = logging.getLogger(__name__)
+
+
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    """Middleware to log all incoming frontend requests with detailed information."""
+    
+    async def dispatch(self, request: Request, call_next):
+        # Generate unique request ID for tracking
+        request_id = str(uuid4())[:8]
+        start_time = time.time()
+        
+        # Log request details
+        logger.info(f"=== FRONTEND_REQUEST_START: {request_id} ===")
+        logger.info(f"FRONTEND_REQUEST: {request.method} {request.url}")
+        logger.info(f"FRONTEND_REQUEST: Client IP: {request.client.host if request.client else 'unknown'}")
+        logger.info(f"FRONTEND_REQUEST: User-Agent: {request.headers.get('user-agent', 'unknown')}")
+        logger.info(f"FRONTEND_REQUEST: Content-Type: {request.headers.get('content-type', 'unknown')}")
+        
+        # Log all headers (excluding sensitive ones)
+        sensitive_headers = {'authorization', 'cookie', 'x-api-key'}
+        headers_to_log = {
+            k: v for k, v in request.headers.items() 
+            if k.lower() not in sensitive_headers
+        }
+        logger.info(f"FRONTEND_REQUEST: Headers: {headers_to_log}")
+        
+        # Log query parameters
+        if request.query_params:
+            logger.info(f"FRONTEND_REQUEST: Query params: {dict(request.query_params)}")
+        
+        # Log request body for POST/PUT requests
+        if request.method in ["POST", "PUT", "PATCH"]:
+            try:
+                # Read body and restore it for downstream processing
+                body = await request.body()
+                if body:
+                    # Try to parse as JSON for better logging
+                    try:
+                        body_json = json.loads(body.decode('utf-8'))
+                        # Mask sensitive fields
+                        masked_body = mask_sensitive_fields(body_json)
+                        logger.info(f"FRONTEND_REQUEST: Body (JSON): {json.dumps(masked_body, ensure_ascii=False)}")
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        # Log as raw text if not JSON
+                        body_str = body.decode('utf-8', errors='replace')[:1000]  # Limit size
+                        logger.info(f"FRONTEND_REQUEST: Body (raw): {body_str}")
+                else:
+                    logger.info(f"FRONTEND_REQUEST: Body: (empty)")
+                    
+                # Restore body for FastAPI to process
+                async def receive():
+                    return {"type": "http.request", "body": body}
+                request._receive = receive
+                    
+            except Exception as e:
+                logger.warning(f"FRONTEND_REQUEST: Could not read body: {e}")
+        
+        # Process the request
+        try:
+            response = await call_next(request)
+            process_time = time.time() - start_time
+            
+            # Log response details
+            logger.info(f"=== FRONTEND_RESPONSE_END: {request_id} ===")
+            logger.info(f"FRONTEND_RESPONSE: Status: {response.status_code}")
+            logger.info(f"FRONTEND_RESPONSE: Processing time: {process_time:.3f}s")
+            logger.info(f"FRONTEND_RESPONSE: Content-Type: {response.headers.get('content-type', 'unknown')}")
+            
+            return response
+            
+        except Exception as e:
+            process_time = time.time() - start_time
+            logger.error(f"=== FRONTEND_REQUEST_ERROR: {request_id} ===")
+            logger.error(f"FRONTEND_ERROR: {str(e)}")
+            logger.error(f"FRONTEND_ERROR: Processing time: {process_time:.3f}s")
+            raise
+
+
+def mask_sensitive_fields(data: dict | list | Any) -> dict | list | Any:
+    """Mask sensitive fields in request data for logging."""
+    if isinstance(data, dict):
+        masked = {}
+        for key, value in data.items():
+            key_lower = key.lower()
+            if any(sensitive in key_lower for sensitive in ['password', 'token', 'secret', 'key', 'auth']):
+                masked[key] = "***MASKED***"
+            elif isinstance(value, (dict, list)):
+                masked[key] = mask_sensitive_fields(value)
+            else:
+                masked[key] = value
+        return masked
+    elif isinstance(data, list):
+        return [mask_sensitive_fields(item) for item in data]
+    else:
+        return data
 
 
 def verify_bearer(
@@ -89,6 +185,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(lifespan=lifespan)
+
+# Add request logging middleware
+app.add_middleware(RequestLoggingMiddleware)
+
 router = APIRouter(dependencies=[Depends(verify_bearer)])
 
 
@@ -196,6 +296,14 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> Invoke
     is also attached to messages for recording feedback.
     Use user_id to persist and continue a conversation across multiple threads.
     """
+    # Log detailed invoke request
+    logger.info(f"=== INVOKE_REQUEST: agent_id={agent_id} ===")
+    logger.info(f"INVOKE_REQUEST: user_id={user_input.user_id}")
+    logger.info(f"INVOKE_REQUEST: thread_id={user_input.thread_id}")
+    logger.info(f"INVOKE_REQUEST: model={user_input.model}")
+    logger.info(f"INVOKE_REQUEST: message_length={len(user_input.message) if user_input.message else 0}")
+    logger.info(f"INVOKE_REQUEST: agent_config={user_input.agent_config}")
+    
     # NOTE: Currently this only returns the last message or interrupt.
     # In the case of an agent outputting multiple AIMessages (such as the background step
     # in interrupt-agent, or a tool step in research-assistant), it's omitted. Arguably,
@@ -203,6 +311,9 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> Invoke
     # in that case.
     agent: AgentGraph = get_agent(agent_id)
     kwargs, run_id = await _handle_input(user_input, agent)
+    
+    logger.info(f"INVOKE_REQUEST: run_id={run_id}")
+    logger.info(f"INVOKE_REQUEST: config_thread_id={kwargs['config']['configurable']['thread_id']}")
 
     try:
         response_events: list[tuple[str, Any]] = await agent.ainvoke(**kwargs, stream_mode=["updates", "values"])  # type: ignore # fmt: skip
@@ -236,13 +347,27 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> Invoke
             }
             output.custom_data["section"] = section_data
 
-        return InvokeResponse(
+        invoke_response = InvokeResponse(
             output=output,
             thread_id=kwargs["config"]["configurable"]["thread_id"],
             user_id=kwargs["config"]["configurable"]["user_id"],
         )
+        
+        # Log successful response
+        logger.info(f"=== INVOKE_RESPONSE_SUCCESS: run_id={run_id} ===")
+        logger.info(f"INVOKE_RESPONSE: output_type={output.type}")
+        logger.info(f"INVOKE_RESPONSE: content_length={len(output.content) if output.content else 0}")
+        logger.info(f"INVOKE_RESPONSE: thread_id={invoke_response.thread_id}")
+        logger.info(f"INVOKE_RESPONSE: user_id={invoke_response.user_id}")
+        logger.info(f"INVOKE_RESPONSE: has_custom_data={bool(output.custom_data)}")
+        
+        return invoke_response
     except Exception as e:
-        logger.error(f"An exception occurred: {e}")
+        logger.error(f"=== INVOKE_ERROR: run_id={run_id} ===")
+        logger.error(f"INVOKE_ERROR: {str(e)}")
+        logger.error(f"INVOKE_ERROR: agent_id={agent_id}")
+        logger.error(f"INVOKE_ERROR: user_id={user_input.user_id}")
+        logger.error(f"INVOKE_ERROR: thread_id={user_input.thread_id}")
         raise HTTPException(status_code=500, detail="Unexpected error")
 
 
@@ -254,8 +379,19 @@ async def message_generator(
 
     This is the workhorse method for the /stream endpoint.
     """
+    # Log detailed stream request
+    logger.info(f"=== STREAM_REQUEST: agent_id={agent_id} ===")
+    logger.info(f"STREAM_REQUEST: user_id={user_input.user_id}")
+    logger.info(f"STREAM_REQUEST: thread_id={user_input.thread_id}")
+    logger.info(f"STREAM_REQUEST: model={user_input.model}")
+    logger.info(f"STREAM_REQUEST: stream_tokens={user_input.stream_tokens}")
+    logger.info(f"STREAM_REQUEST: message_length={len(user_input.message) if user_input.message else 0}")
+    
     agent: AgentGraph = get_agent(agent_id)
     kwargs, run_id = await _handle_input(user_input, agent)
+    
+    logger.info(f"STREAM_REQUEST: run_id={run_id}")
+    logger.info(f"STREAM_REQUEST: config_thread_id={kwargs['config']['configurable']['thread_id']}")
 
     try:
         # Process streamed events from the graph and yield messages over the SSE stream.
@@ -350,7 +486,11 @@ async def message_generator(
                     # So we only print non-empty content.
                     yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
     except Exception as e:
-        logger.error(f"Error in message generator: {e}")
+        logger.error(f"=== STREAM_ERROR: run_id={run_id} ===")
+        logger.error(f"STREAM_ERROR: {str(e)}")
+        logger.error(f"STREAM_ERROR: agent_id={agent_id}")
+        logger.error(f"STREAM_ERROR: user_id={user_input.user_id}")
+        logger.error(f"STREAM_ERROR: thread_id={user_input.thread_id}")
         yield f"data: {json.dumps({'type': 'error', 'content': 'Internal server error'})}\n\n"
     finally:
         # Always send section data at the end of the stream
@@ -371,6 +511,11 @@ async def message_generator(
         except Exception as e:
             logger.error(f"Error getting section data: {e}")
 
+        # Log stream completion
+        logger.info(f"=== STREAM_COMPLETE: run_id={run_id} ===")
+        logger.info(f"STREAM_COMPLETE: agent_id={agent_id}")
+        logger.info(f"STREAM_COMPLETE: thread_id={kwargs['config']['configurable']['thread_id']}")
+        
         yield "data: [DONE]\n\n"
 
 
@@ -427,15 +572,28 @@ async def feedback(feedback: Feedback) -> FeedbackResponse:
     credentials can be stored and managed in the service rather than the client.
     See: https://api.smith.langchain.com/redoc#tag/feedback/operation/create_feedback_api_v1_feedback_post
     """
-    client = LangsmithClient()
-    kwargs = feedback.kwargs or {}
-    client.create_feedback(
-        run_id=feedback.run_id,
-        key=feedback.key,
-        score=feedback.score,
-        **kwargs,
-    )
-    return FeedbackResponse()
+    # Log feedback request
+    logger.info(f"=== FEEDBACK_REQUEST: run_id={feedback.run_id} ===")
+    logger.info(f"FEEDBACK_REQUEST: key={feedback.key}")
+    logger.info(f"FEEDBACK_REQUEST: score={feedback.score}")
+    logger.info(f"FEEDBACK_REQUEST: has_kwargs={bool(feedback.kwargs)}")
+    
+    try:
+        client = LangsmithClient()
+        kwargs = feedback.kwargs or {}
+        client.create_feedback(
+            run_id=feedback.run_id,
+            key=feedback.key,
+            score=feedback.score,
+            **kwargs,
+        )
+        
+        logger.info(f"=== FEEDBACK_SUCCESS: run_id={feedback.run_id} ===")
+        return FeedbackResponse()
+    except Exception as e:
+        logger.error(f"=== FEEDBACK_ERROR: run_id={feedback.run_id} ===")
+        logger.error(f"FEEDBACK_ERROR: {str(e)}")
+        raise
 
 
 @router.post("/history")
@@ -443,6 +601,9 @@ def history(input: ChatHistoryInput) -> ChatHistory:
     """
     Get chat history.
     """
+    # Log history request
+    logger.info(f"=== HISTORY_REQUEST: thread_id={input.thread_id} ===")
+    
     # TODO: Hard-coding DEFAULT_AGENT here is wonky
     agent: AgentGraph = get_agent(DEFAULT_AGENT)
     try:
@@ -451,9 +612,15 @@ def history(input: ChatHistoryInput) -> ChatHistory:
         )
         messages: list[AnyMessage] = state_snapshot.values["messages"]
         chat_messages: list[ChatMessage] = [langchain_to_chat_message(m) for m in messages]
+        
+        # Log successful history response
+        logger.info(f"=== HISTORY_SUCCESS: thread_id={input.thread_id} ===")
+        logger.info(f"HISTORY_SUCCESS: message_count={len(chat_messages)}")
+        
         return ChatHistory(messages=chat_messages)
     except Exception as e:
-        logger.error(f"An exception occurred: {e}")
+        logger.error(f"=== HISTORY_ERROR: thread_id={input.thread_id} ===")
+        logger.error(f"HISTORY_ERROR: {str(e)}")
         raise HTTPException(status_code=500, detail="Unexpected error")
 
 
@@ -471,6 +638,11 @@ async def notify_section_update(
     - Triggers a minimal Agent run to reload latest content for the section
     - Returns an AI prompt (single message) and the latest section status/draft
     """
+    # Log section update request
+    logger.info(f"=== SECTION_UPDATE_REQUEST: agent_id={agent_id}, section_id={section_id} ===")
+    logger.info(f"SECTION_UPDATE_REQUEST: user_id={user_id}")
+    logger.info(f"SECTION_UPDATE_REQUEST: thread_id={thread_id}")
+    
     # Require thread_id to ensure updates are scoped to the correct document/thread
     if not thread_id:
         raise HTTPException(status_code=422, detail="Missing required parameter: thread_id")
@@ -491,8 +663,17 @@ async def notify_section_update(
     # Execute once; ignore content and return minimal success
     try:
         await agent.ainvoke(**kwargs, stream_mode=["updates", "values"])  # type: ignore
+        
+        # Log successful section update
+        logger.info(f"=== SECTION_UPDATE_SUCCESS: agent_id={agent_id}, section_id={section_id} ===")
+        logger.info(f"SECTION_UPDATE_SUCCESS: user_id={user_id}")
+        logger.info(f"SECTION_UPDATE_SUCCESS: thread_id={thread_id}")
+        
     except Exception as e:
-        logger.error(f"Section notify run failed: {e}")
+        logger.error(f"=== SECTION_UPDATE_ERROR: agent_id={agent_id}, section_id={section_id} ===")
+        logger.error(f"SECTION_UPDATE_ERROR: {str(e)}")
+        logger.error(f"SECTION_UPDATE_ERROR: user_id={user_id}")
+        logger.error(f"SECTION_UPDATE_ERROR: thread_id={thread_id}")
         raise HTTPException(status_code=500, detail="Agent sync failed")
 
     return {"success": True}
