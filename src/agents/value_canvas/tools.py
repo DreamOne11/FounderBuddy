@@ -71,7 +71,7 @@ def get_supabase_client() -> Client:
 
 @tool
 async def get_context(
-    user_id: str,
+    user_id: int,
     doc_id: str,
     section_id: str,
     canvas_data: dict[str, Any] | None = None,
@@ -83,7 +83,7 @@ async def get_context(
     the appropriate system prompt based on the section template.
     
     Args:
-        user_id: User identifier
+        user_id: Integer user ID from frontend
         doc_id: Document identifier
         section_id: Section identifier (e.g., 'icp', 'pain_1')
         canvas_data: Current canvas data for template rendering
@@ -275,7 +275,7 @@ async def get_context(
 
 @tool
 async def save_section(
-    user_id: str,
+    user_id: int,
     doc_id: str,
     section_id: str,
     content: dict[str, Any],
@@ -286,7 +286,7 @@ async def save_section(
     Save or update a Value Canvas section in the database.
     
     Args:
-        user_id: User identifier
+        user_id: Integer user ID from frontend
         doc_id: Document identifier
         section_id: Section identifier
         content: Section content (Tiptap JSON)
@@ -559,14 +559,14 @@ async def validate_field(
 
 @tool
 async def get_all_sections_status(
-    user_id: str,
+    user_id: int,
     doc_id: str,
 ) -> list[dict[str, Any]]:
     """
     Get status of all Value Canvas sections for a document.
     
     Args:
-        user_id: User identifier
+        user_id: Integer user ID from frontend
         doc_id: Document identifier
     
     Returns:
@@ -727,7 +727,7 @@ async def get_all_sections_status(
 
 @tool
 async def export_checklist(
-    user_id: str,
+    user_id: int,
     doc_id: str,
     canvas_data: dict[str, Any],
 ) -> dict[str, Any]:
@@ -735,7 +735,7 @@ async def export_checklist(
     Export completed Value Canvas as a checklist/PDF.
     
     Args:
-        user_id: User identifier
+        user_id: Integer user ID from frontend
         doc_id: Document identifier
         canvas_data: Complete canvas data
     

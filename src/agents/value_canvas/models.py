@@ -173,7 +173,7 @@ class ChatAgentOutput(BaseModel):
 class ValueCanvasState(MessagesState):
     """State for Value Canvas agent."""
     # User and document identification
-    user_id: str = "studio-user"
+    user_id: int = 1
     doc_id: str = "studio-doc"
 
     # Navigation and progress

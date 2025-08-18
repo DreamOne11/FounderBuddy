@@ -57,7 +57,7 @@ async def execute_context_query(sql_query: str) -> str:
         return f"# Context Data\n\nError executing query: {str(e)}"
 
 
-async def get_user_context(user_id: str) -> str:
+async def get_user_context(user_id: int) -> str:
     """
     Get comprehensive user context data for personalizing system prompts.
     

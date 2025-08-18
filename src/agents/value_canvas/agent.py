@@ -1039,26 +1039,21 @@ graph = build_value_canvas_graph()
 
 
 # Initialize function for new conversations
-async def initialize_value_canvas_state(user_id: str = None, doc_id: str = None) -> ValueCanvasState:
+async def initialize_value_canvas_state(user_id: int = None, doc_id: str = None) -> ValueCanvasState:
     """Initialize a new Value Canvas state.
     
     Args:
-        user_id: User UUID (will be generated if not provided)
+        user_id: Integer user ID from frontend (will use default if not provided)
         doc_id: Document UUID (will be generated if not provided)
     """
     import uuid
     
-    # Ensure user_id is a valid UUID string
+    # Use provided integer user_id or default to 1
     if not user_id:
-        user_id = str(uuid.uuid4())
-        logger.info(f"Generated new user_id: {user_id}")
+        user_id = 1
+        logger.info(f"Using default user_id: {user_id}")
     else:
-        try:
-            uuid.UUID(user_id)
-        except ValueError:
-            # Deterministically derive a UUID from provided string
-            user_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, user_id))
-            logger.info(f"Converted non-UUID user_id to UUID: {user_id}")
+        logger.info(f"Using provided user_id: {user_id}")
 
     # Ensure doc_id is a valid UUID string
     if not doc_id:

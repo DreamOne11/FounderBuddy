@@ -628,7 +628,7 @@ def history(input: ChatHistoryInput) -> ChatHistory:
 async def notify_section_update(
     agent_id: str,
     section_id: str,
-    user_id: str,
+    user_id: int,
     thread_id: str | None = None,
 ):
     """

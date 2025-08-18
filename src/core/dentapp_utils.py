@@ -5,9 +5,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Global UUID to integer mapping cache (in-memory for MVP)
-_uuid_to_int_cache: dict[str, int] = {}
-_next_user_id = 1  # Start from 1 to match existing DentApp test user
+# No longer needed - frontend now passes integer user_id directly
 
 # Section ID mapping: agent section -> DentApp API section_id
 SECTION_ID_MAPPING = {
@@ -25,23 +23,18 @@ SECTION_ID_MAPPING = {
 AGENT_ID = 2
 
 
-def get_user_id_int(uuid_str: str) -> int:
+def get_user_id_int(user_id: int) -> int:
     """
-    Convert UUID string to integer ID using in-memory mapping.
-    For MVP: all users map to user_id=1 (test user in DentApp)
+    Pass through the integer user_id directly from frontend.
     
     Args:
-        uuid_str: UUID string from the agent
+        user_id: Integer user ID from the frontend
         
     Returns:
-        Integer ID for DentApp API (always 1 for MVP)
+        Same integer ID for DentApp API
     """
-    # MVP: Use fixed user_id=1 for all users to work with DentApp test data
-    if uuid_str not in _uuid_to_int_cache:
-        _uuid_to_int_cache[uuid_str] = 1  # Always map to test user
-        logger.info(f"Mapped UUID {uuid_str} to test user_id=1 (MVP mode)")
-    
-    return _uuid_to_int_cache[uuid_str]
+    logger.debug(f"Using user_id={user_id} from frontend")
+    return user_id
 
 
 def get_section_id_int(section_id_str: str) -> int | None:
@@ -184,15 +177,12 @@ def log_api_operation(operation: str, **kwargs):
 
 def get_mapping_stats() -> dict[str, Any]:
     """
-    Get current UUID mapping statistics for debugging.
+    Get current mapping statistics for debugging.
     
     Returns:
         Dictionary with mapping statistics
     """
     return {
-        "total_mapped_uuids": len(_uuid_to_int_cache),
-        "next_user_id": _next_user_id,
-        "mapped_uuids": list(_uuid_to_int_cache.keys()),
         "section_mappings": SECTION_ID_MAPPING,
         "agent_id": AGENT_ID,
     }
