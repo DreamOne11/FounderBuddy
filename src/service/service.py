@@ -74,10 +74,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         if request.query_params:
             logger.info(f"FRONTEND_REQUEST: Query params: {dict(request.query_params)}")
         
-        # Log request body for POST/PUT requests
-        if request.method in ["POST", "PUT", "PATCH"]:
+        # Log request body for POST/PUT requests, but skip for streaming endpoints
+        is_streaming_endpoint = "/stream" in str(request.url.path)
+        if request.method in ["POST", "PUT", "PATCH"] and not is_streaming_endpoint:
             try:
-                # Read body and restore it for downstream processing
+                # Use the safer approach for non-streaming endpoints
                 body = await request.body()
                 if body:
                     # Try to parse as JSON for better logging
@@ -93,13 +94,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 else:
                     logger.info("FRONTEND_REQUEST: Body: (empty)")
                     
-                # Restore body for FastAPI to process
-                async def receive():
-                    return {"type": "http.request", "body": body}
-                request._receive = receive
-                    
             except Exception as e:
                 logger.warning(f"FRONTEND_REQUEST: Could not read body: {e}")
+        elif is_streaming_endpoint:
+            # For streaming endpoints, just log that we're skipping body logging
+            logger.info("FRONTEND_REQUEST: Body: (skipped for streaming endpoint)")
         
         # Process the request
         try:

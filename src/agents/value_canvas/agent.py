@@ -189,19 +189,16 @@ async def router_node(state: ValueCanvasState, config: RunnableConfig) -> ValueC
         if next_section:
             logger.info(f"Moving to next section: {next_section}")
             
-            # DEBUG: Check if next section already has state
-            logger.info(f"TRANSITION_DEBUG: Entering section {next_section.value}")
-            if next_section.value in state.get("section_states", {}):
-                logger.warning(f"TRANSITION_DEBUG: WARNING! Section {next_section.value} already has state before entering!")
-                existing_state = state["section_states"][next_section.value]
-                logger.warning(f"TRANSITION_DEBUG: Existing state - status: {existing_state.get('status')}, has_content: {bool(existing_state.get('content'))}")
-            
+            previous_section = state["current_section"]
             state["current_section"] = next_section
-            
-            # Clear short_memory when transitioning to a new section to avoid context confusion
-            state["short_memory"] = []
-            logger.info(f"Cleared short_memory for new section {next_section.value}")
-            
+
+            # Only clear short_memory when transitioning to a different section
+            if previous_section != next_section:
+                state["short_memory"] = []
+                logger.info(f"Cleared short_memory for new section {next_section.value}")
+            else:
+                logger.info(f"Preserved short_memory on same-section NEXT directive for {next_section.value}")
+
             # Get context for new section
             logger.debug(f"DATABASE_DEBUG: Router calling get_context for section {next_section.value}")
             context = await get_context.ainvoke({
@@ -466,8 +463,11 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
         return state
 
     try:
-        # Use structured output for reliable JSON parsing
+        # Use structured output for reliable JSON parsing with token limits
         structured_llm = llm.with_structured_output(ChatAgentOutput)
+        # Add token limits to prevent infinite generation
+        if hasattr(structured_llm, 'bind'):
+            structured_llm = structured_llm.bind(max_tokens=4000)
         agent_output = await structured_llm.ainvoke(messages)
 
         # DEBUG: Log the full agent output
@@ -759,6 +759,9 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
                 # 3. Get the LLM and bind it to our desired structured output model
                 llm = get_model(config["configurable"]["model"])
                 structured_llm = llm.with_structured_output(extraction_model)
+                # Add token limits to prevent infinite generation
+                if hasattr(structured_llm, 'bind'):
+                    structured_llm = structured_llm.bind(max_tokens=2000)
                 
                 # 4. Invoke the LLM to get a structured Pydantic object directly
                 logger.info(f"EXTRACTION_DEBUG: Calling LLM with structured_output for {extraction_model.__name__}.")

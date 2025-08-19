@@ -43,19 +43,42 @@ class SectionID(str, Enum):
     IMPLEMENTATION = "implementation"
 
 
+class TiptapTextNode(BaseModel):
+    """Tiptap text node."""
+    type: Literal["text"] = "text"
+    text: str
+    marks: list[dict[str, Any]] | None = Field(None, max_length=5)
+
+
+class TiptapHardBreakNode(BaseModel):
+    """Tiptap hard break node."""
+    type: Literal["hardBreak"] = "hardBreak"
+
+
+# Union type for inline content nodes
+TiptapInlineNode = TiptapTextNode | TiptapHardBreakNode
+
+
+class TiptapParagraphNode(BaseModel):
+    """Tiptap paragraph node."""
+    type: Literal["paragraph"] = "paragraph"
+    content: list[TiptapInlineNode] = Field(default_factory=list, max_length=50)
+    attrs: dict[str, Any] | None = None
+
+
 class TiptapNode(BaseModel):
     """Base Tiptap node structure."""
     type: str
-    content: list[dict[str, Any]] | None = None
+    content: list[TiptapInlineNode] | None = Field(None, max_length=50)
     text: str | None = None
     attrs: dict[str, Any] | None = None
-    marks: list[dict[str, Any]] | None = None
+    marks: list[dict[str, Any]] | None = Field(None, max_length=5)
 
 
 class TiptapDocument(BaseModel):
     """Tiptap document structure."""
     type: Literal["doc"] = "doc"
-    content: list[TiptapNode] = Field(default_factory=list)
+    content: list[TiptapParagraphNode] = Field(default_factory=list, max_length=20)
 
 
 class SectionContent(BaseModel):
@@ -150,11 +173,11 @@ class ValueCanvasData(BaseModel):
 
     # Signature Method
     method_name: str | None = None
-    sequenced_principles: list[str] | None = None
+    sequenced_principles: list[str] | None = Field(None, max_length=10)
     principle_descriptions: dict[str, str] | None = None
 
     # Mistakes
-    mistakes: list[dict[str, Any]] | None = None
+    mistakes: list[dict[str, Any]] | None = Field(None, max_length=10)
 
     # Prize
     prize_category: str | None = None
@@ -189,6 +212,26 @@ class ChatAgentOutput(BaseModel):
             section_id = v.split(":", 1)[1]
             if not section_id:
                 raise ValueError("modify directive must include a section_id")
+        return v
+
+    @field_validator("section_update")
+    def validate_section_update(cls, v):
+        """Validate section_update to prevent infinite loops and empty content."""
+        if v and v.content:
+            # Limit document content array size  
+            if len(v.content.content) > 50:
+                raise ValueError("Section content too large - maximum 50 paragraph nodes allowed")
+            
+            # Check each paragraph node
+            for para_node in v.content.content:
+                if para_node.content and len(para_node.content) > 100:
+                    raise ValueError("Paragraph content too large - maximum 100 inline nodes allowed")
+                
+                # Check for empty inline nodes
+                for inline_node in para_node.content:
+                    if hasattr(inline_node, 'type') and inline_node.type == 'text':
+                        if not hasattr(inline_node, 'text') or not inline_node.text.strip():
+                            raise ValueError("Empty text nodes not allowed")
         return v
 
 
@@ -302,7 +345,7 @@ class PainPoint(BaseModel):
 
 class PainData(BaseModel):
     """Structured data for the Pain section, containing three distinct pain points."""
-    pain_points: list[PainPoint] = Field(description="A list of three distinct pain points.")
+    pain_points: list[PainPoint] = Field(description="A list of three distinct pain points.", max_length=3)
 
 
 class DeepFearData(BaseModel):
@@ -320,7 +363,7 @@ class PayoffPoint(BaseModel):
 
 class PayoffsData(BaseModel):
     """Structured data for the Payoffs section, containing three distinct payoff points."""
-    payoffs: list[PayoffPoint] = Field(description="A list of three distinct payoff points that mirror the pain points.")
+    payoffs: list[PayoffPoint] = Field(description="A list of three distinct payoff points that mirror the pain points.", max_length=3)
 
 
 class Principle(BaseModel):
@@ -332,7 +375,7 @@ class Principle(BaseModel):
 class SignatureMethodData(BaseModel):
     """Structured data for the Signature Method section."""
     method_name: str | None = Field(None, description="A memorable name for the method (2-4 words).")
-    principles: list[Principle] = Field(description="A list of 4-6 core principles that form the method.")
+    principles: list[Principle] = Field(description="A list of 4-6 core principles that form the method.", max_length=6)
 
 
 class Mistake(BaseModel):
@@ -345,7 +388,7 @@ class Mistake(BaseModel):
 
 class MistakesData(BaseModel):
     """Structured data for the Mistakes section."""
-    mistakes: list[Mistake] = Field(description="A list of mistakes related to pain points and method principles.")
+    mistakes: list[Mistake] = Field(description="A list of mistakes related to pain points and method principles.", max_length=10)
 
 
 class PrizeData(BaseModel):
