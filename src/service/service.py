@@ -10,7 +10,6 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
@@ -19,6 +18,7 @@ from langfuse import Langfuse  # type: ignore[import-untyped]
 from langfuse.callback import CallbackHandler  # type: ignore[import-untyped]
 from langgraph.types import Command, Interrupt
 from langsmith import Client as LangsmithClient
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info
 from agents.value_canvas.agent import initialize_value_canvas_state
@@ -91,7 +91,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                         body_str = body.decode('utf-8', errors='replace')[:1000]  # Limit size
                         logger.info(f"FRONTEND_REQUEST: Body (raw): {body_str}")
                 else:
-                    logger.info(f"FRONTEND_REQUEST: Body: (empty)")
+                    logger.info("FRONTEND_REQUEST: Body: (empty)")
                     
                 # Restore body for FastAPI to process
                 async def receive():

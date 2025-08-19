@@ -9,18 +9,18 @@ logger = logging.getLogger(__name__)
 
 # Section ID mapping: agent section -> DentApp API section_id
 SECTION_ID_MAPPING = {
-    "interview": 9,
-    "icp": 10,
-    "pain": 11,
-    "deep_fear": 12,
-    "payoffs": 13,
-    "signature_method": 14,
-    "mistakes": 15,
-    "prize": 16,
+    "interview": 1,
+    "icp": 2,
+    "pain": 3,
+    "deep_fear": 4,
+    "payoffs": 5,
+    "signature_method": 6,
+    "mistakes": 7,
+    "prize": 8,
 }
 
 # Fixed agent ID for MVP
-AGENT_ID = 2
+AGENT_ID = 1
 
 
 def get_user_id_int(user_id: int) -> int:
@@ -66,14 +66,20 @@ def tiptap_to_plain_text(tiptap_json: dict[str, Any]) -> str:
     def extract_text_from_node(node: dict[str, Any]) -> str:
         text_parts = []
         
-        if node.get("type") == "text":
-            text_parts.append(node.get("text", ""))
-        
+        # 1. Add text from the node itself, if it exists.
+        if node.get("text"):
+            text_parts.append(node["text"])
+
+        # 2. Add newline for hard breaks.
+        if node.get("type") == "hardBreak":
+            text_parts.append("\n")
+
+        # 3. Recurse into children.
         if "content" in node and isinstance(node["content"], list):
             for child in node["content"]:
                 text_parts.append(extract_text_from_node(child))
-        
-        return " ".join(text_parts)
+                
+        return "".join(text_parts)
     
     if not tiptap_json or not isinstance(tiptap_json, dict):
         return ""

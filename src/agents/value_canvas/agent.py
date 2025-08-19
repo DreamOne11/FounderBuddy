@@ -1,8 +1,7 @@
 """Value Canvas Agent implementation using LangGraph StateGraph."""
 
-import json
 import logging
-from typing import Literal
+from typing import Literal, Any
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
@@ -292,15 +291,6 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
     last_human_msg: HumanMessage | None = None
     user_rating: int | None = None  # capture explicit 0-5 rating if provided
 
-    # 1) Hard system instruction per design doc – MUST output pure JSON.
-    json_schema_instruction = (
-        "You are Value Canvas Chat Agent. Respond ONLY with valid JSON matching this schema: "
-        '{"reply": "string", "router_directive": "stay|next|modify:<section_id>", '
-        '"score": "integer|null", "section_update": "object|null"} '
-        "Do NOT output markdown, code fences, or any extra commentary."
-    )
-    messages.append(SystemMessage(content=json_schema_instruction))
-    
     # Check if we should add summary instruction
     # Add summary instruction when:
     # 1. We're not already awaiting user input
@@ -476,47 +466,9 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
         return state
 
     try:
-        # Force OpenAI to return JSON in one shot
-        openai_args = {"response_format": {"type": "json_object"}}
-        
-        for attempt in range(1): # Changed max_attempts to 1 as per original code
-            response = await llm.ainvoke(messages, **openai_args)
-            content = response.content if hasattr(response, "content") else response
-
-            # Attempt to parse JSON as below (reuse existing logic in local helper)
-            def _extract_json(text: str):
-                txt = text.strip()
-                if txt.startswith("```json"):
-                    txt = txt[7:]
-                if txt.startswith("```"):
-                    txt = txt[3:]
-                if txt.endswith("```"):
-                    txt = txt[:-3]
-                start = txt.find("{")
-                end = txt.rfind("}") + 1
-                if start >= 0 and end > start:
-                    return txt[start:end]
-                return None
-
-            json_str = _extract_json(content) if isinstance(content, str) else None
-            if json_str:
-                try:
-                    output_data = json.loads(json_str)
-                    parsed_successfully = True
-                    break
-                except json.JSONDecodeError:
-                    pass
-
-        if not parsed_successfully:
-            raise ValueError("Failed to get valid JSON from LLM after retries")
-
-        # Ensure mandatory keys present
-        output_data.setdefault("reply", "I'm processing your request...")
-        output_data.setdefault("router_directive", "stay")
-        output_data.setdefault("score", None)
-        output_data.setdefault("section_update", None)
-
-        agent_output = ChatAgentOutput(**output_data)
+        # Use structured output for reliable JSON parsing
+        structured_llm = llm.with_structured_output(ChatAgentOutput)
+        agent_output = await structured_llm.ainvoke(messages)
 
         # DEBUG: Log the full agent output
         logger.info("AGENT_OUTPUT_DEBUG: Full output from LLM:")
@@ -655,7 +607,7 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
                 logger.debug("SAVE_SECTION_DEBUG: No agent output exists at all")
 
     except Exception as e:
-        logger.error(f"Failed to parse structured output: {e}\nResponse: {response.content if 'response' in locals() else ''}")
+        logger.error(f"Failed to get structured output from LLM: {e}")
         default_output = ChatAgentOutput(
             reply="Sorry, I encountered a formatting error. Could you rephrase?",
             router_directive="stay",
@@ -792,10 +744,16 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
                 
                 # 2. Define a simple prompt for the LLM
                 extraction_prompt = f"""
-                Extract the required information from the following user-provided text for the '{current_section.name}' section of a Value Canvas.
+                You are a data extraction specialist. Your task is to accurately extract information from the user's conversation summary and structure it according to the provided format. The context is a "Value Canvas," a business messaging framework.
+
+                Section for Extraction: "{current_section.name}"
+
+                User's Summary:
                 ---
                 {plain_text}
                 ---
+
+                Please extract the data fields based on their descriptions in the target data model. Pay close attention to nuances and ensure all relevant details are captured.
                 """
                 
                 # 3. Get the LLM and bind it to our desired structured output model

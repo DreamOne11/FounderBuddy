@@ -1,13 +1,11 @@
-"""Tools for Value Canvas Agent with Supabase integration."""
+"""Tools for Value Canvas Agent."""
 
-import asyncio
 import logging
 import uuid
 from datetime import datetime
 from typing import Any
 
 from langchain_core.tools import tool
-from supabase import Client, create_client
 
 from core.dentapp_client import get_dentapp_client
 from core.dentapp_utils import (
@@ -32,41 +30,6 @@ MVP_USER_ID = 1
 
 logger = logging.getLogger(__name__)
 
-# Initialize Supabase client
-def get_supabase_client() -> Client:
-    """Get configured Supabase client."""
-    logger.debug("=== DATABASE_DEBUG: Starting Supabase client initialization ===")
-    
-    supabase_url = getattr(settings, 'SUPABASE_URL', None)
-    supabase_key = getattr(settings, 'SUPABASE_ANON_KEY', None)
-    
-    logger.debug(f"DATABASE_DEBUG: Raw SUPABASE_URL type: {type(supabase_url)}")
-    logger.debug(f"DATABASE_DEBUG: Raw SUPABASE_ANON_KEY type: {type(supabase_key)}")
-    
-    # Convert SecretStr to string if needed
-    if supabase_url and hasattr(supabase_url, 'get_secret_value'):
-        logger.debug("DATABASE_DEBUG: Converting SUPABASE_URL from SecretStr")
-        supabase_url = supabase_url.get_secret_value()
-    if supabase_key and hasattr(supabase_key, 'get_secret_value'):
-        logger.debug("DATABASE_DEBUG: Converting SUPABASE_ANON_KEY from SecretStr")
-        supabase_key = supabase_key.get_secret_value()
-    
-    logger.debug(f"DATABASE_DEBUG: Final URL exists: {bool(supabase_url)}")
-    logger.debug(f"DATABASE_DEBUG: Final key exists: {bool(supabase_key)}")
-    
-    if not supabase_url or not supabase_key:
-        logger.warning("DATABASE_DEBUG: ⚠️ Supabase credentials not configured, using mock mode")
-        return None
-    
-    logger.debug(f"DATABASE_DEBUG: Creating Supabase client for URL: {supabase_url[:30]}...")
-    
-    try:
-        client = create_client(supabase_url, supabase_key)
-        logger.info("DATABASE_DEBUG: ✅ Supabase client created successfully")
-        return client
-    except Exception as e:
-        logger.error(f"DATABASE_DEBUG: ❌ Failed to create Supabase client: {e}")
-        return None
 
 
 @tool
@@ -179,85 +142,7 @@ async def get_context(
                 
         except Exception as dentapp_error:
             logger.warning(f"DATABASE_DEBUG: ⚠️ DentApp API failed: {dentapp_error}")
-            logger.debug("DATABASE_DEBUG: Falling back to Supabase...")
-            
-            # Fallback to Supabase (legacy)
-            supabase = get_supabase_client()
-            if supabase:
-                logger.debug("DATABASE_DEBUG: ✅ Supabase client available, attempting legacy fetch")
-                try:
-                    # Option 1: Try RPC function first (using asyncio.to_thread for sync calls)
-                    logger.debug("DATABASE_DEBUG: Attempting RPC call: get_section_state")
-                    logger.debug(f"DATABASE_DEBUG: RPC parameters - user_id: {user_id}, doc_id: {doc_id}, section_id: {section_id}")
-                    
-                    def _rpc_call():
-                        return supabase.rpc('get_section_state', {
-                            'p_user_id': user_id,
-                            'p_doc_id': doc_id, 
-                            'p_section_id': section_id
-                        }).execute()
-                    
-                    result = await asyncio.to_thread(_rpc_call)
-                    logger.debug(f"DATABASE_DEBUG: RPC call completed - Data count: {len(result.data) if result.data else 0}")
-                    
-                    if result.data and len(result.data) > 0:
-                        row = result.data[0]
-                        status = row.get('status', 'pending')
-                        content_data = row.get('content')
-                        
-                        logger.debug(f"DATABASE_DEBUG: Found existing data - Status: {status}")
-                        logger.debug(f"DATABASE_DEBUG: Content data exists: {bool(content_data)}")
-                        logger.debug(f"DATABASE_DEBUG: Content data type: {type(content_data) if content_data else None}")
-                        
-                        if content_data and content_data != {'type': 'doc', 'content': []}:
-                            # Convert to SectionContent format
-                            draft = {
-                                "content": content_data,
-                                "plain_text": await extract_plain_text.ainvoke(content_data)
-                            }
-                            logger.info("DATABASE_DEBUG: ✅ Successfully loaded existing draft content")
-                        else:
-                            logger.debug("DATABASE_DEBUG: Content data is empty or default, no draft loaded")
-                        logger.info(f"DATABASE_DEBUG: RPC fetch result - status={status}, has_draft={draft is not None}")
-                        
-                except Exception as rpc_error:
-                    logger.warning(f"DATABASE_DEBUG: ⚠️ RPC function failed: {rpc_error}")
-                    logger.debug("DATABASE_DEBUG: Falling back to direct table query...")
-                    # Option 2: Fallback to direct table query (also wrapped in to_thread)
-                    try:
-                        logger.debug("DATABASE_DEBUG: Attempting direct table query on section_states")
-                        
-                        def _table_call():
-                            return supabase.table('section_states').select(
-                                'content, status, score, updated_at'
-                            ).eq('user_id', user_id).eq('doc_id', doc_id).eq('section_id', section_id).limit(1).execute()
-                        
-                        result = await asyncio.to_thread(_table_call)
-                        logger.debug(f"DATABASE_DEBUG: Table query completed - Data count: {len(result.data) if result.data else 0}")
-                        
-                        if result.data and len(result.data) > 0:
-                            row = result.data[0]
-                            status = row.get('status', 'pending')
-                            content_data = row.get('content')
-                            
-                            logger.debug(f"DATABASE_DEBUG: Table query found data - Status: {status}")
-                            logger.debug(f"DATABASE_DEBUG: Content data exists: {bool(content_data)}")
-                            
-                            if content_data and content_data != {'type': 'doc', 'content': []}:
-                                draft = {
-                                    "content": content_data,
-                                    "plain_text": await extract_plain_text.ainvoke(content_data)
-                                }
-                                logger.info("DATABASE_DEBUG: ✅ Successfully loaded draft via table query")
-                            else:
-                                logger.debug("DATABASE_DEBUG: Table content data is empty, no draft loaded")
-                            logger.info(f"DATABASE_DEBUG: Table fetch result - status={status}, has_draft={draft is not None}")
-                        else:
-                            logger.debug("DATABASE_DEBUG: No existing data found in table query")
-                    except Exception as table_error:
-                        logger.error(f"DATABASE_DEBUG: ❌ Both RPC and table query failed: {table_error}")
-            else:
-                logger.warning("DATABASE_DEBUG: ⚠️ Supabase client not available, using default values")
+            logger.debug("DATABASE_DEBUG: Using default values")
     else:
         logger.warning("DATABASE_DEBUG: ⚠️ DentApp API disabled, using default values")
     
@@ -361,143 +246,25 @@ async def save_section(
                     "updated_at": result.get('updated_at', current_time),
                 }
             else:
-                # API call failed, fall back to Supabase
-                logger.warning("DATABASE_DEBUG: ⚠️ DentApp API save failed, falling back to Supabase")
+                # API call failed
+                logger.warning("DATABASE_DEBUG: ⚠️ DentApp API save failed")
                 raise Exception("DentApp API save returned None")
                 
         except Exception as dentapp_error:
             logger.warning(f"DATABASE_DEBUG: ⚠️ DentApp API failed: {dentapp_error}")
-            logger.debug("DATABASE_DEBUG: Falling back to Supabase...")
+            logger.debug("DATABASE_DEBUG: Using mock response")
             
-            # Fallback to Supabase (legacy)
-            supabase = get_supabase_client()
-            if supabase:
-                logger.debug("DATABASE_DEBUG: ✅ Supabase client available, proceeding with legacy upsert")
-                try:
-                    # Use upsert for save_section (wrapped in asyncio.to_thread)
-                    logger.debug("DATABASE_DEBUG: Preparing legacy upsert data payload")
-                    
-                    upsert_data = {
-                        'user_id': user_id,
-                        'doc_id': doc_id,
-                        'section_id': section_id,
-                        'content': content,
-                        'score': score,
-                        'status': status,
-                        'updated_at': current_time
-                    }
-                    logger.debug(f"DATABASE_DEBUG: Legacy upsert payload prepared - keys: {list(upsert_data.keys())}")
-                    logger.info(f"DATABASE_DEBUG: Legacy upsert payload values - user_id={user_id}, section_id={section_id}, score={score}, status={status}")
-                    logger.debug("DATABASE_DEBUG: About to execute legacy upsert on section_states table")
-                    
-                    def _update_or_insert_call():
-                        logger.info("DATABASE_DEBUG: TRYING UPDATE first for existing record")
-                        
-                        # First try UPDATE
-                        update_result = supabase.table('section_states').update({
-                            'content': content,
-                            'score': score,
-                            'status': status,
-                            'updated_at': current_time
-                        }).eq('user_id', user_id).eq('doc_id', doc_id).eq('section_id', section_id).execute()
-                        
-                        logger.info(f"DATABASE_DEBUG: UPDATE result: {update_result}")
-                        logger.info(f"DATABASE_DEBUG: UPDATE affected {len(update_result.data)} rows")
-                        
-                        if update_result.data and len(update_result.data) > 0:
-                            logger.info("DATABASE_DEBUG: ✅ UPDATE successful, record was updated")
-                            return update_result
-                        else:
-                            logger.info("DATABASE_DEBUG: UPDATE affected 0 rows, trying INSERT...")
-                            
-                            # If no rows updated, INSERT new record
-                            insert_result = supabase.table('section_states').insert({
-                                'user_id': user_id,
-                                'doc_id': doc_id,
-                                'section_id': section_id,
-                                'content': content,
-                                'score': score,
-                                'status': status,
-                                'updated_at': current_time
-                            }).execute()
-                            
-                            logger.info(f"DATABASE_DEBUG: INSERT result: {insert_result}")
-                            logger.info("DATABASE_DEBUG: ✅ INSERT successful, new record created")
-                            return insert_result
-                    
-                    logger.debug("DATABASE_DEBUG: Calling asyncio.to_thread for legacy update/insert operation...")
-                    result = await asyncio.to_thread(_update_or_insert_call)
-                    logger.debug("DATABASE_DEBUG: Legacy upsert operation completed")
-                    logger.debug(f"DATABASE_DEBUG: Legacy result data count: {len(result.data) if result.data else 0}")
-                    
-                    if result.data and len(result.data) > 0:
-                        row = result.data[0]
-                        logger.info(f"DATABASE_DEBUG: ✅ Successfully saved section {section_id} to legacy database")
-                        logger.info(f"DATABASE_DEBUG: Legacy returned data - id={row.get('id')}, status={row.get('status')}, score={row.get('score')}")
-                        logger.debug(f"DATABASE_DEBUG: Legacy database record created/updated with timestamp: {row.get('updated_at')}")
-                        
-                        # CRITICAL DEBUG: Check if returned values match what we sent
-                        if row.get('status') != status:
-                            logger.error(f"DATABASE_DEBUG: ❌ STATUS MISMATCH! Sent: {status}, Got: {row.get('status')}")
-                        if row.get('score') != score:
-                            logger.error(f"DATABASE_DEBUG: ❌ SCORE MISMATCH! Sent: {score}, Got: {row.get('score')}")
-                        
-                        return {
-                            "id": row.get('id'),
-                            "user_id": row.get('user_id'),
-                            "doc_id": row.get('doc_id'),
-                            "section_id": row.get('section_id'),
-                            "content": row.get('content'),
-                            "score": row.get('score'),
-                            "status": row.get('status'),
-                            "updated_at": row.get('updated_at'),
-                        }
-                    else:
-                        logger.error(f"DATABASE_DEBUG: ❌ Legacy upsert succeeded but no data returned for section {section_id}")
-                        logger.error("DATABASE_DEBUG: This means the legacy upsert didn't actually save anything!")
-                        logger.debug("DATABASE_DEBUG: Returning constructed response with generated ID")
-                        # Return what we tried to save
-                        return {
-                            "id": str(uuid.uuid4()),
-                            "user_id": user_id,
-                            "doc_id": doc_id,
-                            "section_id": section_id,
-                            "content": content,
-                            "score": score,
-                            "status": status,
-                            "updated_at": current_time,
-                        }
-                except Exception as e:
-                    logger.error(f"DATABASE_DEBUG: ❌ Supabase save_section failed: {e}")
-                    logger.error(f"DATABASE_DEBUG: Failed parameters - user_id={user_id}, doc_id={doc_id}, section_id={section_id}")
-                    logger.error(f"DATABASE_DEBUG: Exception type: {type(e).__name__}")
-                    logger.error(f"DATABASE_DEBUG: Exception details: {str(e)}")
-                    # Don't re-raise in development to avoid blocking the agent completely
-                    # Instead, fall back to mock response
-                    logger.warning("DATABASE_DEBUG: ⚠️ Falling back to mock response due to database error")
-                    return {
-                        "id": str(uuid.uuid4()),
-                        "user_id": user_id,
-                        "doc_id": doc_id,
-                        "section_id": section_id,
-                        "content": content,
-                        "score": score,
-                        "status": status,
-                        "updated_at": current_time,
-                    }
-            else:
-                # Supabase not available, use mock response
-                logger.warning(f"DATABASE_DEBUG: ⚠️ Supabase client not available, using mock response for section {section_id}")
-                return {
-                    "id": str(uuid.uuid4()),
-                    "user_id": user_id,
-                    "doc_id": doc_id,
-                    "section_id": section_id,
-                    "content": content,
-                    "score": score,
-                    "status": status,
-                    "updated_at": current_time,
-                }
+            # Return mock response when DentApp API fails
+            return {
+                "id": str(uuid.uuid4()),
+                "user_id": user_id,
+                "doc_id": doc_id,
+                "section_id": section_id,
+                "content": content,
+                "score": score,
+                "status": status,
+                "updated_at": current_time,
+            }
     else:
         # DentApp API disabled, use mock response
         logger.warning(f"DATABASE_DEBUG: ⚠️ DentApp API disabled, using mock response for section {section_id}")
@@ -624,54 +391,13 @@ async def get_all_sections_status(
                     
                     logger.info(f"DATABASE_DEBUG: ✅ Successfully converted {len(result)} sections from DentApp API")
                 else:
-                    logger.warning("DATABASE_DEBUG: ⚠️ DentApp API returned None, falling back to Supabase")
+                    logger.warning("DATABASE_DEBUG: ⚠️ DentApp API returned None")
                     raise Exception("DentApp API returned None")
                     
             except Exception as dentapp_error:
                 logger.warning(f"DATABASE_DEBUG: ⚠️ DentApp API failed: {dentapp_error}")
-                logger.debug("DATABASE_DEBUG: Falling back to Supabase...")
-                
-                # Fallback to Supabase (legacy)
-                supabase = get_supabase_client()
-                if supabase:
-                    logger.debug("DATABASE_DEBUG: ✅ Supabase client available, attempting legacy fetch sections")
-                    try:
-                        # Option 1: Try RPC function first (wrapped in asyncio.to_thread)
-                        logger.debug("DATABASE_DEBUG: Attempting RPC call: get_document_sections")
-                        logger.debug(f"DATABASE_DEBUG: RPC parameters - user_id: {user_id}, doc_id: {doc_id}")
-                        
-                        def _rpc_call():
-                            return supabase.rpc('get_document_sections', {
-                                'p_user_id': user_id,
-                                'p_doc_id': doc_id
-                            }).execute()
-                        
-                        rpc_result = await asyncio.to_thread(_rpc_call)
-                        result = rpc_result.data if rpc_result.data else []
-                        logger.info(f"DATABASE_DEBUG: ✅ Retrieved {len(result)} sections via legacy RPC")
-                        logger.debug(f"DATABASE_DEBUG: Legacy RPC result sections: {[r.get('section_id') for r in result] if result else []}")
-                    except Exception as rpc_error:
-                        logger.warning(f"DATABASE_DEBUG: ⚠️ Legacy RPC function failed: {rpc_error}")
-                        logger.debug("DATABASE_DEBUG: Falling back to legacy direct table query")
-                        # Option 2: Fallback to direct table query (also wrapped)
-                        try:
-                            logger.debug("DATABASE_DEBUG: Attempting legacy direct table query on section_states")
-                            
-                            def _table_call():
-                                return supabase.table('section_states').select(
-                                    'section_id, status, score, content, updated_at'
-                                ).eq('user_id', user_id).eq('doc_id', doc_id).execute()
-                            
-                            table_result = await asyncio.to_thread(_table_call)
-                            result = table_result.data if table_result.data else []
-                            logger.info(f"DATABASE_DEBUG: ✅ Retrieved {len(result)} sections via legacy table query")
-                            logger.debug(f"DATABASE_DEBUG: Legacy table result sections: {[r.get('section_id') for r in result] if result else []}")
-                        except Exception as table_error:
-                            logger.error(f"DATABASE_DEBUG: ❌ Both legacy RPC and table query failed: {table_error}")
-                            result = []
-                else:
-                    logger.warning("DATABASE_DEBUG: ⚠️ Supabase client not available, returning empty sections list")
-                    result = []
+                logger.debug("DATABASE_DEBUG: Using empty result")
+                result = []
         else:
             logger.warning("DATABASE_DEBUG: ⚠️ DentApp API disabled, using default empty result")
             result = []
@@ -801,28 +527,10 @@ async def export_checklist(
                     
             except Exception as dentapp_error:
                 logger.warning(f"DATABASE_DEBUG: ⚠️ DentApp API export failed: {dentapp_error}")
-                logger.debug("DATABASE_DEBUG: Falling back to legacy export...")
+                logger.debug("DATABASE_DEBUG: Using legacy export...")
                 
                 # Fallback to legacy export using canvas_data
                 checklist_content = _generate_checklist_content(canvas_data)
-                
-                # Execute legacy query using Supabase SDK
-                supabase = get_supabase_client()
-                if supabase:
-                    try:
-                        def _update_call():
-                            return supabase.table('value_canvas_documents').update({
-                                'completed': True,
-                                'completed_at': datetime.now().isoformat(),
-                                'export_url': 'generated'
-                            }).eq('id', doc_id).eq('user_id', user_id).execute()
-                        
-                        await asyncio.to_thread(_update_call)
-                        logger.info("DATABASE_DEBUG: ✅ Legacy export updated document status")
-                    except Exception as e:
-                        logger.error(f"DATABASE_DEBUG: ❌ Legacy Supabase update failed: {e}")
-                else:
-                    logger.info("DATABASE_DEBUG: Legacy mock mode: document marked as completed")
                 
                 logger.info(f"Successfully exported checklist via legacy method for doc {doc_id}")
                 
@@ -1018,32 +726,6 @@ async def extract_plain_text(tiptap_json: dict[str, Any]) -> str:
         return extract_text_from_node(tiptap_json).strip()
 
 
-# Helper function to execute SQL queries
-async def _execute_sql_query(query: str) -> list[dict[str, Any]]:
-    """
-    Execute SQL query using Supabase MCP tool.
-    
-    Args:
-        query: SQL query to execute
-    
-    Returns:
-        Query results as list of dictionaries
-    """
-    try:
-        logger.info(f"Executing SQL query: {query[:100]}...")
-        supabase = get_supabase_client()
-        if supabase:
-            # This is a generic SQL execution function - would need specific implementation
-            # For now, return empty result in development mode
-            logger.warning("Generic SQL execution not implemented with Supabase SDK")
-            return []
-        else:
-            logger.info("Mock mode: returning empty SQL result")
-            return []
-        
-    except Exception as e:
-        logger.error(f"Error executing SQL query: {e}")
-        return []
 
 
 # Export all tools

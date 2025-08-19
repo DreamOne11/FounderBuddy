@@ -6,7 +6,7 @@ from uuid import UUID
 
 from langchain_core.messages import BaseMessage
 from langgraph.graph import MessagesState
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class SectionStatus(str, Enum):
@@ -164,10 +164,32 @@ class ValueCanvasData(BaseModel):
 
 class ChatAgentOutput(BaseModel):
     """Output from Chat Agent node."""
-    reply: str  # Response to user
-    router_directive: str  # Navigation control
-    score: int | None = Field(None, ge=0, le=5)  # Section score
-    section_update: SectionContent | None = None  # Content update
+
+    reply: str = Field(..., description="Conversational response to the user.")
+    router_directive: str = Field(
+        ...,
+        description="Navigation control: 'stay' to continue on the current section, 'next' to proceed to the next section, or 'modify:<section_id>' to jump to a specific section.",
+    )
+    score: int | None = Field(
+        None, ge=0, le=5, description="Satisfaction score (0-5) if user provided one."
+    )
+    section_update: SectionContent | None = Field(
+        None,
+        description="Tiptap JSON object containing the complete summary for the current section. This should only be included when the section is complete and ready to be saved.",
+    )
+
+    @field_validator("router_directive")
+    def validate_router_directive(cls, v):
+        """Validate the router_directive field."""
+        if v not in ["stay", "next"] and not v.startswith("modify:"):
+            raise ValueError(
+                "router_directive must be 'stay', 'next', or start with 'modify:'"
+            )
+        if v.startswith("modify:"):
+            section_id = v.split(":", 1)[1]
+            if not section_id:
+                raise ValueError("modify directive must include a section_id")
+        return v
 
 
 class ValueCanvasState(MessagesState):
