@@ -101,7 +101,7 @@ class Settings(BaseSettings):
     DATABASE_TYPE: DatabaseType = (
         DatabaseType.SQLITE
     )  # Options: DatabaseType.SQLITE or DatabaseType.POSTGRES
-    SQLITE_DB_PATH: str = "checkpoints.db"
+    SQLITE_DB_PATH: str = "data/checkpoints.db"
 
     # PostgreSQL Configuration
     POSTGRES_USER: str | None = None

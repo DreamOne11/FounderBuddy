@@ -196,6 +196,13 @@ privatecredentials/*
 .mcp.json
 .mcp*.json
 
+# Logs and temporary analysis files
+logs/
+*.log
+
+# Data directory
+data/
+
 # Claude Code generated documentation
 CLAUDE.md
 *_GUIDE.md
