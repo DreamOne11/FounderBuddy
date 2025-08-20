@@ -11,7 +11,7 @@ from langchain_ollama import ChatOllama
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 
 from core.settings import settings
-from schema.llm_models import (
+from core.models import (
     AllModelEnum,
     AnthropicModelName,
     AWSModelName,

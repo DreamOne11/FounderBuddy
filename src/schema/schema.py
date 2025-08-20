@@ -3,7 +3,7 @@ from typing import Any, Literal, NotRequired
 from pydantic import BaseModel, Field, SerializeAsAny
 from typing_extensions import TypedDict
 
-from schema.llm_models import AllModelEnum, AnthropicModelName, OpenAIModelName
+from core.models import AllModelEnum, AnthropicModelName, OpenAIModelName
 
 
 class AgentInfo(BaseModel):

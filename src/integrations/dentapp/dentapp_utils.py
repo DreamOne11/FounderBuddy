@@ -1,26 +1,71 @@
 """Utility functions for DentApp AI Builder API integration."""
 
 import logging
+import os
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # No longer needed - frontend now passes integer user_id directly
 
-# Section ID mapping: agent section -> DentApp API section_id
-SECTION_ID_MAPPING = {
-    "interview": 9,
-    "icp": 10,
-    "pain": 11,
-    "deep_fear": 12,
-    "payoffs": 13,
-    "signature_method": 14,
-    "mistakes": 15,
-    "prize": 16,
-}
 
-# Fixed agent ID for MVP
-AGENT_ID = 2
+def _get_config_based_on_url() -> tuple[dict[str, int], int]:
+    """
+    Get SECTION_ID_MAPPING and AGENT_ID based on DENTAPP_API_URL.
+    
+    Returns:
+        tuple: (section_id_mapping, agent_id)
+    """
+    dentapp_api_url = os.getenv("DENTAPP_API_URL", "")
+    
+    if "gsd.keypersonofinfluence.com" in dentapp_api_url:
+        # GSD configuration: section IDs 9-16, agent ID 2
+        section_mapping = {
+            "interview": 9,
+            "icp": 10,
+            "pain": 11,
+            "deep_fear": 12,
+            "payoffs": 13,
+            "signature_method": 14,
+            "mistakes": 15,
+            "prize": 16,
+        }
+        agent_id = 2
+        logger.info("Using GSD configuration: section IDs 9-16, agent ID 2")
+    elif "dentappaibuilder.enspirittech.co.uk" in dentapp_api_url:
+        # DentApp AI Builder configuration: section IDs 1-8, agent ID 1
+        section_mapping = {
+            "interview": 1,
+            "icp": 2,
+            "pain": 3,
+            "deep_fear": 4,
+            "payoffs": 5,
+            "signature_method": 6,
+            "mistakes": 7,
+            "prize": 8,
+        }
+        agent_id = 1
+        logger.info("Using DentApp AI Builder configuration: section IDs 1-8, agent ID 1")
+    else:
+        # Default fallback to GSD configuration
+        section_mapping = {
+            "interview": 9,
+            "icp": 10,
+            "pain": 11,
+            "deep_fear": 12,
+            "payoffs": 13,
+            "signature_method": 14,
+            "mistakes": 15,
+            "prize": 16,
+        }
+        agent_id = 2
+        logger.warning(f"Unknown DENTAPP_API_URL: {dentapp_api_url}, using default GSD configuration")
+    
+    return section_mapping, agent_id
+
+
+# Dynamic configuration based on environment
+SECTION_ID_MAPPING, AGENT_ID = _get_config_based_on_url()
 
 
 def get_user_id_int(user_id: int) -> int:
@@ -191,4 +236,5 @@ def get_mapping_stats() -> dict[str, Any]:
     return {
         "section_mappings": SECTION_ID_MAPPING,
         "agent_id": AGENT_ID,
+        "dentapp_api_url": os.getenv("DENTAPP_API_URL", ""),
     }
