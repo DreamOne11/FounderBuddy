@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 @tool
 async def get_context(
     user_id: int,
-    doc_id: str,
+    thread_id: str,
     section_id: str,
     canvas_data: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -44,7 +44,7 @@ async def get_context(
     
     Args:
         user_id: Integer user ID from frontend
-        doc_id: Document identifier
+        thread_id: Thread identifier
         section_id: Section identifier (e.g., 'icp', 'pain_1')
         canvas_data: Current canvas data for template rendering
     
@@ -52,8 +52,8 @@ async def get_context(
         Context packet with system prompt and draft content
     """
     logger.info("=== DATABASE_DEBUG: get_context() ENTRY ===")
-    logger.info(f"DATABASE_DEBUG: Section: {section_id}, User: {user_id}, Doc: {doc_id}")
-    logger.debug(f"DATABASE_DEBUG: User ID type: {type(user_id)}, Doc ID type: {type(doc_id)}")
+    logger.info(f"DATABASE_DEBUG: Section: {section_id}, User: {user_id}, Thread: {thread_id}")
+    logger.debug(f"DATABASE_DEBUG: User ID type: {type(user_id)}, Thread ID type: {type(thread_id)}")
     logger.debug(f"DATABASE_DEBUG: Canvas data provided: {bool(canvas_data)}")
     
     # Get section template
@@ -89,7 +89,7 @@ async def get_context(
     # Try DentApp API first (if enabled)
     if settings.USE_DENTAPP_API:
         logger.info("=== TOOLS_API_CALL: get_context() using DentApp API ===")
-        logger.info(f"TOOLS_API_CALL: section_id='{section_id}', user_id='{user_id}', doc_id='{doc_id}'")
+        logger.info(f"TOOLS_API_CALL: section_id='{section_id}', user_id='{user_id}', thread_id='{thread_id}'")
         try:
             # Convert section_id for DentApp API (MVP: always use user_id=1)
             section_id_int = get_section_id_int(section_id)
@@ -158,7 +158,7 @@ async def get_context(
 @tool
 async def save_section(
     user_id: int,
-    doc_id: str,
+    thread_id: str,
     section_id: str,
     content: dict[str, Any],
     score: int | None = None,
@@ -169,7 +169,7 @@ async def save_section(
     
     Args:
         user_id: Integer user ID from frontend
-        doc_id: Document identifier
+        thread_id: Thread identifier
         section_id: Section identifier
         content: Section content (Tiptap JSON)
         score: Optional satisfaction score (0-5)
@@ -179,14 +179,14 @@ async def save_section(
         Updated section state
     """
     logger.info("=== DATABASE_DEBUG: save_section() ENTRY ===")
-    logger.info(f"DATABASE_DEBUG: Saving section {section_id} for user {user_id}, doc {doc_id}")
-    logger.debug(f"DATABASE_DEBUG: User ID type: {type(user_id)}, Doc ID type: {type(doc_id)}")
+    logger.info(f"DATABASE_DEBUG: Saving section {section_id} for user {user_id}, doc {thread_id}")
+    logger.debug(f"DATABASE_DEBUG: User ID type: {type(user_id)}, Thread ID type: {type(thread_id)}")
     logger.debug(f"DATABASE_DEBUG: Content type: {type(content)}, Score: {score}, Status: {status}")
     
     # [DIAGNOSTIC] Log all parameters passed to save_section
     logger.info(
         f"DATABASE_DEBUG: Full parameters - "
-        f"user_id={user_id}, doc_id={doc_id}, section_id='{section_id}', "
+        f"user_id={user_id}, thread_id={thread_id}, section_id='{section_id}', "
         f"score={score}, status='{status}'"
     )
     logger.debug(f"DATABASE_DEBUG: Content structure: {content}")
@@ -197,7 +197,7 @@ async def save_section(
     # Try DentApp API first (if enabled)
     if settings.USE_DENTAPP_API:
         logger.info("=== TOOLS_API_CALL: save_section() using DentApp API ===")
-        logger.info(f"TOOLS_API_CALL: section_id='{section_id}', user_id='{user_id}', doc_id='{doc_id}', score={score}, status='{status}'")
+        logger.info(f"TOOLS_API_CALL: section_id='{section_id}', user_id='{user_id}', thread_id='{thread_id}', score={score}, status='{status}'")
         try:
             # Convert section_id for DentApp API (MVP: always use user_id=1)
             section_id_int = get_section_id_int(section_id)
@@ -235,7 +235,7 @@ async def save_section(
                 return {
                     "id": str(result.get('id', uuid.uuid4())),
                     "user_id": user_id,
-                    "doc_id": doc_id,
+                    "thread_id": thread_id,
                     "section_id": section_id,
                     "content": content,  # Return original Tiptap format
                     "score": score,
@@ -255,7 +255,7 @@ async def save_section(
             return {
                 "id": str(uuid.uuid4()),
                 "user_id": user_id,
-                "doc_id": doc_id,
+                "thread_id": thread_id,
                 "section_id": section_id,
                 "content": content,
                 "score": score,
@@ -268,7 +268,7 @@ async def save_section(
         return {
             "id": str(uuid.uuid4()),
             "user_id": user_id,
-            "doc_id": doc_id,
+            "thread_id": thread_id,
             "section_id": section_id,
             "content": content,
             "score": score,
@@ -324,27 +324,27 @@ async def validate_field(
 @tool
 async def get_all_sections_status(
     user_id: int,
-    doc_id: str,
+    thread_id: str,
 ) -> list[dict[str, Any]]:
     """
     Get status of all Value Canvas sections for a document.
     
     Args:
         user_id: Integer user ID from frontend
-        doc_id: Document identifier
+        thread_id: Thread identifier
     
     Returns:
         List of section states with status
     """
     logger.info("=== DATABASE_DEBUG: get_all_sections_status() ENTRY ===")
-    logger.info(f"DATABASE_DEBUG: Getting all section status for user {user_id}, doc {doc_id}")
+    logger.info(f"DATABASE_DEBUG: Getting all section status for user {user_id}, doc {thread_id}")
     
     try:
         # Try DentApp API first (if enabled)
         if settings.USE_DENTAPP_API:
             logger.debug("DATABASE_DEBUG: ✅ DentApp API enabled, attempting to fetch all sections status")
             try:
-                log_api_operation("get_all_sections_status", user_id=user_id, doc_id=doc_id, 
+                log_api_operation("get_all_sections_status", user_id=user_id, thread_id=thread_id, 
                                 user_id_int=user_id)
                 
                 # Call DentApp API
@@ -450,7 +450,7 @@ async def get_all_sections_status(
 @tool
 async def export_checklist(
     user_id: int,
-    doc_id: str,
+    thread_id: str,
     canvas_data: dict[str, Any],
 ) -> dict[str, Any]:
     """
@@ -458,19 +458,19 @@ async def export_checklist(
     
     Args:
         user_id: Integer user ID from frontend
-        doc_id: Document identifier
+        thread_id: Thread identifier
         canvas_data: Complete canvas data
     
     Returns:
         Export result with download URL
     """
-    logger.info(f"Exporting checklist for doc {doc_id}")
+    logger.info(f"Exporting checklist for doc {thread_id}")
     
     try:
         # First, verify that all required sections are complete
         sections_status = await get_all_sections_status.ainvoke({
             "user_id": user_id,
-            "doc_id": doc_id
+            "thread_id": thread_id
         })
         
         incomplete_sections = [
@@ -491,7 +491,7 @@ async def export_checklist(
         if settings.USE_DENTAPP_API:
             logger.debug("DATABASE_DEBUG: ✅ DentApp API enabled, attempting export via API")
             try:
-                log_api_operation("export_checklist", user_id=user_id, doc_id=doc_id, 
+                log_api_operation("export_checklist", user_id=user_id, thread_id=thread_id, 
                                 user_id_int=user_id)
                 
                 # Call DentApp API export
@@ -527,12 +527,12 @@ async def export_checklist(
                 # Fallback to legacy export using canvas_data
                 checklist_content = _generate_checklist_content(canvas_data)
                 
-                logger.info(f"Successfully exported checklist via legacy method for doc {doc_id}")
+                logger.info(f"Successfully exported checklist via legacy method for doc {thread_id}")
                 
                 return {
                     "success": True,
                     "format": "text",  # Legacy text format
-                    "url": f"/api/exports/{doc_id}/checklist.txt",  # Mock URL
+                    "url": f"/api/exports/{thread_id}/checklist.txt",  # Mock URL
                     "content": checklist_content,
                     "generated_at": current_time,
                 }
@@ -541,12 +541,12 @@ async def export_checklist(
             # Generate checklist content from canvas data
             checklist_content = _generate_checklist_content(canvas_data)
             
-            logger.info(f"Successfully exported checklist via legacy method for doc {doc_id}")
+            logger.info(f"Successfully exported checklist via legacy method for doc {thread_id}")
             
             return {
                 "success": True,
                 "format": "text",  # Legacy text format
-                "url": f"/api/exports/{doc_id}/checklist.txt",  # Mock URL
+                "url": f"/api/exports/{thread_id}/checklist.txt",  # Mock URL
                 "content": checklist_content,
                 "generated_at": current_time,
             }

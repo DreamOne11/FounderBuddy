@@ -3,6 +3,7 @@
 from enum import Enum
 from typing import Any, Literal
 from uuid import UUID
+import uuid
 
 from langchain_core.messages import BaseMessage
 from langgraph.graph import MessagesState
@@ -14,8 +15,6 @@ class SectionStatus(str, Enum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     DONE = "done"
-    MODIFY = "modify"
-    GENERATED = "generated"
 
 
 class RouterDirective(str, Enum):
@@ -89,14 +88,10 @@ class SectionContent(BaseModel):
 
 class SectionState(BaseModel):
     """State of a single Value Canvas section."""
-    id: UUID
-    user_id: UUID
-    doc_id: UUID
     section_id: SectionID
     content: SectionContent | None = None
     score: int | None = Field(None, ge=0, le=5)  # 0-5 rating
     status: SectionStatus = SectionStatus.PENDING
-    updated_at: str | None = None  # ISO timestamp
 
 
 class ContextPacket(BaseModel):
@@ -105,7 +100,6 @@ class ContextPacket(BaseModel):
     status: SectionStatus
     system_prompt: str
     draft: SectionContent | None = None
-    section_template: str | None = None
     validation_rules: dict[str, Any] | None = None
 
 
@@ -116,13 +110,11 @@ class ValueCanvasData(BaseModel):
     preferred_name: str | None = None  # Add nickname field
     company_name: str | None = None
     industry: str | None = None
-    standardized_industry: str | None = None
     specialty: str | None = None
     career_highlight: str | None = None
     client_outcomes: str | None = None
     awards_media: str | None = None
     published_content: str | None = None
-    published_content_types: str | None = None  # Add published content types field
     specialized_skills: str | None = None
     notable_partners: str | None = None
 
@@ -243,7 +235,7 @@ class ValueCanvasState(MessagesState):
     """State for Value Canvas agent."""
     # User and document identification
     user_id: int = 1
-    doc_id: str = "studio-doc"
+    thread_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
     # Navigation and progress
     current_section: SectionID = SectionID.INTERVIEW
@@ -329,15 +321,17 @@ class InterviewData(BaseModel):
 
 
 class ICPData(BaseModel):
-    """Structured data for the Ideal Client Persona (ICP) section."""
-    nickname: str | None = Field(None, description="A short, memorable nickname for the ICP.")
-    role_and_sector: str | None = Field(None, description="The ICP's professional role and the sector they operate in.")
-    demographics: str | None = Field(None, description="Key demographic information about the ICP (e.g., age, income, family status).")
-    geography: str | None = Field(None, description="The geographic location where the ICP is typically found.")
-    affinity: str | None = Field(None, description="Assessment of whether you would enjoy working with this ICP.")
-    affordability: str | None = Field(None, description="Assessment of the ICP's ability to afford premium pricing.")
-    impact: str | None = Field(None, description="Assessment of the potential significance of your solution's impact on the ICP.")
-    access: str | None = Field(None, description="Assessment of how easily you can reach and connect with this ICP.")
+    """Structured data for the Ideal Client Persona (ICP) section, based on the new structured template."""
+    role_identity: str | None = Field(None, description="The primary role or identity of the ICP (e.g., 'Founder', 'Stay at home mum').")
+    context_scale: str | None = Field(None, description="The scale or context of their role (e.g., 'fast growth tech companies', 'Family of 4').")
+    industry_sector: str | None = Field(None, description="The industry or sector they operate in.")
+    gender: str | None = Field(None, description="The gender of the ICP.")
+    age_range: str | None = Field(None, description="The typical age range of the ICP (e.g., '35-50').")
+    income_level: str | None = Field(None, description="Income, budget level, or company revenue.")
+    country_region: str | None = Field(None, description="The country or region where the ICP is based.")
+    location_setting: str | None = Field(None, description="The typical living or working setting (e.g., 'urban', 'suburban', 'rural').")
+    primary_interests: str | None = Field(None, description="Primary interests or values of the ICP.")
+    lifestyle_indicators: list[str] = Field(default_factory=list, description="Specific lifestyle indicators that show their values (e.g., 'Drives a luxury european car', 'Plays golf').")
 
 
 class PainPoint(BaseModel):

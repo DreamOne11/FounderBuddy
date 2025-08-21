@@ -23,9 +23,12 @@ from .models import (
     PayoffsData,
     PrizeData,
     RouterDirective,
+    SectionContent,
     SectionID,
+    SectionState,
     SectionStatus,
     SignatureMethodData,
+    TiptapDocument,
     ValueCanvasData,
     ValueCanvasState,
 )
@@ -80,7 +83,7 @@ async def initialize_node(state: ValueCanvasState, config: RunnableConfig) -> Va
     logger.info("Initialize node - Setting up default values")
 
     # CRITICAL FIX: Get correct IDs from config instead of using temp IDs
-    # service.py now passes the correct user_id and doc_id through config
+    # service.py now passes the correct user_id and thread_id through config
     configurable = config.get("configurable", {})
     
     if "user_id" not in state or not state["user_id"]:
@@ -96,19 +99,15 @@ async def initialize_node(state: ValueCanvasState, config: RunnableConfig) -> Va
                 "Check service.py ID passing logic."
             )
     
-    if "doc_id" not in state or not state["doc_id"]:
-        # Try to get doc_id from config, or derive from thread_id (since they're now the same)
-        if "doc_id" in configurable and configurable["doc_id"]:
-            state["doc_id"] = configurable["doc_id"]
-            logger.info(f"Initialize node - Got doc_id from config: {state['doc_id']}")
-        elif "thread_id" in configurable and configurable["thread_id"]:
-            # Since we fixed service.py to use doc_id as thread_id, they should be the same
-            state["doc_id"] = configurable["thread_id"]
-            logger.info(f"Initialize node - Using thread_id as doc_id: {state['doc_id']}")
+    if "thread_id" not in state or not state["thread_id"]:
+        # Try to get thread_id from config
+        if "thread_id" in configurable and configurable["thread_id"]:
+            state["thread_id"] = configurable["thread_id"]
+            logger.info(f"Initialize node - Got thread_id from config: {state['thread_id']}")
         else:
-            logger.error("CRITICAL: Initialize node running without a doc_id in state, config, or thread_id!")
+            logger.error("CRITICAL: Initialize node running without a thread_id in state or config!")
             raise ValueError(
-                "Critical system error: No valid doc_id found. "
+                "Critical system error: No valid thread_id found. "
                 "This indicates a serious ID chain break that will cause data loss. "
                 "Check service.py ID passing logic."
             )
@@ -135,7 +134,7 @@ async def initialize_node(state: ValueCanvasState, config: RunnableConfig) -> Va
     if "messages" not in state:
         state["messages"] = []
     
-    logger.info(f"Initialize complete - User: {state['user_id']}, Doc: {state['doc_id']}")
+    logger.info(f"Initialize complete - User: {state['user_id']}, Thread: {state['thread_id']}")
     return state
 
 
@@ -183,7 +182,7 @@ async def router_node(state: ValueCanvasState, config: RunnableConfig) -> ValueC
         logger.info(f"TRANSITION_DEBUG: Leaving section {current_section_id}")
         if current_section_id in state.get("section_states", {}):
             current_state = state["section_states"][current_section_id]
-            logger.info(f"TRANSITION_DEBUG: Section {current_section_id} final state - status: {current_state.get('status')}, has_content: {bool(current_state.get('content'))}")
+            logger.info(f"TRANSITION_DEBUG: Section {current_section_id} final state - status: {current_state.status}, has_content: {bool(current_state.content)}")
         
         next_section = get_next_unfinished_section(state.get("section_states", {}))
         logger.info(f"DEBUG: get_next_unfinished_section decided the next section is: {next_section}")
@@ -205,7 +204,7 @@ async def router_node(state: ValueCanvasState, config: RunnableConfig) -> ValueC
             logger.debug(f"DATABASE_DEBUG: Router calling get_context for section {next_section.value}")
             context = await get_context.ainvoke({
                 "user_id": state["user_id"],
-                "doc_id": state["doc_id"],
+                "thread_id": state["thread_id"],
                 "section_id": next_section.value,
                 "canvas_data": state["canvas_data"].model_dump(),
             })
@@ -240,7 +239,7 @@ async def router_node(state: ValueCanvasState, config: RunnableConfig) -> ValueC
             logger.debug(f"DATABASE_DEBUG: Router calling get_context for modify section {new_section.value}")
             context = await get_context.ainvoke({
                 "user_id": state["user_id"],
-                "doc_id": state["doc_id"],
+                "thread_id": state["thread_id"],
                 "section_id": new_section.value,
                 "canvas_data": state["canvas_data"].model_dump(),
             })
@@ -276,70 +275,6 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
     for i, msg in enumerate(state["messages"][-3:]):
         logger.info(f"MESSAGE_HISTORY_DEBUG: [{i}] {msg.type.capitalize()}: {msg.content[:50]}...")
 
-    # --- Pre-LLM check for explicit numeric rating ---
-    # If the user provides a clear 0-5 rating, we can handle it programmatically
-    # without an LLM call, making the response faster and more reliable.
-    last_message = state["messages"][-1]
-    user_rating = None
-    is_expecting_rating = state.get("is_awaiting_rating", False)
-
-    # After this check, we will no longer be awaiting a rating, so reset the flag.
-    state["is_awaiting_rating"] = False
-
-    if is_expecting_rating and isinstance(last_message, HumanMessage):
-        try:
-            # Use regex to find a single digit between 0-5 that exists on its own
-            content = last_message.content.strip()
-            if re.fullmatch(r"[0-5]", content):
-                parsed_score = int(content)
-                user_rating = parsed_score
-        except (ValueError, TypeError):
-            pass  # Not a simple numeric rating, will proceed to LLM.
-
-    if user_rating is not None:
-        logger.info(f"Detected explicit user rating: {user_rating}. Bypassing LLM call.")
-        
-        if user_rating >= 3:
-            # High score: Generate transition message to the next section.
-            from .prompts import SECTION_TEMPLATES, get_next_unfinished_section
-            
-            # To predict the correct next section, we temporarily mark the current one as done.
-            temp_states = state.get("section_states", {}).copy()
-            current_section_id = state["current_section"].value
-            
-            if current_section_id not in temp_states:
-                temp_states[current_section_id] = {}
-            temp_states[current_section_id]['status'] = SectionStatus.DONE.value
-
-            next_section = get_next_unfinished_section(temp_states)
-            
-            if next_section:
-                next_section_name = SECTION_TEMPLATES.get(next_section.value).name
-                reply_msg = f"Thank you for your rating! Let's move on to the next section: {next_section_name}."
-            else:
-                reply_msg = "Thank you for your rating! We've completed all sections."
-            
-            directive = "next"
-        else:
-            # Low score: Generate message to encourage revision.
-            reply_msg = "Thank you for your rating! Let's refine this section together – what would you like to adjust?"
-            directive = "stay"
-
-        agent_output = ChatAgentOutput(reply=reply_msg, router_directive=directive, score=user_rating, section_update=None)
-        
-        # Update state and return immediately, skipping the LLM call.
-        state["agent_output"] = agent_output
-        state["router_directive"] = directive
-        state["messages"].append(AIMessage(content=agent_output.reply))
-        
-        # Also update short-term memory for context consistency.
-        base_mem = state.get("short_memory", [])
-        base_mem.append(last_message)
-        base_mem.append(AIMessage(content=agent_output.reply))
-        state["short_memory"] = base_mem
-        
-        return state
-    # --- End of pre-LLM check ---
 
     # Create a new context packet for this turn
     context_packet = state.get('context_packet')
@@ -361,8 +296,8 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
     # 3. We have collected enough information in the conversation (check short_memory)
     awaiting = state.get("awaiting_user_input", False)
     current_section = state["current_section"]
-    section_state = state.get("section_states", {}).get(current_section.value, {})
-    section_has_content = bool(section_state.get("content"))
+    section_state = state.get("section_states", {}).get(current_section.value)
+    section_has_content = bool(section_state and section_state.content)
     
     # DEBUG: Log detailed section state info
     logger.info(f"SUMMARY_DEBUG: Current section: {current_section.value}")
@@ -394,12 +329,12 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
         current_section_id = state["current_section"].value
         section_state = state.get("section_states", {}).get(current_section_id)
 
-        if section_state and section_state.get("content"):
+        if section_state and section_state.content:
             logger.info(f"MEMORY_DEBUG: Found existing content for {current_section_id}. Prioritizing it.")
             try:
                 # Use the plain_text version if available, otherwise extract it.
-                # Note: content in section_states is a dict, not a SectionContent object.
-                content_dict = section_state["content"]
+                # Note: content in section_states is now a SectionContent object.
+                content_dict = section_state.content.content.model_dump()
                 plain_text_summary = await extract_plain_text.ainvoke({"tiptap_json": content_dict})
 
                 review_prompt = (
@@ -432,7 +367,7 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
         
         completed_sections = []
         for section_id, section_state in state.get("section_states", {}).items():
-            if section_state.get("status") == "done":
+            if section_state.status == SectionStatus.DONE:
                 section_name = section_names.get(section_id, section_id)
                 completed_sections.append(section_name)
         
@@ -451,8 +386,8 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
         
         # Add clarification for new sections without content
         current_section_id = state["current_section"].value
-        section_state = state.get("section_states", {}).get(current_section_id, {})
-        if not section_state or not section_state.get("content"):
+        section_state = state.get("section_states", {}).get(current_section_id)
+        if not section_state or not section_state.content:
             new_section_instruction = (
                 f"IMPORTANT: You are now in the {current_section_id} section. "
                 "This is a NEW section with no content yet. "
@@ -483,9 +418,13 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
         current_section_id = state["current_section"].value
         
         if current_section_id not in temp_states:
-            temp_states[current_section_id] = {}
-        # Assume the current section will be completed in this turn for prediction
-        temp_states[current_section_id]['status'] = SectionStatus.DONE.value
+            temp_states[current_section_id] = SectionState(
+                section_id=SectionID(current_section_id),
+                status=SectionStatus.DONE
+            )
+        else:
+            # Assume the current section will be completed in this turn for prediction
+            temp_states[current_section_id].status = SectionStatus.DONE
 
         next_section = get_next_unfinished_section(temp_states)
         
@@ -717,7 +656,7 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
         computed_status = _status_from_output(agent_out.score, agent_out.router_directive)
         logger.info("SAVE_SECTION_DEBUG: About to call save_section with:")
         logger.info(f"SAVE_SECTION_DEBUG: - user_id: {state['user_id']}")
-        logger.info(f"SAVE_SECTION_DEBUG: - doc_id: {state['doc_id']}")
+        logger.info(f"SAVE_SECTION_DEBUG: - thread_id: {state['thread_id']}")
         logger.info(f"SAVE_SECTION_DEBUG: - section_id: {section_id}")
         logger.info(f"SAVE_SECTION_DEBUG: - score: {agent_out.score} (type: {type(agent_out.score)})")
         logger.info(f"SAVE_SECTION_DEBUG: - status: {computed_status} (type: {type(computed_status)})")
@@ -725,7 +664,7 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
         
         save_result = await save_section.ainvoke({
             "user_id": state["user_id"],
-            "doc_id": state["doc_id"],
+            "thread_id": state["thread_id"],
             "section_id": section_id,
             "content": agent_out.section_update.content.model_dump(), # FINAL FIX: Pass the Tiptap doc directly
             "score": agent_out.score,
@@ -735,12 +674,15 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
         
         # Update local state
         logger.debug("DATABASE_DEBUG: Updating local section_states with new content")
-        state["section_states"][section_id] = {
-            "section_id": section_id,
-            "content": agent_out.section_update.content.model_dump(),  # CORRECTED: Store Tiptap doc directly
-            "score": agent_out.score,
-            "status": _status_from_output(agent_out.score, agent_out.router_directive),
-        }
+        state["section_states"][section_id] = SectionState(
+            section_id=SectionID(section_id),
+            content=SectionContent(
+                content=agent_out.section_update.content,
+                plain_text=None  # Will be filled later if needed
+            ),
+            score=agent_out.score,
+            status=_status_from_output(agent_out.score, agent_out.router_directive),
+        )
         logger.info(f"SAVE_SECTION_DEBUG: ✅ BRANCH 1 COMPLETED: Section {section_id} saved with structured content")
 
         # ----------------------------------------------------------
@@ -832,10 +774,10 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
             content_to_save = None
 
             # 1. Try to find content in the current state for the section
-            if score_section_id in state.get("section_states", {}) and state["section_states"][score_section_id].get("content"):
+            if score_section_id in state.get("section_states", {}) and state["section_states"][score_section_id].content:
                 logger.info(f"SAVE_SECTION_DEBUG: Found content for section {score_section_id} in state.")
                 # The content in state should now be the correct Tiptap document
-                content_to_save = state["section_states"][score_section_id].get("content")
+                content_to_save = state["section_states"][score_section_id].content.content.model_dump()
             
             # 2. If not in state, recover from previous message history with improved logic
             if not content_to_save:
@@ -865,7 +807,7 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
                 
                 await save_section.ainvoke({
                     "user_id": state["user_id"],
-                    "doc_id": state["doc_id"],
+                    "thread_id": state["thread_id"],
                     "section_id": score_section_id,
                     "content": content_to_save,
                     "score": agent_out.score,
@@ -873,12 +815,21 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
                 })
 
                 # Update local state consistently, whether it existed before or not.
-                state.setdefault("section_states", {})[score_section_id] = {
-                    "section_id": score_section_id,
-                    "content": content_to_save,
-                    "score": agent_out.score,
-                    "status": computed_status,
-                }
+                # Convert content_to_save to TiptapDocument
+                if isinstance(content_to_save, dict):
+                    tiptap_doc = TiptapDocument.model_validate(content_to_save)
+                else:
+                    tiptap_doc = content_to_save
+                
+                state.setdefault("section_states", {})[score_section_id] = SectionState(
+                    section_id=SectionID(score_section_id),
+                    content=SectionContent(
+                        content=tiptap_doc,
+                        plain_text=None
+                    ),
+                    score=agent_out.score,
+                    status=computed_status,
+                )
                 logger.info(f"DATABASE_DEBUG: ✅ Updated/created section state for {score_section_id} with score {agent_out.score}")
             else:
                 # 4. If content recovery failed, we must not call save_section with empty content.
@@ -916,7 +867,7 @@ async def implementation_node(state: ValueCanvasState, config: RunnableConfig) -
         # Export checklist
         result = await export_checklist.ainvoke({
             "user_id": state["user_id"],
-            "doc_id": state["doc_id"],
+            "thread_id": state["thread_id"],
             "canvas_data": state["canvas_data"].model_dump(),
         })
         
@@ -1038,12 +989,12 @@ graph = build_value_canvas_graph()
 
 
 # Initialize function for new conversations
-async def initialize_value_canvas_state(user_id: int = None, doc_id: str = None) -> ValueCanvasState:
+async def initialize_value_canvas_state(user_id: int = None, thread_id: str = None) -> ValueCanvasState:
     """Initialize a new Value Canvas state.
     
     Args:
         user_id: Integer user ID from frontend (will use default if not provided)
-        doc_id: Document UUID (will be generated if not provided)
+        thread_id: Thread UUID (will be generated if not provided)
     """
     import uuid
     
@@ -1054,20 +1005,20 @@ async def initialize_value_canvas_state(user_id: int = None, doc_id: str = None)
     else:
         logger.info(f"Using provided user_id: {user_id}")
 
-    # Ensure doc_id is a valid UUID string
-    if not doc_id:
-        doc_id = str(uuid.uuid4())
-        logger.info(f"Generated new doc_id: {doc_id}")
+    # Ensure thread_id is a valid UUID string
+    if not thread_id:
+        thread_id = str(uuid.uuid4())
+        logger.info(f"Generated new thread_id: {thread_id}")
     else:
         try:
-            uuid.UUID(doc_id)
+            uuid.UUID(thread_id)
         except ValueError:
-            doc_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, doc_id))
-            logger.info(f"Converted non-UUID doc_id to UUID: {doc_id}")
+            thread_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, thread_id))
+            logger.info(f"Converted non-UUID thread_id to UUID: {thread_id}")
     
     initial_state = ValueCanvasState(
         user_id=user_id,
-        doc_id=doc_id,
+        thread_id=thread_id,
         messages=[],
         current_section=SectionID.INTERVIEW,
         router_directive=RouterDirective.NEXT,  # Start by loading first section
@@ -1076,7 +1027,7 @@ async def initialize_value_canvas_state(user_id: int = None, doc_id: str = None)
     # Get initial context
     context = await get_context.ainvoke({
         "user_id": user_id,
-        "doc_id": doc_id,
+        "thread_id": thread_id,
         "section_id": SectionID.INTERVIEW.value,
         "canvas_data": {},
     })

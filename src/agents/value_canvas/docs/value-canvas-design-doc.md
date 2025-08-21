@@ -144,7 +144,7 @@ flowchart LR
 | section_id | text | “Pain-2” |
 | content | jsonb | **Tiptap JSON** |
 | score | int | 0-5 |
-| status | text | pending/done/modify/generated |
+| status | text | pending/in_progress/done |
 | updated_at | timestamptz | Optimistic lock |
 
 ---

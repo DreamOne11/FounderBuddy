@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from .models import SectionID, SectionTemplate, ValidationRule
+from .models import SectionID, SectionStatus, SectionTemplate, ValidationRule
 
 # Base system prompt rules
 SECTION_PROMPTS = {
@@ -156,8 +156,8 @@ def get_progress_info(section_states: dict[str, Any]) -> dict[str, Any]:
     
     completed = 0
     for section in all_sections:
-        state = section_states.get(section.value, {})
-        if state.get("status") == "done":
+        state = section_states.get(section.value)
+        if state and state.status == SectionStatus.DONE:
             completed += 1
     
     return {
@@ -474,91 +474,102 @@ For industry classification, I'll help you choose from standard categories like:
         description="Define the ultimate decision-maker who will be the focus of the Value Canvas",
         system_prompt_template="""[Progress: Section 2 of 13 - Ideal Client Persona]
 
-Now let's define your Ideal Client Persona (ICP)—the ultimate decision maker who will be the focus of your Value Canvas. Rather than trying to appeal to everyone, we'll create messaging that resonates deeply with this specific person.
+CRITICAL INSTRUCTION FOR YOUR FIRST MESSAGE:
+When you start this section, your very first message to the user MUST be ONLY the text contained within the <reply> tags below. Do not add any other text, greetings, or explanations.
 
-Your ICP isn't marketing theory—it's your business foundation. The most expensive mistake in business is talking to the wrong people about the right things.
+<reply>
+🎯 Let me start with some context around your ICP.
 
-For our first pass, we're going to work on a basic summary of your ICP that's enough to get us through a first draft of your Value Canvas.
+Your Ideal Client Persona (ICP)—the ultimate decision maker who will be the focus of your Value Canvas. Rather than trying to appeal to everyone, we'll create messaging that resonates deeply with this specific person.
 
-CRITICAL: This is the ICP section. DO NOT save or reference content from previous sections (like Interview).
-The ICP section content should ONLY contain information about:
-- Role & Sector
-- Demographics
-- Geographic location
-- Viability assessments
-- Nickname
-DO NOT include personal info, skills, achievements, or company info - those belong in the Interview section.
+🏢 Your ICP isn't just a 'nice to have' — it's your business foundation. The most expensive mistake in business is talking to the wrong people about the right things. This section helps ensure every other part of your Value Canvas speaks directly to someone who can actually invest in your product / service.
 
-IMPORTANT: This section requires multiple steps to complete:
-1. Role & Sector identification
-2. Demographic Snapshot
-3. Geographic Focus
-4. ICP Viability Check (4 assessments)
-5. Nickname creation
-6. Final summary and rating
+✍️ For our first pass, we're going to work on a basic summary of your ICP that's enough to get us through a first draft of your Value Canvas.
 
-Current step tracking:
-- Store responses as you collect them
-- Do NOT mark section as complete until ALL steps are done
-- Use router_directive "stay" to continue through steps
-- Only accept rating and move "next" after full ICP summary is created
+🧪 Then your job is to test in the market. You can start with testing it on others on the KPI program, family, friends, team, trusted clients and ultimately, prospects. The Sprint Playbook, and the Beyond the Sprint Playbook will guide you on how to refine it in the real world. Then you can come back and refine it with me later, ensuring I've got the latest and most relevant version in my memory. Remember, we test in the market, not in our minds.
 
-STATE MANAGEMENT RULES:
-- Track which fields have been collected: None, None, None, None, None, None, None, None
-- If any required field is missing, continue collecting data with router_directive "stay"
-- Only generate section_update with complete ICP summary after ALL fields are collected
-- When asking for satisfaction rating, include the full ICP summary in section_update
+🧠 The first thing I'd like you to do is to give me a brain dump of your current best thinking of who your ICP is. You may already know and have done some deep work on this in which case, this won't take long, or, you may be unsure, in which case, this process should be quite useful.
 
-CRITICAL: You MUST collect ALL of the following before showing summary:
-1. Role & Sector
-2. Demographics
-3. Geographic Focus
-4. ICP Viability Checks (ALL FOUR):
-   - Affinity: Would you genuinely enjoy working with this type of client?
-   - Affordability: Can they access budget for premium pricing?
-   - Impact: How significant can your solution's impact be?
-   - Access: How easily can you reach and connect with them?
-5. Nickname
+Just go on a bit of a rant and I'll do my best to refine it with you if needed.
+</reply>
 
-DO NOT skip any steps. DO NOT show summary until ALL information is collected.
-NEVER use placeholders like "[Not provided]" - if data is missing, ASK for it.
+AFTER the user has provided their first response, your objective is to take the user inputs and match them against the output template provided. You must identify what elements they have shared, then effectively question them to define missing sections.
 
-CRITICAL SUMMARY RULE:
-- **Synthesize and Enrich:** Do not just list the user's inputs. Your role is to act as an expert consultant.
-- **Build on their ideas:** Take the user's raw input for the Role, Demographics, Geography, and Viability checks, and synthesize them into a coherent persona.
-- **Add Insights:** Based on your expertise, highlight the strategic implications of this ICP choice. For example, explain how their high `icp_affordability` combined with their specific `icp_geography` opens up a premium market segment.
-- **Identify Patterns:** Look for patterns across the inputs. Does the data point to a client who is successful but overwhelmed? Ambitious but lacking a clear path? Articulate this underlying story.
-- **Create "Aha" Moments:** The goal is to make the user say, "Yes, that's exactly who they are!" Your summary should feel like a clear, sharp photograph of their ideal client, not just a list of attributes.
-- **Example enrichment:** If a user says the role is "VP of Ops," you could frame the persona as "The System Builder." If demographics are "35-45, high-income," you can synthesize this as "an established professional at the peak of their career, with the resources to invest in high-value solutions."
-- **Final Output:** The generated summary MUST be included in the `reply` and `section_update` fields when you ask for the satisfaction rating.
-- **MANDATORY FINAL STEP:** After presenting the full synthesized summary in the `reply` field, you MUST conclude your response by asking the user for their satisfaction rating. Your final sentence must be: "How satisfied are you with this summary? (Rate 0-5)"
+You're required to optimise your questions based on their input. If they're ICP is a single mum interested in home schooling, you might ask questions around how many kids etc. If they're the CFO, you might ask for the market cap, or how many total employees in the company. If they're a small business owner, you might ask about how many of the team, or overall revenue. Directionally, you want to present final output to the user that matches the examples below.
 
-CONVERSATION FLOW (ONE STEP AT A TIME):
-Ask each step individually and wait for response before proceeding:
+Use recursive questioning. For example:
+"Who's your target buyer?" → "Marketing manager"
+"What size company?" → "Mid-size"
+"Define mid-size for your industry?" → "50-200 employees"
+"What industries specifically?" → And so on...
 
-Step 1: Role & Sector (if {icp_standardized_role} is empty)
-Step 2: Demographics (if {icp_demographics} is empty)
-Step 3: Geography (if {icp_geography} is empty)  
-Step 4: Viability Checks (ask each assessment individually if any are empty)
-Step 5: Nickname (if {icp_nickname} is empty)
-Step 6: Present complete summary and ask for rating
+KEY MEMORY TO DRAW FROM
+- Industry 
+- Outcomes Delivered (ensure this aligns with proposed ICP's likely goals)
 
-Based on what you've told me about {specialty} in the {industry} industry, let's start by identifying their role.
+SENTENCE STARTER FORMULA:
 
-**Step 1: Role & Sector**
+[ROLE/IDENTITY] - [CONTEXT/SCALE]
+[INDUSTRY/SECTOR CONTEXT]
+[GENDER], between the ages of [AGE RANGE]
+[INCOME/BUDGET LEVEL/REVENUE]
+Based in [COUNTRY/REGION] - [URBAN/SUBURBAN/RURAL]
+Interested in [PRIMARY INTERESTS/VALUES]
+[SPECIFIC LIFESTYLE INDICATOR 1]
+[SPECIFIC LIFESTYLE INDICATOR 2]
 
-I'd suggest these possible client roles might be relevant for you:
-- CEO/Founder - Leading companies that need structured coaching systems
-- VP of Operations - Looking to systematize business processes  
-- Director of Learning & Development - Building internal coaching programs
-- Business Coach/Consultant - Seeking to scale their practice with AI
-- Product Manager - Implementing AI solutions for user engagement
+EXAMPLE FILL-IN PROMPTS FOR AGENT:
+- Role/Identity: "What is their primary role or life situation?"
+- Context/Scale: "What describes their situation size/scope?" (company size, family size, team size, etc.)
+- Industry/Sector: "What industry or life context are they typically in?"
+- Demographics: "What gender and age range?"
+- Income: "What's their income/spending power?"
+- Geography: "Where are they located and what setting?"
+- Interests: "What are they passionate about or value?"
+- Lifestyle Indicators: "What do they drive/do/support that shows their values?"
 
-Which of these best describes your ideal client? Or specify a different role if none of these fit.
+EXAMPLE OUTPUT:
+Scenerio 1. OUR ICP:
+Founders of fast growth tech companies.
+50-150 employees
+Typically in the finance and education sectors.
+Predominently male, between the ages of 35-50.
+Earning $600k +
+Based on the west coast USA - urban centers
+Interested in sport, fitness and all things performance.
+Drives a luxury european car. Plays golf, tennis and gives to environmental based charities.
 
-Note: We'll go through each step one at a time - demographics, geography, viability checks, and nickname.
+Scenario 2. OUR ICP:
+VP Engineering – Enterprise
+7 direct reports
+Typically in auto / aeronautical manufacturing
+Predominantly male, between the ages of 40-65
+Earning $300k +
+Based in Germany - urban centers
+Interested in science and technology
+Drives a volvo
+Gives to science based charities.
 
-CRITICAL REMINDER: When showing the final ICP summary and asking for rating, you MUST include section_update with the complete ICP data in Tiptap JSON format. Without section_update, the user's progress will NOT be saved!""",
+Scenario 3. Our ICP:
+Stay at home mum
+Family of 4
+Household income of $200k +
+Typicall Home schools or alternative eductaion.
+Interested in healthy food, nutrition and low tox lifestyle.
+Based in the UK - suburban / rural.
+Drives a second hand audi.
+Spends time in nature with the family.
+
+AI applies recursive questioning until able to present output.
+Ok, here's what I've got:
+AI presents output.
+We don't want to get too bogged down here, just directionally correct. 
+Does this reflect our conversation so far?
+User Input.
+If yes, continue.
+If no, recursive questions. AI should have the freedom to refine conversationally based on user concerns or recommendations.
+Ok, great.
+Shall we move onto 'The Pain'?""",
         validation_rules=[
             ValidationRule(
                 field_name="icp_nickname",
@@ -1191,6 +1202,6 @@ def get_next_unfinished_section(section_states: dict[str, Any]) -> SectionID | N
     order = get_section_order()
     for section in order:
         state = section_states.get(section.value)
-        if not state or state.get("status") != "done":
+        if not state or state.status != SectionStatus.DONE:
             return section
     return None

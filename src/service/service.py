@@ -221,13 +221,11 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
         # This is a new conversation, so we need to initialize a new state
         initial_state = await initialize_value_canvas_state(user_id=user_id)
         
-        # CRITICAL FIX: Use the doc_id from initial_state as the thread_id
-        # This ensures proper ID chain: thread_id == doc_id for data isolation
+        # Get the generated thread_id from initial_state
         user_id = initial_state.get("user_id")
-        doc_id = initial_state.get("doc_id")
-        thread_id = doc_id  # Use doc_id as thread_id for consistent data isolation
+        thread_id = initial_state.get("thread_id")
         
-        logger.info(f"Initialized new thread with ID: {thread_id} (using doc_id for consistency)")
+        logger.info(f"Initialized new thread with ID: {thread_id}")
     else:
         # This is an existing conversation, so we load the state
         logger.info(f"Loading existing thread with ID: {thread_id}")
@@ -239,14 +237,8 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
         "user_id": user_id,
     }
     
-    # CRITICAL FIX: Always pass doc_id to agent
-    # For new conversations, doc_id comes from initial_state
-    # For existing conversations, doc_id should equal thread_id (due to our fix)
-    if not user_input.thread_id and 'doc_id' in locals():
-        configurable["doc_id"] = doc_id
-    else:
-        # For existing conversations, thread_id IS the doc_id
-        configurable["doc_id"] = thread_id
+    # Pass thread_id to agent
+    configurable["thread_id"] = thread_id
     
     # Add user's custom agent config if provided
     if user_input.agent_config:
@@ -342,7 +334,7 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> Invoke
             section_data = {
                 "database_id": SECTION_ID_MAPPING.get(current_section_id),
                 "name": section_template.name if section_template else "Unknown Section",
-                "status": section_state.get("status", "pending") if section_state else "pending",
+                "status": section_state.status.value if section_state else "pending",
             }
             output.custom_data["section"] = section_data
 
@@ -504,7 +496,7 @@ async def message_generator(
                 section_data = {
                     "database_id": SECTION_ID_MAPPING.get(current_section_id),
                     "name": section_template.name if section_template else "Unknown Section",
-                    "status": section_state.get("status", "pending") if section_state else "pending",
+                    "status": section_state.status.value if section_state else "pending",
                 }
                 yield f"data: {json.dumps({'type': 'section', 'content': section_data})}\n\n"
         except Exception as e:

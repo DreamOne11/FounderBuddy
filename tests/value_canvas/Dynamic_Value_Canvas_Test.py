@@ -306,7 +306,7 @@ class DynamicValueCanvasTest:
     
     def __init__(self):
         self.user_id = "dynamic-test-sarah"
-        self.doc_id = "dynamic-test-scalewise"
+        self.thread_id = "dynamic-test-scalewise"
         self.state = None
         self.test_user = IntelligentTestUser()
         
@@ -329,7 +329,7 @@ class DynamicValueCanvasTest:
             
         self.config = RunnableConfig(
             configurable={
-                "thread_id": f"{self.user_id}-{self.doc_id}",
+                "thread_id": f"{self.user_id}-{self.thread_id}",
                 "model": test_model
             }
         )
@@ -366,7 +366,7 @@ class DynamicValueCanvasTest:
         # Initialize conversation
         if self.state is None:
             print("🔄 Initializing Value Canvas Agent state...")
-            self.state = await initialize_value_canvas_state(self.user_id, self.doc_id)
+            self.state = await initialize_value_canvas_state(self.user_id, self.thread_id)
         
         # Start conversation
         round_num = 1
