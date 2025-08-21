@@ -10,7 +10,6 @@ from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 
-from core.settings import settings
 from core.models import (
     AllModelEnum,
     AnthropicModelName,
@@ -26,6 +25,7 @@ from core.models import (
     OpenRouterModelName,
     VertexAIModelName,
 )
+from core.settings import settings
 
 _MODEL_TABLE = (
     {m: m.value for m in OpenAIModelName}

@@ -8,8 +8,8 @@ from langgraph.pregel.types import StateSnapshot
 from langgraph.types import Interrupt
 
 from agents.agents import Agent
-from schema import ChatHistory, ChatMessage, ServiceMetadata
 from core.models import OpenAIModelName
+from schema import ChatHistory, ChatMessage, ServiceMetadata
 
 
 def test_invoke(test_client, mock_agent) -> None:

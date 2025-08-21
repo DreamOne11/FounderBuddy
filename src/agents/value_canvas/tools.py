@@ -7,6 +7,7 @@ from typing import Any
 
 from langchain_core.tools import tool
 
+from core.settings import settings
 from integrations.dentapp.dentapp_client import get_dentapp_client
 from integrations.dentapp.dentapp_utils import (
     AGENT_ID,
@@ -16,7 +17,6 @@ from integrations.dentapp.dentapp_utils import (
     plain_text_to_tiptap,
     tiptap_to_plain_text,
 )
-from core.settings import settings
 
 from .models import (
     SectionID,

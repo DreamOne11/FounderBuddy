@@ -1,7 +1,7 @@
 '''Pydantic models for Value Canvas Agent.'''
 
 from enum import Enum
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 from uuid import UUID
 
 from langchain_core.messages import BaseMessage
