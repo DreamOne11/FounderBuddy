@@ -3,7 +3,7 @@ name = "agent-service-toolkit"
 version = "0.1.0"
 description = "AI agent service built with LangGraph and FastAPI"
 readme = "README.md"
-authors = [{ name = "Joshua Carroll", email = "carroll.joshk@gmail.com" }]
+authors = [{ name = "Jianhaotian" }]
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
@@ -60,7 +60,6 @@ dependencies = [
 [dependency-groups]
 dev = [
     "langgraph-cli[inmem]",
-    "pre-commit",
     "pytest",
     "pytest-cov",
     "pytest-env",

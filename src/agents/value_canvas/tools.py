@@ -76,7 +76,7 @@ async def get_context(
         key = match.group(1)
         return str(canvas_data.get(key, "")) if isinstance(canvas_data, dict) else ""
 
-    # 只替换形如 {identifier} 的简单占位符，其他大括号保持原样
+    # Only replace simple placeholders like {identifier}, keep other braces unchanged
     section_prompt = re.sub(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", _replace_placeholder, section_prompt)
     
     system_prompt = f"{base_prompt}\\n\\n---\\n\\n{section_prompt}"

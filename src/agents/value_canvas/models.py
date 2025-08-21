@@ -113,7 +113,7 @@ class ValueCanvasData(BaseModel):
     """Complete Value Canvas data structure."""
     # Basic information from initial interview
     client_name: str | None = None
-    preferred_name: str | None = None  # 添加昵称字段
+    preferred_name: str | None = None  # Add nickname field
     company_name: str | None = None
     industry: str | None = None
     standardized_industry: str | None = None
@@ -122,7 +122,7 @@ class ValueCanvasData(BaseModel):
     client_outcomes: str | None = None
     awards_media: str | None = None
     published_content: str | None = None
-    published_content_types: str | None = None  # 添加发布内容类型字段
+    published_content_types: str | None = None  # Add published content types field
     specialized_skills: str | None = None
     notable_partners: str | None = None
 
@@ -249,7 +249,7 @@ class ValueCanvasState(MessagesState):
     current_section: SectionID = SectionID.INTERVIEW
     context_packet: ContextPacket | None = None
     section_states: dict[str, SectionState] = Field(default_factory=dict)
-    # 初次进入希望 Router 直接调用 get_context，所以默认 NEXT
+    # On initial entry, Router should call get_context directly, so default to NEXT
     router_directive: str = RouterDirective.NEXT
     finished: bool = False
 

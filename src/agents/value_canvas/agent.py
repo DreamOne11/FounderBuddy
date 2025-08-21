@@ -463,7 +463,7 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
             messages.append(SystemMessage(content=new_section_instruction))
 
     # 3) Recent conversation memory
-    # Keep all messages from short_memory. Note: This might lead to context window issues with very long conversations.
+    # Keep all messages from short_memory.
     messages.extend(state.get("short_memory", []))
 
     # 4) Last human message (if any and agent hasn't replied yet)
@@ -584,21 +584,21 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
 
         state["agent_output"] = agent_output
 
-        # --- MVP Fallback: ensure reply包含明确提问 -----------------------
+        # --- MVP Fallback: ensure reply contains clear question -----------------------
         need_question = (
             state["router_directive"] == RouterDirective.STAY
             and agent_output.score is None
         )
 
         if need_question:
-            # 如果 reply 中既没有问号也没有明确的指令词，则追加提示
+            # If reply has neither question mark nor clear instruction words, append prompt
             has_question = re.search(r"[?？]", agent_output.reply, re.IGNORECASE)
             has_instruction = any(word in agent_output.reply.lower() for word in [
                 "please", "provide", "describe", "tell", "share", "what", "how", "when", "where", "why"
             ])
             
             if not has_question and not has_instruction:
-                # 只有在真的没有明确指令时才添加兜底文本
+                # Only add fallback text when there's really no clear instruction
                 agent_output.reply += (
                     "\n\nPlease provide your response to continue."
                 )
@@ -965,11 +965,11 @@ def route_decision(state: ValueCanvasState) -> Literal["implementation", "chat_a
         if has_pending_user_input():
             return "chat_agent"
 
-        # 如果 AI 还在等用户回复，则停机等待下一次 run（防止重复提问）。
+        # If AI is still waiting for user response, halt and wait for next run (prevent repeated questions).
         if state.get("awaiting_user_input", False):
             return "halt"
 
-        # 否则直接 halt（通常刚初始化时会走到这）。
+        # Otherwise, halt directly (typically when just initialized).
         return "halt"
     
     # 3. NEXT/MODIFY directive - section transition  
