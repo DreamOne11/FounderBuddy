@@ -134,10 +134,6 @@ async def initialize_node(state: ValueCanvasState, config: RunnableConfig) -> Va
     if "messages" not in state:
         state["messages"] = []
     
-    # CRITICAL FIX: Clear previous agent_output to prevent stale data from being sent to frontend
-    if "agent_output" in state:
-        state["agent_output"] = None
-
     logger.info(f"Initialize complete - User: {state['user_id']}, Thread: {state['thread_id']}")
     return state
 
@@ -164,10 +160,6 @@ async def router_node(state: ValueCanvasState, config: RunnableConfig) -> ValueC
     logger.info(
         f"Router node - Current section: {state['current_section']}, Directive: {state['router_directive']}"
     )
-
-    # CRITICAL FIX: Clear previous agent_output to prevent stale data from being sent to frontend
-    if "agent_output" in state:
-        state["agent_output"] = None
     
     # [DIAGNOSTIC] Log the entire state for debugging
     state_for_log = state.copy()
@@ -881,10 +873,6 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
     # [DIAGNOSTIC] Log state after update
     logger.info(f"DATABASE_DEBUG: section_states AFTER update: {state.get('section_states', {})}")
     logger.info("=== DATABASE_DEBUG: memory_updater_node() EXIT ===")
-
-    # CRITICAL FIX: Clear agent_output after processing to prevent duplicates on frontend
-    if "agent_output" in state:
-        state["agent_output"] = None
 
     return state
 

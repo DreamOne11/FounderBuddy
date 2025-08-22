@@ -384,32 +384,14 @@ async def message_generator(
     try:
         # Process streamed events from the graph and yield messages over the SSE stream.
         async for stream_event in agent.astream(
-            **kwargs, stream_mode=["messages", "custom"]
+            **kwargs, stream_mode=["updates", "messages", "custom"]
         ):
-            # --- START DIAGNOSTIC LOGGING ---
-            log_content = ""
-            try:
-                if isinstance(stream_event, tuple) and len(stream_event) > 1:
-                    log_content = str(stream_event[1])[:120] # Log first 120 chars
-                else:
-                    log_content = str(stream_event)[:120]
-                logger.info(f"DIAGNOSTIC_STREAM: run_id={run_id}, event_type={stream_event[0] if isinstance(stream_event, tuple) else 'unknown'}, content='{log_content}...'")
-            except Exception:
-                pass # Avoid logging errors to break main flow
-            # --- END DIAGNOSTIC LOGGING ---
-
             if not isinstance(stream_event, tuple):
                 continue
             stream_mode, event = stream_event
             new_messages = []
             if stream_mode == "updates":
                 for node, updates in event.items():
-                    # FINAL FIX: The 'chat_agent' node's update contains the full message,
-                    # which we don't want to process again as it's already handled by the 'messages' stream.
-                    # We ignore it to prevent duplicate messages on the frontend.
-                    if node == "chat_agent":
-                        continue
-
                     # A simple approach to handle agent interrupts.
                     # In a more sophisticated implementation, we could add
                     # some structured ChatMessage type to return the interrupt value.
@@ -420,21 +402,6 @@ async def message_generator(
                         continue
                     updates = updates or {}
                     update_messages = updates.get("messages", [])
-                    # special cases for using langgraph-supervisor library
-                    if node == "supervisor":
-                        # Get only the last AIMessage since supervisor includes all previous messages
-                        ai_messages = [msg for msg in update_messages if isinstance(msg, AIMessage)]
-                        if ai_messages:
-                            update_messages = [ai_messages[-1]]
-                    if node in ("research_expert", "math_expert"):
-                        # By default the sub-agent output is returned as an AIMessage.
-                        # Convert it to a ToolMessage so it displays in the UI as a tool response.
-                        msg = ToolMessage(
-                            content=update_messages[0].content,
-                            name=node,
-                            tool_call_id="",
-                        )
-                        update_messages = [msg]
                     new_messages.extend(update_messages)
 
             if stream_mode == "custom":
@@ -481,8 +448,7 @@ async def message_generator(
                 msg, metadata = event
                 if "skip_stream" in metadata.get("tags", []):
                     continue
-                # For some reason, astream("messages") causes non-LLM nodes to send extra messages.
-                # Drop them.
+                # Only process AIMessageChunk for token streaming
                 if not isinstance(msg, AIMessageChunk):
                     continue
                 content = remove_tool_calls(msg.content)
