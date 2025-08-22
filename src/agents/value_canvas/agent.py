@@ -160,10 +160,6 @@ async def router_node(state: ValueCanvasState, config: RunnableConfig) -> ValueC
     logger.info(
         f"Router node - Current section: {state['current_section']}, Directive: {state['router_directive']}"
     )
-    
-    # [DIAGNOSTIC] Log the entire state for debugging
-    state_for_log = state.copy()
-    logger.info(f"DEBUG_ROUTER_ENTRY: Full state dump: {state_for_log}")
 
     # Process router directive
     directive = state.get("router_directive", RouterDirective.STAY)
@@ -271,11 +267,6 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
     logger.info(f"Chat agent node - Section: {state['current_section']}")
     
     # DEBUG: Log recent message history
-    logger.info("MESSAGE_HISTORY_DEBUG: Last 3 messages:")
-    for i, msg in enumerate(state["messages"][-3:]):
-        logger.info(f"MESSAGE_HISTORY_DEBUG: [{i}] {msg.type.capitalize()}: {msg.content[:50]}...")
-
-
     # Create a new context packet for this turn
     context_packet = state.get('context_packet')
     logger.info(
@@ -300,12 +291,6 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
     section_has_content = bool(section_state and section_state.content)
     
     # DEBUG: Log detailed section state info
-    logger.info(f"SUMMARY_DEBUG: Current section: {current_section.value}")
-    logger.info(f"SUMMARY_DEBUG: Section states keys: {list(state.get('section_states', {}).keys())}")
-    logger.info(f"SUMMARY_DEBUG: Short memory length: {len(state.get('short_memory', []))}")
-    if section_state:
-        logger.info(f"SUMMARY_DEBUG: Section {current_section.value} state exists with status: {section_state.status}")
-        logger.info(f"SUMMARY_DEBUG: Section {current_section.value} has content: {section_has_content}")
     
     # IMPORTANT: Do NOT automatically trigger summary instructions
     # According to the design document, the Agent should decide when to show summary
@@ -441,44 +426,65 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
     # --- End of Pre-LLM Context Injection ---
 
     try:
-        # Use structured output for reliable JSON parsing with token limits
-        structured_llm = llm.with_structured_output(ChatAgentOutput)
+        # DEBUG: Log LLM input
+        logger.info("=== LLM_INPUT_DEBUG ===")
+        logger.info(f"Current section: {state['current_section']}")
+        logger.info(f"Total messages count: {len(messages)}")
+        logger.info("Last 2 messages:")
+        for i, msg in enumerate(messages[-2:]):
+            msg_type = type(msg).__name__
+            content_preview = msg.content[:200] if hasattr(msg, 'content') else str(msg)[:200]
+            logger.info(f"  [{i}] {msg_type}: {content_preview}...")
+        
+        # Use LangChain structured output with function calling for better reliability
+        logger.info("🚀 Using LangChain structured output with function calling method")
+        
+        # Use function calling method which is more reliable than JSON parsing
+        structured_llm = llm.with_structured_output(ChatAgentOutput, method="function_calling")
+        
         # Add token limits to prevent infinite generation
         if hasattr(structured_llm, 'bind'):
             structured_llm = structured_llm.bind(
                 max_tokens=LLMConfig.DEFAULT_MAX_TOKENS,
                 top_p=LLMConfig.DEFAULT_TOP_P
             )
-        agent_output = await structured_llm.ainvoke(messages)
-
-        # DEBUG: Log the full agent output
-        logger.info("AGENT_OUTPUT_DEBUG: Full output from LLM:")
-        logger.info(f"AGENT_OUTPUT_DEBUG: - reply: {agent_output.reply[:100]}...")
-        logger.info(f"AGENT_OUTPUT_DEBUG: - router_directive: {agent_output.router_directive}")
-        logger.info(f"AGENT_OUTPUT_DEBUG: - score: {agent_output.score}")
-        logger.info(f"AGENT_OUTPUT_DEBUG: - has section_update: {bool(agent_output.section_update)}")
         
-        if agent_output.section_update:
+        logger.info("=== CALLING LLM WITH FUNCTION CALLING METHOD ===")
+        llm_output = await structured_llm.ainvoke(messages)
+
+        # DEBUG: Log the COMPLETE LLM output
+        logger.info("=== LLM_OUTPUT_DEBUG ===")
+        logger.info(f"Full reply: {llm_output.reply}")
+        logger.info(f"Router directive: {llm_output.router_directive}")
+        logger.info(f"Is requesting rating: {llm_output.is_requesting_rating}")
+        logger.info(f"Score: {llm_output.score}")
+        logger.info(f"Section update provided: {bool(llm_output.section_update)}")
+        if llm_output.section_update:
+            logger.info(f"Section update content keys: {list(llm_output.section_update.keys())}")
+        else:
+            logger.warning("❌ LLM did NOT provide section_update!")
+        
+        if llm_output.section_update:
             logger.warning(f"AGENT_OUTPUT_DEBUG: Section update generated for section {state['current_section'].value}")
             # Check if this looks like Interview content being saved to ICP
             if state['current_section'] == SectionID.ICP:
                 # Check for Interview-specific fields in ICP section update
-                if hasattr(agent_output.section_update, 'content'):
-                    content_str = str(agent_output.section_update.content)
+                if isinstance(llm_output.section_update, dict) and 'content' in llm_output.section_update:
+                    content_str = str(llm_output.section_update['content'])
                     if any(term in content_str for term in ["Specialty:", "Proud Achievement:", "Notable Partners:"]):
                         logger.error("ERROR! ICP section is getting Interview content!")
             
             # Additional check for Interview section
             if state['current_section'] == SectionID.INTERVIEW:
                 # Ensure Interview section saves actual content, not just score
-                if hasattr(agent_output.section_update, 'content'):
-                    content_str = str(agent_output.section_update.content)
+                if isinstance(llm_output.section_update, dict) and 'content' in llm_output.section_update:
+                    content_str = str(llm_output.section_update['content'])
                     # Check if it contains actual interview data
                     if not any(term in content_str for term in ["Name:", "Company:", "Industry:", "Specialty:"]):
                         logger.warning("WARNING! Interview section_update doesn't contain actual interview data!")
                         # Check if we're asking for rating without showing summary
-                        if "satisfied" in agent_output.reply.lower() and "summary" in agent_output.reply.lower():
-                            if "Here's what I know about you" not in agent_output.reply:
+                        if "satisfied" in llm_output.reply.lower() and "summary" in llm_output.reply.lower():
+                            if "Here's what I know about you" not in llm_output.reply:
                                 logger.error("ERROR! Asking for satisfaction rating without showing summary first!")
 
             # keep original behavior: do not inject the summary into reply here
@@ -486,6 +492,9 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
         # DEBUG: Check state consistency
         logger.info(f"AGENT_OUTPUT_DEBUG: Current section_states: {list(state.get('section_states', {}).keys())}")
 
+        # Create the final agent_output for the state, starting with LLM output
+        agent_output = llm_output
+        
         # Rely entirely on the LLM for score.
         # Add a safety rail: if the LLM provides a low score, force a 'stay' directive
         # to ensure the user can revise the section, overriding any other directive.
@@ -493,34 +502,53 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
             logger.info(f"Low score ({agent_output.score}) detected from LLM. Forcing 'stay' directive.")
             agent_output.router_directive = "stay"
 
-        # NEW: Explicitly set the is_awaiting_rating flag based on the structured output from the LLM.
-        # This is more robust than keyword matching.
+        # === SECTION_UPDATE ANALYSIS ===
+        if agent_output.is_requesting_rating and not agent_output.section_update:
+            logger.warning("=== SECTION_UPDATE_ANALYSIS ===")
+            logger.warning("LLM is requesting rating but didn't provide section_update")
+            
+            # Analyze the reply to understand why
+            reply_lower = agent_output.reply.lower()
+            has_summary_keywords = any(keyword in reply_lower for keyword in [
+                "summary", "gathered", "capture", "here's what", "information", 
+                "name:", "company:", "industry:", "specialty:"
+            ])
+            
+            logger.warning(f"Reply contains summary keywords: {has_summary_keywords}")
+            logger.warning(f"Reply length: {len(agent_output.reply)}")
+            logger.warning(f"Current section: {state['current_section']}")
+            
+            if has_summary_keywords:
+                logger.error("🚨 LLM generated summary but FAILED to provide section_update!")
+                logger.error("This indicates a prompt understanding issue or model limitation")
+            
+            logger.warning("Full LLM reply analysis:")
+            logger.warning(f"Reply content: {agent_output.reply}")
+            
+        # Set the is_awaiting_rating flag based on the structured output from the LLM
         if agent_output.is_requesting_rating:
-            state["is_awaiting_rating"] = True
-            logger.info("State updated: is_awaiting_rating set to True based on agent output flag.")
-
-            # If rating is requested, we MUST have a summary.
-            # This is a critical fallback to enforce prompt instructions.
+            # CRITICAL VALIDATION: If requesting rating, must have section_update
             if not agent_output.section_update:
-                reply_lower = agent_output.reply.lower()
-                summary_keywords = ["summary", "here's what i've gathered", "here's a summary"]
+                logger.error("CRITICAL ERROR: Model requested rating but provided no section_update!")
+                logger.error("This violates the core system prompt rule and will cause data loss.")
+                logger.error(f"Original agent_output: {agent_output}")
                 
-                if any(keyword in reply_lower for keyword in summary_keywords):
-                    logger.warning("CRITICAL FALLBACK: Agent requested rating but did not provide section_update. Generating from reply.")
-                    try:
-                        # Extract the summary part from the reply
-                        # A common pattern is that the summary is before "How satisfied are you"
-                        summary_text = agent_output.reply.split("How satisfied are you")[0].strip()
-                        
-                        tiptap_content_dict = await create_tiptap_content.ainvoke({"text": summary_text})
-                        
-                        agent_output.section_update = SectionContent(
-                            content=TiptapDocument.model_validate(tiptap_content_dict)
-                        )
-                        logger.info("CRITICAL FALLBACK: Successfully generated and attached section_update.")
-                    except Exception as e:
-                        logger.error(f"CRITICAL FALLBACK: Failed to generate section_update from reply: {e}")
-
+                # Force correction to prevent infinite loops
+                agent_output = ChatAgentOutput(
+                    reply=(
+                        "I notice I haven't properly collected all your information yet. "
+                        "Let me continue with the next question. "
+                        "What's your company name? Do you have a website?"
+                    ),
+                    router_directive="stay",
+                    is_requesting_rating=False,
+                    score=None,
+                    section_update=None
+                )
+                logger.info("FORCED CORRECTION: Created new corrected agent output to continue collecting information.")
+            
+            state["is_awaiting_rating"] = agent_output.is_requesting_rating
+            logger.info(f"State updated: is_awaiting_rating set to {agent_output.is_requesting_rating}")
         else:
             state["is_awaiting_rating"] = False
 
@@ -660,15 +688,17 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
         
         # DEBUG: Log what content is being saved to which section
         logger.warning(f"CONTENT_DEBUG: About to save content to section {section_id}")
-        if hasattr(agent_out.section_update, 'content') and hasattr(agent_out.section_update.content, 'content'):
-            # Try to extract first paragraph text for debugging
-            try:
-                first_para = agent_out.section_update.content.content[0]
-                if hasattr(first_para, 'content') and first_para.content:
-                    first_text = first_para.content[0].get('text', 'No text')
-                    logger.warning(f"CONTENT_DEBUG: First paragraph starts with: {first_text[:100]}...")
-            except Exception:
-                logger.warning("CONTENT_DEBUG: Could not extract content preview")
+        if isinstance(agent_out.section_update, dict) and 'content' in agent_out.section_update:
+            content_dict = agent_out.section_update['content']
+            if isinstance(content_dict, dict) and 'content' in content_dict:
+                # Try to extract first paragraph text for debugging
+                try:
+                    first_para = content_dict['content'][0]
+                    if isinstance(first_para, dict) and 'content' in first_para:
+                        first_text = first_para['content'][0].get('text', 'No text')
+                        logger.warning(f"CONTENT_DEBUG: First paragraph starts with: {first_text[:100]}...")
+                except Exception:
+                    logger.warning("CONTENT_DEBUG: Could not extract content preview")
         
         # Save to database using save_section tool
         logger.info("SAVE_SECTION_DEBUG: ✅ CALLING save_section with structured content")
@@ -688,7 +718,7 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
             "user_id": state["user_id"],
             "thread_id": state["thread_id"],
             "section_id": section_id,
-            "content": agent_out.section_update.content.model_dump(), # FINAL FIX: Pass the Tiptap doc directly
+            "content": agent_out.section_update['content'] if isinstance(agent_out.section_update, dict) else agent_out.section_update, # Pass the Tiptap content directly
             "score": agent_out.score,
             "status": computed_status,
         })
@@ -696,10 +726,17 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
         
         # Update local state
         logger.debug("DATABASE_DEBUG: Updating local section_states with new content")
+        # Parse the section_update content properly
+        if isinstance(agent_out.section_update, dict) and 'content' in agent_out.section_update:
+            tiptap_doc = TiptapDocument.model_validate(agent_out.section_update['content'])
+        else:
+            logger.error(f"SAVE_SECTION_DEBUG: Invalid section_update structure: {type(agent_out.section_update)}")
+            tiptap_doc = TiptapDocument(type="doc", content=[])
+        
         state["section_states"][section_id] = SectionState(
             section_id=SectionID(section_id),
             content=SectionContent(
-                content=agent_out.section_update.content,
+                content=tiptap_doc,
                 plain_text=None  # Will be filled later if needed
             ),
             score=agent_out.score,
@@ -729,7 +766,7 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
         if extraction_model:
             try:
                 # 1. Extract plain text from the Tiptap JSON content
-                plain_text = await extract_plain_text.ainvoke({"tiptap_json": agent_out.section_update.content.model_dump()})
+                plain_text = await extract_plain_text.ainvoke({"tiptap_json": agent_out.section_update['content'] if isinstance(agent_out.section_update, dict) else agent_out.section_update})
                 logger.info(f"EXTRACTION_DEBUG: Plain text for {current_section.value} extraction:\\n---\\n{plain_text}\\n---")
                 
                 # 2. Define a simple prompt for the LLM
