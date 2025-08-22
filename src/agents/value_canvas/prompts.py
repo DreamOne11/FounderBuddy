@@ -91,10 +91,12 @@ CRITICAL DATA EXTRACTION RULES:
 CRITICAL OUTPUT REQUIREMENTS:
 You MUST ALWAYS output your response in the following JSON format. Your entire response should be valid JSON:
 
+🚨 MANDATORY: If your reply contains a summary (like "Here's what I gathered:", bullet points, etc.), you MUST provide section_update!
+
 ```json
 {
   "reply": "Your conversational response to the user",
-  "router_directive": "stay|next|modify:section_id",
+  "router_directive": "stay|next|modify:section_id", 
   "score": null,
   "section_update": null
 }
@@ -104,7 +106,14 @@ Field rules:
 - "reply": REQUIRED. Your conversational response as a string
 - "router_directive": REQUIRED. Must be one of: "stay", "next", or "modify:section_id" (e.g., "modify:pain", "modify:payoffs", "modify:icp")
 - "score": Number 0-5 when asking for satisfaction rating, otherwise null
-- "section_update": Object with Tiptap JSON content when saving section, otherwise null
+- "section_update": CRITICAL - Object with Tiptap JSON content. REQUIRED when displaying summaries (asking for rating), null when collecting information
+
+🚨 CRITICAL RULE: When your reply contains a summary and asks for user rating, section_update is MANDATORY!
+
+🔄 MODIFICATION CYCLE: 
+- If user rates < 3: Ask what to change, collect updates, then show NEW summary with section_update again
+- If user rates ≥ 3: Proceed to next section
+- EVERY TIME you show a summary (even after modifications), include section_update!
 
 Example responses:
 
@@ -118,10 +127,10 @@ When collecting information:
 }
 ```
 
-When saving section content:
+When displaying summary and asking for rating (MUST include section_update):
 ```json
 {
-  "reply": "I've captured your information. How satisfied are you with this summary? (Rate 0-5)",
+  "reply": "Here's your summary:\n\n• Name: Alex\n• Company: TechCorp\n\nHow satisfied are you? (Rate 0-5)",
   "router_directive": "stay",
   "score": null,
   "section_update": {
@@ -130,7 +139,7 @@ When saving section content:
       "content": [
         {
           "type": "paragraph",
-          "content": [{"type": "text", "text": "Your content here"}]
+          "content": [{"type": "text", "text": "Name: Alex"}, {"type": "hardBreak"}, {"type": "text", "text": "Company: TechCorp"}]
         }
       ]
     }
@@ -145,6 +154,26 @@ When user rates and wants to continue:
   "router_directive": "next",
   "score": 4,
   "section_update": null
+}
+```
+
+When user rates low and you show updated summary (MUST include section_update again):
+```json
+{
+  "reply": "Here's the updated summary:\n\n• Name: Alex Chen (corrected)\n• Company: NewTech\n\nHow does this look now? (Rate 0-5)",
+  "router_directive": "stay", 
+  "score": null,
+  "section_update": {
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "paragraph", 
+          "content": [{"type": "text", "text": "Name: Alex Chen (corrected)"}, {"type": "hardBreak"}, {"type": "text", "text": "Company: NewTech"}]
+        }
+      ]
+    }
+  }
 }
 ```
 
@@ -249,10 +278,12 @@ CRITICAL DATA EXTRACTION RULES:
 CRITICAL OUTPUT REQUIREMENTS:
 You MUST ALWAYS output your response in the following JSON format. Your entire response should be valid JSON:
 
+🚨 MANDATORY: If your reply contains a summary (like "Here's what I gathered:", bullet points, etc.), you MUST provide section_update!
+
 ```json
 {
   "reply": "Your conversational response to the user",
-  "router_directive": "stay|next|modify:section_id",
+  "router_directive": "stay|next|modify:section_id", 
   "score": null,
   "section_update": null
 }
@@ -262,7 +293,14 @@ Field rules:
 - "reply": REQUIRED. Your conversational response as a string
 - "router_directive": REQUIRED. Must be one of: "stay", "next", or "modify:section_id" (e.g., "modify:pain", "modify:payoffs", "modify:icp")
 - "score": Number 0-5 when asking for satisfaction rating, otherwise null
-- "section_update": Object with Tiptap JSON content when saving section, otherwise null
+- "section_update": CRITICAL - Object with Tiptap JSON content. REQUIRED when displaying summaries (asking for rating), null when collecting information
+
+🚨 CRITICAL RULE: When your reply contains a summary and asks for user rating, section_update is MANDATORY!
+
+🔄 MODIFICATION CYCLE: 
+- If user rates < 3: Ask what to change, collect updates, then show NEW summary with section_update again
+- If user rates ≥ 3: Proceed to next section
+- EVERY TIME you show a summary (even after modifications), include section_update!
 
 Example responses:
 
@@ -276,10 +314,10 @@ When collecting information:
 }
 ```
 
-When saving section content:
+When displaying summary and asking for rating (MUST include section_update):
 ```json
 {
-  "reply": "I've captured your information. How satisfied are you with this summary? (Rate 0-5)",
+  "reply": "Here's your summary:\n\n• Name: Alex\n• Company: TechCorp\n\nHow satisfied are you? (Rate 0-5)",
   "router_directive": "stay",
   "score": null,
   "section_update": {
@@ -288,7 +326,7 @@ When saving section content:
       "content": [
         {
           "type": "paragraph",
-          "content": [{"type": "text", "text": "Your content here"}]
+          "content": [{"type": "text", "text": "Name: Alex"}, {"type": "hardBreak"}, {"type": "text", "text": "Company: TechCorp"}]
         }
       ]
     }
@@ -303,6 +341,26 @@ When user rates and wants to continue:
   "router_directive": "next",
   "score": 4,
   "section_update": null
+}
+```
+
+When user rates low and you show updated summary (MUST include section_update again):
+```json
+{
+  "reply": "Here's the updated summary:\n\n• Name: Alex Chen (corrected)\n• Company: NewTech\n\nHow does this look now? (Rate 0-5)",
+  "router_directive": "stay", 
+  "score": null,
+  "section_update": {
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "paragraph", 
+          "content": [{"type": "text", "text": "Name: Alex Chen (corrected)"}, {"type": "hardBreak"}, {"type": "text", "text": "Company: NewTech"}]
+        }
+      ]
+    }
+  }
 }
 ```
 

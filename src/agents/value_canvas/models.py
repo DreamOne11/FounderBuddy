@@ -61,7 +61,7 @@ TiptapInlineNode = TiptapTextNode | TiptapHardBreakNode
 class TiptapParagraphNode(BaseModel):
     """Tiptap paragraph node."""
     type: Literal["paragraph"] = "paragraph"
-    content: list[TiptapInlineNode] = Field(default_factory=list, max_length=10)  # Balanced limit
+    content: list[TiptapInlineNode] = Field(default_factory=list, max_length=50)  # Relaxed for interview section
     attrs: dict[str, Any] | None = None
 
 
@@ -77,7 +77,7 @@ class TiptapNode(BaseModel):
 class TiptapDocument(BaseModel):
     """Tiptap document structure."""
     type: Literal["doc"] = "doc"
-    content: list[TiptapParagraphNode] = Field(default_factory=list, max_length=15)  # Increased for better content
+    content: list[TiptapParagraphNode] = Field(default_factory=list, max_length=30)  # Relaxed for complex sections
 
 
 class SectionContent(BaseModel):
@@ -194,7 +194,7 @@ class ChatAgentOutput(BaseModel):
     )
     section_update: dict[str, Any] | None = Field(
         None,
-        description="Simple object containing the content for the current section. Use basic structure when provided.",
+        description="Content for the current section in Tiptap JSON format. REQUIRED when providing summary or asking for rating. Example: {'content': {'type': 'doc', 'content': [{'type': 'paragraph', 'content': [{'type': 'text', 'text': 'content here'}]}]}}",
     )
 
     @field_validator("router_directive")
@@ -212,22 +212,22 @@ class ChatAgentOutput(BaseModel):
 
     @field_validator("section_update")
     def validate_section_update(cls, v):
-        """Validate section_update to prevent infinite loops and empty content."""
-        if v and v.content:
-            # Limit document content array size  
-            if len(v.content.content) > 50:
-                raise ValueError("Section content too large - maximum 50 paragraph nodes allowed")
+        """Validate section_update with relaxed rules to allow LLM flexibility."""
+        if v is None:
+            return v
             
-            # Check each paragraph node
-            for para_node in v.content.content:
-                if para_node.content and len(para_node.content) > 100:
-                    raise ValueError("Paragraph content too large - maximum 100 inline nodes allowed")
-                
-                # Check for empty inline nodes
-                for inline_node in para_node.content:
-                    if hasattr(inline_node, 'type') and inline_node.type == 'text':
-                        if not hasattr(inline_node, 'text') or not inline_node.text.strip():
-                            raise ValueError("Empty text nodes not allowed")
+        # Basic structure check - just ensure it's a dict
+        if not isinstance(v, dict):
+            raise ValueError("Section update must be a dictionary")
+            
+        # Very minimal validation - just check for obviously broken structure
+        if 'content' in v:
+            content = v['content']
+            if isinstance(content, dict) and 'content' in content:
+                # Only check for extremely large content that could cause issues
+                if len(content.get('content', [])) > 200:  # Much more lenient limit
+                    raise ValueError("Section content extremely large - please reduce")
+        
         return v
 
 
