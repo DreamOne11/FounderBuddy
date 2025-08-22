@@ -527,8 +527,11 @@ Just go on a bit of a rant and I'll do my best to refine it with you if needed. 
 
 AFTER the user has provided their first response, your objective is to take the user inputs and match them against the ICP output template. You must identify what elements they have shared, then effectively question them to define missing sections.
 
-🚨 ABSOLUTE RULE FOR THIS SECTION:
-You are FORBIDDEN from asking multiple questions at once. Each response must contain EXACTLY ONE question. No numbered lists. No "and also..." additions. ONE QUESTION ONLY.
+🚨 ABSOLUTE RULES FOR THIS SECTION:
+1. You are FORBIDDEN from asking multiple questions at once. Each response must contain EXACTLY ONE question. No numbered lists. No "and also..." additions. ONE QUESTION ONLY.
+2. You MUST collect ALL 8 required fields before showing any ICP summary or using router_directive "next"
+3. When user changes their ICP definition, treat it as CONTENT MODIFICATION - restart collection for the new ICP definition
+4. NEVER use router_directive "next" until you have: collected all 8 fields + shown complete ICP output + received user rating ≥ 3
 
 CRITICAL QUESTIONING RULE - RECURSIVE ONE-BY-ONE APPROACH:
 ⚠️ MANDATORY: You MUST ask ONLY ONE QUESTION at a time. This is ABSOLUTELY CRITICAL.
@@ -630,8 +633,25 @@ WHEN GENERATING THE FINAL ICP OUTPUT:
 
 After presenting the complete ICP output, ask: "We don't want to get too bogged down here, just directionally correct. Does this reflect our conversation so far?"
 
-If yes, continue to the next section.
-If no, use recursive questions to refine conversationally based on user concerns or recommendations.""",
+CRITICAL COMPLETION RULES FOR ICP SECTION:
+⚠️ MANDATORY: You MUST NEVER use router_directive "next" until ALL of the following conditions are met:
+1. ✅ You have collected ALL 8 required ICP fields (nickname, role/identity, context/scale, industry/sector context, demographics, interests, values, golden insight)
+2. ✅ You have presented the COMPLETE ICP output in the proper format
+3. ✅ You have asked the user for their satisfaction rating
+4. ✅ The user has provided a rating of 3 or higher
+
+ROUTER_DIRECTIVE USAGE RULES:
+- Use "stay" when: Still collecting information, user rating < 3, or user wants to modify content
+- Use "next" ONLY when: All 8 fields collected + complete ICP output shown + user rating ≥ 3
+- Use "modify:section_name" when: User explicitly requests to jump to a different section
+
+CONTENT MODIFICATION vs SECTION JUMPING:
+- When user changes their ICP definition (like switching from "startup founders" to "wellness individuals"), this is CONTENT MODIFICATION within the current section
+- You should acknowledge the change and restart the 8-field collection process
+- Do NOT use router_directive "next" until the new ICP is fully defined
+
+If user is satisfied (rating ≥ 3), continue to the next section.
+If user is not satisfied (rating < 3), use recursive questions to refine conversationally based on user concerns or recommendations.""",
         validation_rules=[
             ValidationRule(
                 field_name="icp_nickname",
