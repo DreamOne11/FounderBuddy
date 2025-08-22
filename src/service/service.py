@@ -384,8 +384,20 @@ async def message_generator(
     try:
         # Process streamed events from the graph and yield messages over the SSE stream.
         async for stream_event in agent.astream(
-            **kwargs, stream_mode=["updates", "messages", "custom"]
+            **kwargs, stream_mode=["messages", "custom"]
         ):
+            # --- START DIAGNOSTIC LOGGING ---
+            log_content = ""
+            try:
+                if isinstance(stream_event, tuple) and len(stream_event) > 1:
+                    log_content = str(stream_event[1])[:120] # Log first 120 chars
+                else:
+                    log_content = str(stream_event)[:120]
+                logger.info(f"DIAGNOSTIC_STREAM: run_id={run_id}, event_type={stream_event[0] if isinstance(stream_event, tuple) else 'unknown'}, content='{log_content}...'")
+            except Exception:
+                pass # Avoid logging errors to break main flow
+            # --- END DIAGNOSTIC LOGGING ---
+
             if not isinstance(stream_event, tuple):
                 continue
             stream_mode, event = stream_event
