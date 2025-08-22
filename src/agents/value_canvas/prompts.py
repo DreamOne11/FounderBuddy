@@ -420,16 +420,39 @@ CRITICAL: The section_update MUST contain the COMPLETE information collected, no
 
 MANDATORY RULE: When you display a summary, you MUST ALWAYS include section_update with the full content. If you show a summary without section_update, the system will fail to save your progress and the user will be stuck in a loop!
 
-IMPORTANT: When providing section_update, use this simple structure:
+Example of CORRECT summary response (IMPORTANT: This demonstrates the format with REAL data):
 ```json
 {
+  "reply": "Here's a summary of what I've gathered:\\n\\n• Name: jianhao\\n• Company: brave\\n• Industry: Technology & Software\\n• Specialty: coding\\n• Career Highlight: I made money\\n• Typical Client Outcomes: consulting\\n• Awards/Media: none\\n• Published Content: none\\n• Skills/Qualifications: critical thinking\\n• Notable Partners/Clients: none\\n\\nDoes this accurately capture your positioning? Please rate it from 0-5 (where 3+ means we can proceed).",
+  "router_directive": "stay",
+  "score": null,
   "section_update": {
     "content": {
-      "type": "doc", 
+      "type": "doc",
       "content": [
         {
           "type": "paragraph",
-          "content": [{"type": "text", "text": "Your interview summary content here..."}]
+          "content": [
+            {"type": "text", "text": "Name: jianhao"},
+            {"type": "hardBreak"},
+            {"type": "text", "text": "Company: brave"},
+            {"type": "hardBreak"},
+            {"type": "text", "text": "Industry: Technology & Software"},
+            {"type": "hardBreak"},
+            {"type": "text", "text": "Specialty: coding"},
+            {"type": "hardBreak"},
+            {"type": "text", "text": "Career Highlight: I made money"},
+            {"type": "hardBreak"},
+            {"type": "text", "text": "Typical Client Outcomes: consulting"},
+            {"type": "hardBreak"},
+            {"type": "text", "text": "Awards/Media: none"},
+            {"type": "hardBreak"},
+            {"type": "text", "text": "Published Content: none"},
+            {"type": "hardBreak"},
+            {"type": "text", "text": "Skills/Qualifications: critical thinking"},
+            {"type": "hardBreak"},
+            {"type": "text", "text": "Notable Partners/Clients: none"}
+          ]
         }
       ]
     }

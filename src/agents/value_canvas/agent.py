@@ -134,6 +134,10 @@ async def initialize_node(state: ValueCanvasState, config: RunnableConfig) -> Va
     if "messages" not in state:
         state["messages"] = []
     
+    # CRITICAL FIX: Clear previous agent_output to prevent stale data from being sent to frontend
+    if "agent_output" in state:
+        state["agent_output"] = None
+
     logger.info(f"Initialize complete - User: {state['user_id']}, Thread: {state['thread_id']}")
     return state
 
@@ -308,7 +312,7 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
     logger.info(f"SUMMARY_DEBUG: Section states keys: {list(state.get('section_states', {}).keys())}")
     logger.info(f"SUMMARY_DEBUG: Short memory length: {len(state.get('short_memory', []))}")
     if section_state:
-        logger.info(f"SUMMARY_DEBUG: Section {current_section.value} state exists with status: {section_state.get('status')}")
+        logger.info(f"SUMMARY_DEBUG: Section {current_section.value} state exists with status: {section_state.status}")
         logger.info(f"SUMMARY_DEBUG: Section {current_section.value} has content: {section_has_content}")
     
     # IMPORTANT: Do NOT automatically trigger summary instructions
@@ -502,6 +506,29 @@ async def chat_agent_node(state: ValueCanvasState, config: RunnableConfig) -> Va
         if agent_output.is_requesting_rating:
             state["is_awaiting_rating"] = True
             logger.info("State updated: is_awaiting_rating set to True based on agent output flag.")
+
+            # If rating is requested, we MUST have a summary.
+            # This is a critical fallback to enforce prompt instructions.
+            if not agent_output.section_update:
+                reply_lower = agent_output.reply.lower()
+                summary_keywords = ["summary", "here's what i've gathered", "here's a summary"]
+                
+                if any(keyword in reply_lower for keyword in summary_keywords):
+                    logger.warning("CRITICAL FALLBACK: Agent requested rating but did not provide section_update. Generating from reply.")
+                    try:
+                        # Extract the summary part from the reply
+                        # A common pattern is that the summary is before "How satisfied are you"
+                        summary_text = agent_output.reply.split("How satisfied are you")[0].strip()
+                        
+                        tiptap_content_dict = await create_tiptap_content.ainvoke({"text": summary_text})
+                        
+                        agent_output.section_update = SectionContent(
+                            content=TiptapDocument.model_validate(tiptap_content_dict)
+                        )
+                        logger.info("CRITICAL FALLBACK: Successfully generated and attached section_update.")
+                    except Exception as e:
+                        logger.error(f"CRITICAL FALLBACK: Failed to generate section_update from reply: {e}")
+
         else:
             state["is_awaiting_rating"] = False
 
@@ -854,6 +881,10 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
     # [DIAGNOSTIC] Log state after update
     logger.info(f"DATABASE_DEBUG: section_states AFTER update: {state.get('section_states', {})}")
     logger.info("=== DATABASE_DEBUG: memory_updater_node() EXIT ===")
+
+    # CRITICAL FIX: Clear agent_output after processing to prevent duplicates on frontend
+    if "agent_output" in state:
+        state["agent_output"] = None
 
     return state
 
