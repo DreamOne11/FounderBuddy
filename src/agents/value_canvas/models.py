@@ -118,15 +118,15 @@ class ValueCanvasData(BaseModel):
     specialized_skills: str | None = None
     notable_partners: str | None = None
 
-    # ICP data
-    icp_standardized_role: str | None = None
-    icp_demographics: str | None = None
-    icp_geography: str | None = None
-    icp_nickname: str | None = None
-    icp_affinity: str | None = None
-    icp_affordability: str | None = None
-    icp_impact: str | None = None
-    icp_access: str | None = None
+    # ICP data - corresponds to the 8 sections in ICP Template
+    icp_nickname: str | None = None  # ICP Nick Name
+    icp_role_identity: str | None = None  # ROLE/IDENTITY section content
+    icp_context_scale: str | None = None  # CONTEXT/SCALE section content
+    icp_industry_sector_context: str | None = None  # INDUSTRY/SECTOR CONTEXT section content (includes both industry and insight)
+    icp_demographics: str | None = None  # DEMOGRAPHICS section content
+    icp_interests: str | None = None  # INTERESTS section content (all 3 interests)
+    icp_values: str | None = None  # VALUES section content (both lifestyle indicators)
+    icp_golden_insight: str | None = None  # GOLDEN INSIGHT section content
 
     # Pain points (3)
     pain1_symptom: str | None = None
