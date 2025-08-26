@@ -45,11 +45,15 @@ class DentAppClient:
         retries: int = 3
     ) -> dict[str, Any]:
         """Make HTTP request with retry logic."""
-        logger.info(f"=== DENTAPP_API_REQUEST: {method} {self.base_url}{url} ===")
+        logger.info("=== DENTAPP_API_REQUEST START ===")
+        logger.info(f"  Method: {method}")
+        logger.info(f"  Endpoint: {url}")
+        logger.info(f"  Full URL: {self.base_url}{url}")
         if json:
-            logger.info(f"DENTAPP_API_REQUEST: Request payload keys: {list(json.keys())}")
+            logger.info(f"  Payload keys: {list(json.keys())}")
         if params:
-            logger.info(f"DENTAPP_API_REQUEST: Request params: {params}")
+            logger.info(f"  Params: {params}")
+        logger.info("=== DENTAPP_API_REQUEST END ===")
             
         for attempt in range(retries):
             try:
