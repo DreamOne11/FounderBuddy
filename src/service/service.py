@@ -28,7 +28,9 @@ from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info
 from agents.value_canvas.agent import initialize_value_canvas_state
 from agents.mission_pitch.agent import initialize_mission_pitch_state
 from agents.social_pitch.agent import initialize_social_pitch_state
-from agents.value_canvas.prompts import SECTION_TEMPLATES
+from agents.value_canvas.prompts import SECTION_TEMPLATES as VALUE_CANVAS_TEMPLATES
+from agents.mission_pitch.prompts import SECTION_TEMPLATES as MISSION_PITCH_TEMPLATES
+from agents.social_pitch.prompts import SECTION_TEMPLATES as SOCIAL_PITCH_TEMPLATES
 from core import settings
 from integrations.dentapp.dentapp_utils import SECTION_ID_MAPPING
 from memory import initialize_database, initialize_store
@@ -345,7 +347,15 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> Invoke
             current_section_enum = state.values["current_section"]
             current_section_id = current_section_enum.value  # Use the string value
             section_state = state.values.get("section_states", {}).get(current_section_id)
-            section_template = SECTION_TEMPLATES.get(current_section_id)
+            # Choose the right section templates based on agent_id
+            if agent_id == "mission-pitch":
+                section_templates = MISSION_PITCH_TEMPLATES
+            elif agent_id == "social-pitch":
+                section_templates = SOCIAL_PITCH_TEMPLATES
+            else:  # default to value_canvas
+                section_templates = VALUE_CANVAS_TEMPLATES
+            
+            section_template = section_templates.get(current_section_id)
 
             section_data = {
                 "database_id": SECTION_ID_MAPPING.get(current_section_id),
@@ -619,7 +629,16 @@ async def message_generator(
                 current_section_enum = state.values["current_section"]
                 current_section_id = current_section_enum.value  # Use the string value
                 section_state = state.values.get("section_states", {}).get(current_section_id)
-                section_template = SECTION_TEMPLATES.get(current_section_id)
+                
+                # Choose the right section templates based on agent_id
+                if agent_id == "mission-pitch":
+                    section_templates = MISSION_PITCH_TEMPLATES
+                elif agent_id == "social_pitch":
+                    section_templates = SOCIAL_PITCH_TEMPLATES
+                else:  # default to value_canvas
+                    section_templates = VALUE_CANVAS_TEMPLATES
+                
+                section_template = section_templates.get(current_section_id)
 
                 section_data = {
                     "database_id": SECTION_ID_MAPPING.get(current_section_id),

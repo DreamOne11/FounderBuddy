@@ -198,32 +198,44 @@ async def save_section(
             
             logger.info(f"TOOLS_API_CALL: Mapped section_id '{section_id}' -> {section_id_int}")
             
-            # Get DentApp client and save data
-            client = get_dentapp_client()
-            response = await client.save_section_data(
-                user_id=1,  # MVP: always use user_id=1
-                section_id=section_id_int,
-                content=content,
-                thread_id=thread_id,
-                score=score,
-                status=status,
-            )
+            # Get DentApp client and save data (matching value canvas pattern)
+            from integrations.dentapp.dentapp_utils import tiptap_to_plain_text
             
-            log_api_operation("save_section", "success", {
-                "section_id": section_id,
-                "section_id_int": section_id_int,
-                "user_id": user_id,
-                "thread_id": thread_id,
-                "score": score,
-                "status": status,
-            })
+            # Convert tiptap content to plain text for database
+            plain_text = tiptap_to_plain_text(content) if content else ""
             
-            logger.info(f"TOOLS_API_CALL: ✅ Successfully saved section {section_id}")
-            return {
-                "success": True,
-                "section_id": section_id,
-                "timestamp": datetime.now().isoformat(),
-            }
+            dentapp_client = get_dentapp_client()
+            async with dentapp_client as client:
+                response = await client.save_section_state(
+                    agent_id=MISSION_PITCH_AGENT_ID,
+                    section_id=section_id_int,
+                    user_id=user_id,  # Use the actual user_id parameter
+                    content=plain_text,
+                    metadata={}  # Empty metadata for MVP
+                )
+            
+            logger.info(f"TOOLS_API_CALL: save_section_state returned: {response is not None}")
+            
+            if response:
+                logger.info(f"TOOLS_API_CALL: ✅ Successfully saved section {section_id}")
+                
+                log_api_operation("save_section", "success", {
+                    "section_id": section_id,
+                    "section_id_int": section_id_int,
+                    "user_id": user_id,
+                    "thread_id": thread_id,
+                    "score": score,
+                    "status": status,
+                })
+                
+                return {
+                    "success": True,
+                    "section_id": section_id,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            else:
+                logger.error(f"TOOLS_API_CALL: ❌ Failed to save section {section_id}")
+                raise Exception("Failed to save section to database")
             
         except Exception as e:
             logger.error(f"TOOLS_API_CALL: ❌ DentApp API error in save_section: {e}")
@@ -282,7 +294,7 @@ async def get_all_sections_status(
                     response = await client.get_section_state(
                         agent_id=MISSION_PITCH_AGENT_ID,
                         section_id=section_id_int,
-                        user_id=1,  # MVP: always use user_id=1
+                        user_id=user_id,  # Use the actual user_id parameter
                     )
                     
                     if response and response.get("content"):

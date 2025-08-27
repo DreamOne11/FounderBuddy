@@ -227,6 +227,36 @@ async def chat_agent_node(state: MissionPitchState, config: RunnableConfig) -> M
         system_content = state["context_packet"].system_prompt
         messages.append(SystemMessage(content=system_content))
         logger.debug("Chat agent node - Added system prompt from context packet")
+
+        # Add progress information based on section_states
+        section_names = {
+            "hidden_theme": "Hidden Theme",
+            "personal_origin": "Personal Origin", 
+            "business_origin": "Business Origin",
+            "mission": "Mission",
+            "three_year_vision": "3-Year Vision",
+            "big_vision": "Big Vision",
+            "implementation": "Implementation"
+        }
+        
+        completed_sections = []
+        for section_id, section_state in state.get("section_states", {}).items():
+            if section_state.status == SectionStatus.DONE:
+                section_name = section_names.get(section_id, section_id)
+                completed_sections.append(section_name)
+        
+        current_section_name = section_names.get(state["current_section"].value, state["current_section"].value)
+        
+        progress_info = (
+            f"\n\nSYSTEM STATUS:\n"
+            f"- Total sections: 7\n"
+            f"- Completed: {len(completed_sections)} sections"
+        )
+        if completed_sections:
+            progress_info += f" ({', '.join(completed_sections)})"
+        progress_info += f"\n- Currently working on: {current_section_name}\n"
+        
+        messages.append(SystemMessage(content=progress_info))
     
     # Add conversation history (short memory)
     if state.get("short_memory"):
@@ -307,20 +337,19 @@ async def memory_updater_node(state: MissionPitchState, config: RunnableConfig) 
     logger.info(f"Memory updater node - Processing update for section: {section_id}")
     
     try:
-        # Determine section status based on score
-        score = agent_out.score
-        computed_status = SectionStatus.PENDING
-        
-        if score is not None:
-            if score >= 3:
-                computed_status = SectionStatus.DONE
+        # Determine section status based on router directive and score (matching value canvas pattern)
+        def _status_from_output(score, directive):
+            """Return status to align with get_next_unfinished_section() logic."""
+            if directive == RouterDirective.NEXT:
+                logger.info(f"Memory updater node - Section marked as DONE (router directive: {directive})")
+                return SectionStatus.DONE
+            if score is not None and score >= 3:
                 logger.info(f"Memory updater node - Section marked as DONE (score: {score})")
-            else:
-                computed_status = SectionStatus.IN_PROGRESS
-                logger.info(f"Memory updater node - Section marked as IN_PROGRESS (score: {score})")
-        elif agent_out.section_update:
-            computed_status = SectionStatus.IN_PROGRESS
-            logger.info("Memory updater node - Section marked as IN_PROGRESS (has content)")
+                return SectionStatus.DONE
+            logger.info(f"Memory updater node - Section marked as IN_PROGRESS (score: {score}, directive: {directive})")
+            return SectionStatus.IN_PROGRESS
+        
+        computed_status = _status_from_output(agent_out.score, agent_out.router_directive)
         
         # Save to database
         await save_section.ainvoke({
@@ -328,7 +357,7 @@ async def memory_updater_node(state: MissionPitchState, config: RunnableConfig) 
             "thread_id": state["thread_id"],
             "section_id": section_id,
             "content": agent_out.section_update['content'],
-            "score": score,
+            "score": agent_out.score,
             "status": computed_status.value,
         })
         
@@ -339,7 +368,7 @@ async def memory_updater_node(state: MissionPitchState, config: RunnableConfig) 
         state["section_states"][section_id] = SectionState(
             section_id=MissionSectionID(section_id),
             content=SectionContent(content=tiptap_doc),
-            score=score,
+            score=agent_out.score,
             status=computed_status,
         )
         

@@ -772,10 +772,22 @@ def get_next_section(current_section: MissionSectionID) -> MissionSectionID | No
 
 
 def get_next_unfinished_section(section_states: dict[str, Any]) -> MissionSectionID | None:
-    """Find the next section that hasn't been completed."""
+    """Find the next section that should be worked on based on sequential progression."""
     order = get_section_order()
-    for section in order:
+    
+    # Find the last completed section
+    last_completed_index = -1
+    for i, section in enumerate(order):
         state = section_states.get(section.value)
-        if not state or state.status != SectionStatus.DONE:
-            return section
+        if state and state.status == SectionStatus.DONE:
+            last_completed_index = i
+        else:
+            # Stop at first non-completed section - don't skip ahead
+            break
+    
+    # Return the next section after the last completed one
+    next_index = last_completed_index + 1
+    if next_index < len(order):
+        return order[next_index]
+    
     return None
