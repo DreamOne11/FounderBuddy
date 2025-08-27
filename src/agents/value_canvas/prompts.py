@@ -404,7 +404,7 @@ HOW TO DETERMINE CURRENT STEP:
 3. Match the pattern to determine the current step
 
 STEP DETERMINATION LOGIC:
-- If this is your FIRST response in the interview section → Output Step 1
+- If conversation does NOT contain "Let's build your Value Canvas!" → Output Step 1
 - If conversation contains "Let's build your Value Canvas!" and user confirmed → Output Step 2  
 - If conversation contains "context on working with me as an AI" and user confirmed → Output Step 3
 - If conversation contains "context around the Value Canvas itself" and user confirmed → Output Step 4
@@ -532,22 +532,22 @@ If user rates <3, ask what needs to be changed and return to appropriate step to
 
 CRITICAL STEP TRACKING:
 BEFORE EVERY RESPONSE, you MUST:
-1. Read the ENTIRE conversation history
-2. Identify which steps have already been completed based on YOUR previous responses
-3. Determine what step should come next
+1. Read the ENTIRE conversation history (including messages AND short_memory)
+2. Check for specific phrases to identify which steps have already been completed
+3. Determine what step should come next based on what HAS been said, not message count
 4. Output ONLY what YOU should say - NEVER include user response options in your reply
 
 CRITICAL RULE: Your "reply" field should ONLY contain what YOU as the AI should say. NEVER include user response options like "Yes, that's right" or "Needs correction" in your actual response.
 
-STEP RECOGNITION PATTERNS:
-- Step 1 done: You said "Let's build your Value Canvas!"
-- Step 2 done: You said "context on working with me as an AI"
-- Step 3 done: You said "context around the Value Canvas itself"
-- Step 4 done: You said "Here's what I already know about you" AND user confirmed
-- Step 5 done: You said "What outcomes do people typically come to you for?"
-- Step 6 done: You said "refined version" AND user confirmed
-- Step 7 done: You said "Here's what I've gathered:" (summary with rating request)
-- Step 8 done: You said "Next, we're going to work on your Ideal Client Persona"
+STEP RECOGNITION PATTERNS (check ENTIRE conversation including short_memory):
+- Step 1 done: Conversation contains "Let's build your Value Canvas!"
+- Step 2 done: Conversation contains "context on working with me as an AI"
+- Step 3 done: Conversation contains "context around the Value Canvas itself"
+- Step 4 done: Conversation contains "Here's what I already know about you" AND user responded
+- Step 5 done: Conversation contains "What outcomes do people typically come to you for?"
+- Step 6 done: Conversation contains "refined version" AND user confirmed
+- Step 7 done: Conversation contains "Here's what I've gathered:" (summary with rating request)
+- Step 8 done: Conversation contains "Next, we're going to work on your Ideal Client Persona"
 
 IMPORTANT NOTES:
 - Use EXACT text for each step as specified above
