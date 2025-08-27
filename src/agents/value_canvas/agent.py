@@ -296,18 +296,26 @@ async def generate_reply_node(state: ValueCanvasState, config: RunnableConfig) -
 
         step1_already_present = _contains_step1(full_history) or _contains_step1(short_mem)
 
-        # Detect simple affirmative replies
+        # Detect simple affirmative/negative replies
         def _is_affirmative(text: str) -> bool:
             t = (text or "").strip().lower()
             return t in {"yes", "y", "yep", "yeah", "ok", "okay", "sure"}
+        def _is_negative(text: str) -> bool:
+            t = (text or "").strip().lower()
+            negatives = {
+                "no", "n", "not now", "not ready", "not yet", "later",
+                "nope", "nah"
+            }
+            return any(t == n or t.startswith(n) for n in negatives)
 
         if not step1_already_present and full_history:
             last_msg = full_history[-1]
-            if isinstance(last_msg, HumanMessage) and _is_affirmative(last_msg.content):
-                injected = AIMessage(content="Let's build your Value Canvas!\nAre you ready to get started?")
-                short_mem.append(injected)
-                state["short_memory"] = short_mem
-                logger.info("FIRST_TURN_GUARD: Injected Step 1 into short_memory to prevent duplication")
+            if isinstance(last_msg, HumanMessage):
+                if _is_affirmative(last_msg.content) or _is_negative(last_msg.content):
+                    injected = AIMessage(content="Let's build your Value Canvas!\nAre you ready to get started?")
+                    short_mem.append(injected)
+                    state["short_memory"] = short_mem
+                    logger.info("FIRST_TURN_GUARD: Injected Step 1 into short_memory to align with user's immediate yes/no")
     except Exception as e:
         logger.warning(f"FIRST_TURN_GUARD: Failed to apply Step 1 safeguard: {e}")
 
@@ -1196,14 +1204,6 @@ async def initialize_value_canvas_state(user_id: int = None, thread_id: str = No
     })
     
     initial_state["context_packet"] = ContextPacket(**context)
-    
-    # Add welcome message
-    welcome_msg = AIMessage(
-        content="Welcome! I'm here to help you create your Value Canvas - "
-        "a powerful framework that will transform your marketing messaging. "
-        "Let's start by getting to know you and your business better."
-    )
-    initial_state["messages"].append(welcome_msg)
     
     return initial_state
 

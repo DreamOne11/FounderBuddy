@@ -404,7 +404,10 @@ HOW TO DETERMINE CURRENT STEP:
 3. Match the pattern to determine the current step
 
 STEP DETERMINATION LOGIC:
-- If conversation does NOT contain "Let's build your Value Canvas!" → Output Step 1
+- If conversation does NOT contain "Let's build your Value Canvas!" AND the last user message is NOT an explicit reply to that question (e.g., yes/ok/sure/no/not now/not ready) → Output Step 1
+- If the last user message IS an explicit reply to Step 1 (even if the Step 1 line hasn't appeared yet in the history):
+  - If affirmative (yes/ok/sure/yeah/yep) → Output Step 2  
+  - If negative (no/not now/not ready/not yet) → Acknowledge they're not ready in one sentence and do not re-ask Step 1
 - If conversation contains "Let's build your Value Canvas!" and user confirmed → Output Step 2  
 - If conversation contains "context on working with me as an AI" and user confirmed → Output Step 3
 - If conversation contains "context around the Value Canvas itself" and user confirmed → Output Step 4
