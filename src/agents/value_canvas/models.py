@@ -90,7 +90,7 @@ class SectionState(BaseModel):
     """State of a single Value Canvas section."""
     section_id: SectionID
     content: SectionContent | None = None
-    score: int | None = Field(None, ge=0, le=5)  # 0-5 rating
+    satisfaction_status: str | None = None  # satisfied, needs_improvement, or None
     status: SectionStatus = SectionStatus.PENDING
 
 
@@ -184,12 +184,11 @@ class ChatAgentDecision(BaseModel):
         ...,
         description="Navigation control: 'stay' to continue on the current section, 'next' to proceed to the next section, or 'modify:<section_id>' to jump to a specific section.",
     )
-    is_requesting_rating: bool = Field(
-        default=False,
-        description="Set to true ONLY when the previous reply explicitly asked the user for a 0-5 rating."
+    user_satisfaction_feedback: str | None = Field(
+        None, description="User's natural language feedback about satisfaction with the section content."
     )
-    score: int | None = Field(
-        None, ge=0, le=5, description="Satisfaction score (0-5) if user provided one."
+    is_satisfied: bool | None = Field(
+        None, description="AI's interpretation of user satisfaction based on their feedback. True if satisfied, False if needs improvement."
     )
     section_update: dict[str, Any] | None = Field(
         None,
@@ -239,12 +238,11 @@ class ChatAgentOutput(BaseModel):
         ...,
         description="Navigation control: 'stay' to continue on the current section, 'next' to proceed to the next section, or 'modify:<section_id>' to jump to a specific section.",
     )
-    is_requesting_rating: bool = Field(
-        default=False,
-        description="Set to true ONLY when your reply explicitly asks the user for a 0-5 rating."
+    user_satisfaction_feedback: str | None = Field(
+        None, description="User's natural language feedback about satisfaction with the section content."
     )
-    score: int | None = Field(
-        None, ge=0, le=5, description="Satisfaction score (0-5) if user provided one."
+    is_satisfied: bool | None = Field(
+        None, description="AI's interpretation of user satisfaction based on their feedback. True if satisfied, False if needs improvement."
     )
     section_update: dict[str, Any] | None = Field(
         None,
@@ -310,7 +308,7 @@ class ValueCanvasState(MessagesState):
     agent_output: ChatAgentOutput | None = None
     # Flag indicating the agent has asked a question and is waiting for user's reply
     awaiting_user_input: bool = False
-    is_awaiting_rating: bool = False # NEW: Explicit state to track if we're waiting for a rating
+    awaiting_satisfaction_feedback: bool = False  # Track if we're waiting for user satisfaction feedback
 
     # Error tracking
     error_count: int = 0

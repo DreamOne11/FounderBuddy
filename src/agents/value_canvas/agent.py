@@ -130,8 +130,8 @@ async def initialize_node(state: ValueCanvasState, config: RunnableConfig) -> Va
         state["error_count"] = 0
     if "last_error" not in state:
         state["last_error"] = None
-    if "is_awaiting_rating" not in state:
-        state["is_awaiting_rating"] = False
+    if "awaiting_satisfaction_feedback" not in state:
+        state["awaiting_satisfaction_feedback"] = False
     if "messages" not in state:
         state["messages"] = []
     
@@ -330,7 +330,8 @@ async def generate_reply_node(state: ValueCanvasState, config: RunnableConfig) -
     section_has_content = bool(section_state and section_state.content)
     
     # Only add summary reminder if section already has saved content that needs rating
-    if section_has_content and not awaiting:
+    # EXCEPTION: Don't enter review mode for Interview section - let it complete its 8-step flow
+    if section_has_content and not awaiting and current_section != SectionID.INTERVIEW:
         # This is for sections that were previously saved but need rating
         summary_reminder = (
             "The user has previously worked on this section. "
@@ -345,7 +346,7 @@ async def generate_reply_node(state: ValueCanvasState, config: RunnableConfig) -
         current_section_id = state["current_section"].value
         section_state = state.get("section_states", {}).get(current_section_id)
 
-        if section_state and section_state.content:
+        if section_state and section_state.content and current_section != SectionID.INTERVIEW:
             logger.info(f"MEMORY_DEBUG: Found existing content for {current_section_id}. Prioritizing it.")
             try:
                 # Use the plain_text version if available, otherwise extract it.
@@ -424,37 +425,6 @@ async def generate_reply_node(state: ValueCanvasState, config: RunnableConfig) -
             messages.append(_last_msg)
             last_human_msg = _last_msg
 
-    # --- Pre-LLM Context Injection ---
-    # To prevent the LLM from hallucinating the next section's name, we calculate it
-    # programmatically and provide it as a direct instruction.
-    try:
-        from .prompts import SECTION_TEMPLATES, get_next_unfinished_section
-        
-        temp_states = state.get("section_states", {}).copy()
-        current_section_id = state["current_section"].value
-        
-        if current_section_id not in temp_states:
-            temp_states[current_section_id] = SectionState(
-                section_id=SectionID(current_section_id),
-                status=SectionStatus.DONE
-            )
-        else:
-            # Assume the current section will be completed in this turn for prediction
-            temp_states[current_section_id].status = SectionStatus.DONE
-
-        next_section = get_next_unfinished_section(temp_states)
-        
-        if next_section:
-            next_section_name = SECTION_TEMPLATES.get(next_section.value).name
-            instructional_prompt = (
-                f"SYSTEM INSTRUCTION: The next section is '{next_section_name}'. "
-                "If the user confirms to proceed, you MUST use this exact name in your transition message."
-            )
-            messages.append(SystemMessage(content=instructional_prompt))
-            logger.info(f"Injected next section name into context: '{next_section_name}'")
-    except Exception as e:
-        logger.warning(f"Could not determine next section for prompt injection: {e}")
-    # --- End of Pre-LLM Context Injection ---
 
     # Override JSON output requirement with a simple instruction
     messages.append(SystemMessage(
@@ -549,8 +519,8 @@ async def generate_decision_node(state: ValueCanvasState, config: RunnableConfig
         # Set a default decision and continue
         default_decision = ChatAgentDecision(
             router_directive="stay",
-            is_requesting_rating=False,
-            score=None,
+            user_satisfaction_feedback=None,
+            is_satisfied=None,
             section_update=None
         )
         # Create agent_output with empty reply
@@ -626,8 +596,8 @@ async def generate_decision_node(state: ValueCanvasState, config: RunnableConfig
         # DEBUG: Log the decision output
         logger.info("=== DECISION_OUTPUT_DEBUG ===")
         logger.info(f"Router directive: {decision.router_directive}")
-        logger.info(f"Is requesting rating: {decision.is_requesting_rating}")
-        logger.info(f"Score: {decision.score}")
+        logger.info(f"User satisfaction feedback: {decision.user_satisfaction_feedback}")
+        logger.info(f"Is satisfied: {decision.is_satisfied}")
         logger.info(f"Section update provided: {bool(decision.section_update)}")
         if decision.section_update:
             logger.info(f"Section update content keys: {list(decision.section_update.keys())}")
@@ -636,14 +606,16 @@ async def generate_decision_node(state: ValueCanvasState, config: RunnableConfig
         agent_output = ChatAgentOutput(
             reply=last_ai_reply,
             router_directive=decision.router_directive,
-            is_requesting_rating=decision.is_requesting_rating,
-            score=decision.score,
+            user_satisfaction_feedback=decision.user_satisfaction_feedback,
+            is_satisfied=decision.is_satisfied,
             section_update=decision.section_update
         )
 
         # Enhanced business logic validation
-        if agent_output.is_requesting_rating:
-            # CRITICAL VALIDATION: If requesting rating, must have section_update
+        # Check if we're asking for satisfaction feedback without providing section update
+        asking_for_feedback = ("satisfied" in agent_output.reply.lower() or "satisfaction" in agent_output.reply.lower() or "feedback" in agent_output.reply.lower())
+        if asking_for_feedback:
+            # CRITICAL VALIDATION: If asking for satisfaction feedback, must have section_update
             if not agent_output.section_update:
                 logger.warning("⚠️ Model requested rating but provided no section_update - attempting auto-generation")
                 
@@ -673,29 +645,29 @@ async def generate_decision_node(state: ValueCanvasState, config: RunnableConfig
                     agent_output = ChatAgentOutput(
                         reply=last_ai_reply,
                         router_directive="stay",
-                        is_requesting_rating=False,
-                        score=None,
+                        user_satisfaction_feedback=None,
+                        is_satisfied=None,
                         section_update=None
                     )
                     logger.info("🔧 FORCED CORRECTION: Reset to continue collecting information.")
             
-            state["is_awaiting_rating"] = agent_output.is_requesting_rating
-            logger.info(f"State updated: is_awaiting_rating set to {agent_output.is_requesting_rating}")
+            state["awaiting_satisfaction_feedback"] = (agent_output.user_satisfaction_feedback is None and agent_output.is_satisfied is None)
+            logger.info(f"State updated: awaiting_satisfaction_feedback set to {state['awaiting_satisfaction_feedback']}")
         else:
-            state["is_awaiting_rating"] = False
+            state["awaiting_satisfaction_feedback"] = False
 
-        # Apply score-based safety rail
-        if agent_output.score is not None and agent_output.score < 3:
-            logger.info(f"Low score ({agent_output.score}) detected from decision. Forcing 'stay' directive.")
+        # Apply satisfaction-based safety rail
+        if agent_output.is_satisfied is not None and not agent_output.is_satisfied:
+            logger.info(f"User not satisfied detected from decision. Forcing 'stay' directive.")
             agent_output.router_directive = "stay"
 
         # Save to state
         state["temp_agent_output"] = agent_output  # For memory_updater
         state["agent_output"] = agent_output
 
-        # Determine router directive based on score, per design doc
-        if agent_output.score is not None:
-            if agent_output.score >= 3:
+        # Determine router directive based on satisfaction, per design doc
+        if agent_output.is_satisfied is not None:
+            if agent_output.is_satisfied:
                 calculated_directive = RouterDirective.NEXT
             else:
                 calculated_directive = RouterDirective.STAY
@@ -708,7 +680,7 @@ async def generate_decision_node(state: ValueCanvasState, config: RunnableConfig
         # --- MVP Fallback: ensure reply contains clear question -----------------------
         need_question = (
             state["router_directive"] == RouterDirective.STAY
-            and agent_output.score is None
+            and agent_output.is_satisfied is None
         )
 
         if need_question:
@@ -731,8 +703,8 @@ async def generate_decision_node(state: ValueCanvasState, config: RunnableConfig
         logger.error(f"Failed to get structured decision from LLM: {e}")
         default_decision = ChatAgentDecision(
             router_directive="stay",
-            is_requesting_rating=False,
-            score=None,
+            user_satisfaction_feedback=None,
+            is_satisfied=None,
             section_update=None,
         )
         agent_output = ChatAgentOutput(
@@ -763,7 +735,7 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
     agent_out = state.get("agent_output")
     logger.debug(f"DATABASE_DEBUG: Agent output exists: {bool(agent_out)}")
     if agent_out:
-        logger.debug(f"DATABASE_DEBUG: Agent output - section_update: {bool(agent_out.section_update)}, score: {agent_out.score}, router_directive: {agent_out.router_directive}")
+        logger.debug(f"DATABASE_DEBUG: Agent output - section_update: {bool(agent_out.section_update)}, is_satisfied: {agent_out.is_satisfied}, router_directive: {agent_out.router_directive}")
 
     # [DIAGNOSTIC] Log state before update
     logger.info(f"DATABASE_DEBUG: section_states BEFORE update: {state.get('section_states', {})}")
@@ -772,11 +744,11 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
     logger.debug(f"DATABASE_DEBUG: Context packet section: {context_packet.section_id if context_packet else None}")
 
     # Decide status based on score and directive
-    def _status_from_output(score, directive):
+    def _status_from_output(is_satisfied, directive):
         """Return status *string* to align with get_next_unfinished_section() logic."""
         if directive == RouterDirective.NEXT:
             return SectionStatus.DONE.value  # "done"
-        if score is not None and score >= 3:
+        if is_satisfied is not None and is_satisfied:
             return SectionStatus.DONE.value
         return SectionStatus.IN_PROGRESS.value
 
@@ -785,7 +757,7 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
     logger.info(f"SAVE_SECTION_DEBUG: - agent_out exists: {bool(agent_out)}")
     if agent_out:
         logger.info(f"SAVE_SECTION_DEBUG: - agent_out.section_update exists: {bool(agent_out.section_update)}")
-        logger.info(f"SAVE_SECTION_DEBUG: - agent_out.score: {agent_out.score}")
+        logger.info(f"SAVE_SECTION_DEBUG: - agent_out.is_satisfied: {agent_out.is_satisfied}")
         logger.info(f"SAVE_SECTION_DEBUG: - agent_out.router_directive: {agent_out.router_directive}")
     else:
         logger.info("SAVE_SECTION_DEBUG: - No agent_out, will not call save_section")
@@ -815,12 +787,12 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
         logger.debug("DATABASE_DEBUG: Calling save_section tool with structured content")
         
         # [CRITICAL DEBUG] Log the exact parameters being passed to save_section
-        computed_status = _status_from_output(agent_out.score, agent_out.router_directive)
+        computed_status = _status_from_output(agent_out.is_satisfied, agent_out.router_directive)
         logger.info("SAVE_SECTION_DEBUG: About to call save_section with:")
         logger.info(f"SAVE_SECTION_DEBUG: - user_id: {state['user_id']}")
         logger.info(f"SAVE_SECTION_DEBUG: - thread_id: {state['thread_id']}")
         logger.info(f"SAVE_SECTION_DEBUG: - section_id: {section_id}")
-        logger.info(f"SAVE_SECTION_DEBUG: - score: {agent_out.score} (type: {type(agent_out.score)})")
+        logger.info(f"SAVE_SECTION_DEBUG: - is_satisfied: {agent_out.is_satisfied} (type: {type(agent_out.is_satisfied)})")
         logger.info(f"SAVE_SECTION_DEBUG: - status: {computed_status} (type: {type(computed_status)})")
         logger.info(f"SAVE_SECTION_DEBUG: - router_directive was: {agent_out.router_directive} (type: {type(agent_out.router_directive)})")
         
@@ -829,7 +801,7 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
             "thread_id": state["thread_id"],
             "section_id": section_id,
             "content": agent_out.section_update['content'] if isinstance(agent_out.section_update, dict) else agent_out.section_update, # Pass the Tiptap content directly
-            "score": agent_out.score,
+            "satisfaction_feedback": agent_out.user_satisfaction_feedback,
             "status": computed_status,
         })
         logger.debug(f"DATABASE_DEBUG: save_section returned: {bool(save_result)}")
@@ -849,8 +821,8 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
                 content=tiptap_doc,
                 plain_text=None  # Will be filled later if needed
             ),
-            score=agent_out.score,
-            status=_status_from_output(agent_out.score, agent_out.router_directive),
+            satisfaction_feedback=agent_out.user_satisfaction_feedback,
+            status=_status_from_output(agent_out.is_satisfied, agent_out.router_directive),
         )
         logger.info(f"SAVE_SECTION_DEBUG: ✅ BRANCH 1 COMPLETED: Section {section_id} saved with structured content")
 
@@ -925,21 +897,21 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
         # This would parse the content and update specific fields in canvas_data
         # For example, if section is ICP, extract icp_nickname, etc.
         
-    # Handle cases where agent provides score/status but no structured section_update  
+    # Handle cases where agent provides satisfaction feedback/status but no structured section_update  
     elif agent_out:
         logger.info("SAVE_SECTION_DEBUG: ✅ ENTERING BRANCH 2: Processing agent output without section_update")
-        logger.info("DATABASE_DEBUG: Processing agent output without section_update (likely score/status only)")
+        logger.info("DATABASE_DEBUG: Processing agent output without section_update (likely satisfaction feedback/status only)")
         
         if state.get("context_packet"):
             score_section_id = state["context_packet"].section_id.value
-            logger.debug(f"DATABASE_DEBUG: Processing score/status update for section {score_section_id}")
+            logger.debug(f"DATABASE_DEBUG: Processing satisfaction feedback/status update for section {score_section_id}")
 
-            # Only proceed if there's a score to save.
-            if agent_out.score is None:
-                logger.info(f"DATABASE_DEBUG: No score or section_update for {score_section_id}, skipping save.")
+            # Only proceed if there's satisfaction feedback to save.
+            if agent_out.is_satisfied is None:
+                logger.info(f"DATABASE_DEBUG: No satisfaction feedback or section_update for {score_section_id}, skipping save.")
                 return state
 
-            # We have a score, so we MUST save. We need to find the content.
+            # We have satisfaction feedback, so we MUST save. We need to find the content.
             content_to_save = None
 
             # 1. Try to find content in the current state for the section
@@ -971,15 +943,15 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
 
             # 3. If we found content (either from state or recovery), proceed with saving.
             if content_to_save:
-                computed_status = _status_from_output(agent_out.score, agent_out.router_directive)
-                logger.info(f"SAVE_SECTION_DEBUG: ✅ Calling save_section for {score_section_id} with score and content.")
+                computed_status = _status_from_output(agent_out.is_satisfied, agent_out.router_directive)
+                logger.info(f"SAVE_SECTION_DEBUG: ✅ Calling save_section for {score_section_id} with satisfaction feedback and content.")
                 
                 await save_section.ainvoke({
                     "user_id": state["user_id"],
                     "thread_id": state["thread_id"],
                     "section_id": score_section_id,
                     "content": content_to_save,
-                    "score": agent_out.score,
+                    "satisfaction_feedback": agent_out.user_satisfaction_feedback,
                     "status": computed_status,
                 })
 
@@ -996,10 +968,10 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
                         content=tiptap_doc,
                         plain_text=None
                     ),
-                    score=agent_out.score,
+                    satisfaction_feedback=agent_out.user_satisfaction_feedback,
                     status=computed_status,
                 )
-                logger.info(f"DATABASE_DEBUG: ✅ Updated/created section state for {score_section_id} with score {agent_out.score}")
+                logger.info(f"DATABASE_DEBUG: ✅ Updated/created section state for {score_section_id} with satisfaction feedback {agent_out.is_satisfied}")
             else:
                 # 4. If content recovery failed, we must not call save_section with empty content.
                 logger.error(f"DATABASE_DEBUG: ❌ CRITICAL: Aborting save for section {score_section_id} due to missing content.")

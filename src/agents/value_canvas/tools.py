@@ -161,7 +161,7 @@ async def save_section(
     thread_id: str,
     section_id: str,
     content: dict[str, Any],
-    score: int | None = None,
+    satisfaction_feedback: str | None = None,
     status: str = "done",
 ) -> dict[str, Any]:
     """
@@ -172,7 +172,7 @@ async def save_section(
         thread_id: Thread identifier
         section_id: Section identifier
         content: Section content (Tiptap JSON)
-        score: Optional satisfaction score (0-5)
+        satisfaction_feedback: Optional user satisfaction feedback text
         status: Section status
     
     Returns:
@@ -181,13 +181,13 @@ async def save_section(
     logger.info("=== DATABASE_DEBUG: save_section() ENTRY ===")
     logger.info(f"DATABASE_DEBUG: Saving section {section_id} for user {user_id}, doc {thread_id}")
     logger.debug(f"DATABASE_DEBUG: User ID type: {type(user_id)}, Thread ID type: {type(thread_id)}")
-    logger.debug(f"DATABASE_DEBUG: Content type: {type(content)}, Score: {score}, Status: {status}")
+    logger.debug(f"DATABASE_DEBUG: Content type: {type(content)}, Satisfaction feedback: {satisfaction_feedback}, Status: {status}")
     
     # [DIAGNOSTIC] Log all parameters passed to save_section
     logger.info(
         f"DATABASE_DEBUG: Full parameters - "
         f"user_id={user_id}, thread_id={thread_id}, section_id='{section_id}', "
-        f"score={score}, status='{status}'"
+        f"satisfaction_feedback={satisfaction_feedback}, status='{status}'"
     )
     logger.debug(f"DATABASE_DEBUG: Content structure: {content}")
 
@@ -197,7 +197,7 @@ async def save_section(
     # Try DentApp API first (if enabled)
     if settings.USE_DENTAPP_API:
         logger.info("=== TOOLS_API_CALL: save_section() using DentApp API ===")
-        logger.info(f"TOOLS_API_CALL: section_id='{section_id}', user_id='{user_id}', thread_id='{thread_id}', score={score}, status='{status}'")
+        logger.info(f"TOOLS_API_CALL: section_id='{section_id}', user_id='{user_id}', thread_id='{thread_id}', satisfaction_feedback={satisfaction_feedback}, status='{status}'")
         try:
             # Convert section_id for DentApp API (MVP: always use user_id=1)
             section_id_int = get_section_id_int(section_id)
@@ -213,7 +213,7 @@ async def save_section(
             
             log_api_operation("save_section", user_id=user_id, section_id=section_id, 
                             user_id_int=user_id, section_id_int=section_id_int,
-                            content_length=len(plain_text), score=score, status=status)
+                            content_length=len(plain_text), satisfaction_feedback=satisfaction_feedback, status=status)
             
             # Call DentApp API
             logger.info(f"TOOLS_API_CALL: Calling save_section_state(agent_id={AGENT_ID}, section_id={section_id_int}, user_id={user_id})")
@@ -238,7 +238,7 @@ async def save_section(
                     "thread_id": thread_id,
                     "section_id": section_id,
                     "content": content,  # Return original Tiptap format
-                    "score": score,
+                    "satisfaction_feedback": satisfaction_feedback,
                     "status": status,
                     "updated_at": result.get('updated_at', current_time),
                 }
@@ -258,7 +258,7 @@ async def save_section(
                 "thread_id": thread_id,
                 "section_id": section_id,
                 "content": content,
-                "score": score,
+                "satisfaction_feedback": satisfaction_feedback,
                 "status": status,
                 "updated_at": current_time,
             }
@@ -271,7 +271,7 @@ async def save_section(
             "thread_id": thread_id,
             "section_id": section_id,
             "content": content,
-            "score": score,
+            "satisfaction_feedback": satisfaction_feedback,
             "status": status,
             "updated_at": current_time,
         }
@@ -413,7 +413,7 @@ async def get_all_sections_status(
                 sections.append({
                     "section_id": section_id.value,
                     "status": row.get('status', SectionStatus.PENDING.value),
-                    "score": row.get('score'),
+                    "satisfaction_feedback": row.get('satisfaction_feedback'),
                     "has_content": row.get('has_content', False),
                     "updated_at": row.get('updated_at'),
                 })
@@ -423,7 +423,7 @@ async def get_all_sections_status(
                 sections.append({
                     "section_id": section_id.value,
                     "status": SectionStatus.PENDING.value,
-                    "score": None,
+                    "satisfaction_feedback": None,
                     "has_content": False,
                     "updated_at": None,
                 })

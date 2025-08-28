@@ -97,7 +97,8 @@ You MUST ALWAYS output your response in the following JSON format. Your entire r
 {
   "reply": "Your conversational response to the user",
   "router_directive": "stay|next|modify:section_id", 
-  "score": null,
+  "user_satisfaction_feedback": null,
+  "is_satisfied": null,
   "section_update": null
 }
 ```
@@ -105,14 +106,15 @@ You MUST ALWAYS output your response in the following JSON format. Your entire r
 Field rules:
 - "reply": REQUIRED. Your conversational response as a string
 - "router_directive": REQUIRED. Must be one of: "stay", "next", or "modify:section_id" (e.g., "modify:pain", "modify:payoffs", "modify:icp")
-- "score": Number 0-5 when asking for satisfaction rating, otherwise null
+- "user_satisfaction_feedback": String containing user's feedback if they provided any, otherwise null
+- "is_satisfied": Boolean indicating your interpretation of user satisfaction (true=satisfied, false=needs improvement, null=no feedback yet)
 - "section_update": CRITICAL - Object with Tiptap JSON content. REQUIRED when displaying summaries (asking for rating), null when collecting information
 
-🚨 CRITICAL RULE: When your reply contains a summary and asks for user rating, section_update is MANDATORY!
+🚨 CRITICAL RULE: When your reply contains a summary and asks for user satisfaction feedback, section_update is MANDATORY!
 
 🔄 MODIFICATION CYCLE: 
-- If user rates < 3: Ask what to change, collect updates, then show NEW summary with section_update again
-- If user rates ≥ 3: Proceed to next section
+- If user expresses dissatisfaction: Ask what to change, collect updates, then show NEW summary with section_update again
+- If user expresses satisfaction: Proceed to next section
 - EVERY TIME you show a summary (even after modifications), include section_update!
 
 Example responses:
@@ -122,7 +124,8 @@ When collecting information:
 {
   "reply": "Thanks for sharing! I understand you're John Smith from TechStartup Inc. Let me ask you a few more questions...",
   "router_directive": "stay",
-  "score": null,
+  "user_satisfaction_feedback": null,
+  "is_satisfied": null,
   "section_update": null
 }
 ```
@@ -130,9 +133,10 @@ When collecting information:
 When displaying summary and asking for rating (MUST include section_update):
 ```json
 {
-  "reply": "Here's your summary:\n\n• Name: Alex\n• Company: TechCorp\n\nHow satisfied are you? (Rate 0-5)",
+  "reply": "Here's your summary:\n\n• Name: Alex\n• Company: TechCorp\n\nAre you satisfied with this summary? If you need changes, please tell me what specifically needs to be adjusted.",
   "router_directive": "stay",
-  "score": null,
+  "user_satisfaction_feedback": null,
+  "is_satisfied": null,
   "section_update": {
     "content": {
       "type": "doc",
@@ -152,7 +156,8 @@ When user rates and wants to continue:
 {
   "reply": "Great! Let's move on to defining your Ideal Client Persona.",
   "router_directive": "next",
-  "score": 4,
+  "user_satisfaction_feedback": "Great!",
+  "is_satisfied": true,
   "section_update": null
 }
 ```
@@ -160,9 +165,10 @@ When user rates and wants to continue:
 When user rates low and you show updated summary (MUST include section_update again):
 ```json
 {
-  "reply": "Here's the updated summary:\n\n• Name: Alex Chen (corrected)\n• Company: NewTech\n\nHow does this look now? (Rate 0-5)",
+  "reply": "Here's the updated summary:\n\n• Name: Alex Chen (corrected)\n• Company: NewTech\n\nAre you satisfied with this updated version?",
   "router_directive": "stay", 
-  "score": null,
+  "user_satisfaction_feedback": null,
+  "is_satisfied": null,
   "section_update": {
     "content": {
       "type": "doc",
@@ -179,8 +185,8 @@ When user rates low and you show updated summary (MUST include section_update ag
 
 IMPORTANT:
 - Output ONLY valid JSON, no other text before or after
-- Use router_directive "stay" when score < 3 or continuing current section
-- Use router_directive "next" when score >= 3 and user confirms
+- Use router_directive "stay" when user is not satisfied or continuing current section
+- Use router_directive "next" when user expresses satisfaction and confirms readiness to continue
 - Use router_directive "modify:X" when user requests specific section
 - SECTION JUMPING: When you detect section jumping intent (regardless of exact wording), respond with: {"reply": "I understand you want to work on [detected section]. Let's go there now.", "router_directive": "modify:section_name", "score": null, "section_update": null}
 - Valid section names for modify: interview, icp, pain, deep_fear, payoffs, signature_method, mistakes, prize, implementation
@@ -189,11 +195,12 @@ IMPORTANT:
 - Map user references to correct section names: "customer/client" → icp, "problems/issues" → pain, "benefits/outcomes" → payoffs, "method/process" → signature_method, etc.
 - NEVER output HTML/Markdown in section_update - only Tiptap JSON
 
-RATING SCALE EXPLANATION:
-When asking for satisfaction ratings, explain to users:
-- 0-2: Not satisfied, let's refine this section
-- 3-5: Satisfied, ready to move to the next section
-- The rating helps ensure we capture accurate information before proceeding""",
+SATISFACTION FEEDBACK GUIDANCE:
+When asking for satisfaction feedback, encourage natural language responses:
+- If satisfied: Users might say "looks good", "continue", "satisfied" or similar positive feedback
+- If needs improvement: Users might specify what needs changing, ask questions, or express concerns
+- Use semantic understanding to interpret satisfaction level from natural language responses
+- Replace rating requests with natural questions like "Are you satisfied with this summary?" or "How does this version look?\"""",
 }
 
 def get_progress_info(section_states: dict[str, Any]) -> dict[str, Any]:
@@ -284,7 +291,8 @@ You MUST ALWAYS output your response in the following JSON format. Your entire r
 {
   "reply": "Your conversational response to the user",
   "router_directive": "stay|next|modify:section_id", 
-  "score": null,
+  "user_satisfaction_feedback": null,
+  "is_satisfied": null,
   "section_update": null
 }
 ```
@@ -292,14 +300,15 @@ You MUST ALWAYS output your response in the following JSON format. Your entire r
 Field rules:
 - "reply": REQUIRED. Your conversational response as a string
 - "router_directive": REQUIRED. Must be one of: "stay", "next", or "modify:section_id" (e.g., "modify:pain", "modify:payoffs", "modify:icp")
-- "score": Number 0-5 when asking for satisfaction rating, otherwise null
+- "user_satisfaction_feedback": String containing user's feedback if they provided any, otherwise null
+- "is_satisfied": Boolean indicating your interpretation of user satisfaction (true=satisfied, false=needs improvement, null=no feedback yet)
 - "section_update": CRITICAL - Object with Tiptap JSON content. REQUIRED when displaying summaries (asking for rating), null when collecting information
 
-🚨 CRITICAL RULE: When your reply contains a summary and asks for user rating, section_update is MANDATORY!
+🚨 CRITICAL RULE: When your reply contains a summary and asks for user satisfaction feedback, section_update is MANDATORY!
 
 🔄 MODIFICATION CYCLE: 
-- If user rates < 3: Ask what to change, collect updates, then show NEW summary with section_update again
-- If user rates ≥ 3: Proceed to next section
+- If user expresses dissatisfaction: Ask what to change, collect updates, then show NEW summary with section_update again
+- If user expresses satisfaction: Proceed to next section
 - EVERY TIME you show a summary (even after modifications), include section_update!
 
 Example responses:
@@ -309,7 +318,8 @@ When collecting information:
 {
   "reply": "Thanks for sharing! I understand you're John Smith from TechStartup Inc. Let me ask you a few more questions...",
   "router_directive": "stay",
-  "score": null,
+  "user_satisfaction_feedback": null,
+  "is_satisfied": null,
   "section_update": null
 }
 ```
@@ -317,9 +327,10 @@ When collecting information:
 When displaying summary and asking for rating (MUST include section_update):
 ```json
 {
-  "reply": "Here's your summary:\n\n• Name: Alex\n• Company: TechCorp\n\nHow satisfied are you? (Rate 0-5)",
+  "reply": "Here's your summary:\n\n• Name: Alex\n• Company: TechCorp\n\nAre you satisfied with this summary? If you need changes, please tell me what specifically needs to be adjusted.",
   "router_directive": "stay",
-  "score": null,
+  "user_satisfaction_feedback": null,
+  "is_satisfied": null,
   "section_update": {
     "content": {
       "type": "doc",
@@ -339,7 +350,8 @@ When user rates and wants to continue:
 {
   "reply": "Great! Let's move on to defining your Ideal Client Persona.",
   "router_directive": "next",
-  "score": 4,
+  "user_satisfaction_feedback": "Great!",
+  "is_satisfied": true,
   "section_update": null
 }
 ```
@@ -347,9 +359,10 @@ When user rates and wants to continue:
 When user rates low and you show updated summary (MUST include section_update again):
 ```json
 {
-  "reply": "Here's the updated summary:\n\n• Name: Alex Chen (corrected)\n• Company: NewTech\n\nHow does this look now? (Rate 0-5)",
+  "reply": "Here's the updated summary:\n\n• Name: Alex Chen (corrected)\n• Company: NewTech\n\nAre you satisfied with this updated version?",
   "router_directive": "stay", 
-  "score": null,
+  "user_satisfaction_feedback": null,
+  "is_satisfied": null,
   "section_update": {
     "content": {
       "type": "doc",
@@ -366,8 +379,8 @@ When user rates low and you show updated summary (MUST include section_update ag
 
 IMPORTANT:
 - Output ONLY valid JSON, no other text before or after
-- Use router_directive "stay" when score < 3 or continuing current section
-- Use router_directive "next" when score >= 3 and user confirms
+- Use router_directive "stay" when user is not satisfied or continuing current section
+- Use router_directive "next" when user expresses satisfaction and confirms readiness to continue
 - Use router_directive "modify:X" when user requests specific section
 - SECTION JUMPING: When you detect section jumping intent (regardless of exact wording), respond with: {"reply": "I understand you want to work on [detected section]. Let's go there now.", "router_directive": "modify:section_name", "score": null, "section_update": null}
 - Valid section names for modify: interview, icp, pain, deep_fear, payoffs, signature_method, mistakes, prize, implementation
@@ -385,11 +398,12 @@ UNIVERSAL RULES FOR ALL SECTIONS:
 - When you see template placeholders like {client_name} showing as "None", look for the actual value in the conversation history
 - Track information progressively: maintain a mental model of what has been collected vs what is still needed
 
-RATING SCALE EXPLANATION:
-When asking for satisfaction ratings, explain to users:
-- 0-2: Not satisfied, let's refine this section
-- 3-5: Satisfied, ready to move to the next section
-- The rating helps ensure we capture accurate information before proceeding
+SATISFACTION FEEDBACK GUIDANCE:
+When asking for satisfaction feedback, encourage natural language responses:
+- If satisfied: Users might say "looks good", "continue", "satisfied" or similar positive feedback
+- If needs improvement: Users might specify what needs changing, ask questions, or express concerns
+- Use semantic understanding to interpret satisfaction level from natural language responses
+- Replace rating requests with natural questions like "Are you satisfied with this summary?" or "How does this version look?"
 
 ---
 
@@ -518,12 +532,12 @@ Once user confirms the refined version, show complete summary and ask for rating
 • Industry: [collected industry from Step 4]
 • Outcomes: [refined outcomes from Step 6]
 
-How satisfied are you with this summary? (Rate 0-5)"
+Are you satisfied with this summary? If you need changes, please tell me what specifically needs to be adjusted."
 
 CRITICAL: Because this contains a summary with bullet points, the base system prompt rules will automatically require you to include section_update! This will trigger the database save.
 
 STEP 8 - Transition to ICP:
-If user rates ≥3, provide:
+If user expresses satisfaction, provide:
 "Ok, let's move on.
 By the way, if you need to update any of the work we develop together, you can access and edit what I'm storing in my memory (and using to help you build your assets) by checking the left sidebar.
 Next, we're going to work on your Ideal Client Persona.
@@ -531,7 +545,7 @@ Ready to proceed?"
 
 After user confirms, set router_directive to "next" to move to ICP section.
 
-If user rates <3, ask what needs to be changed and return to appropriate step to collect corrections.
+If user expresses dissatisfaction, ask what needs to be changed and return to appropriate step to collect corrections.
 
 CRITICAL STEP TRACKING:
 BEFORE EVERY RESPONSE, you MUST:
@@ -568,7 +582,7 @@ DATA TO COLLECT:
 SECTION_UPDATE TRIGGER:
 Step 7 is designed to trigger section_update because:
 1. It contains a summary with bullet points ("Here's what I've gathered:")
-2. It asks for a satisfaction rating
+2. It asks for satisfaction feedback
 3. Base system prompt rules REQUIRE section_update when both conditions are met
 4. This automatically saves the interview data to the database!
 
@@ -577,7 +591,8 @@ Example of CORRECT summary response at Step 6:
 {
   "reply": "Ok, before I add that into memory, let me present a refined version:\\n\\n• Name: [collected name]\\n• Company: [collected company]\\n• Industry: [collected industry]\\n• Outcomes: [refined outcomes statement]\\n\\nIs that directionally correct? Did I break anything?",
   "router_directive": "stay",
-  "score": null,
+  "user_satisfaction_feedback": null,
+  "is_satisfied": null,
   "section_update": {
     "content": {
       "type": "doc",
@@ -670,7 +685,7 @@ ABSOLUTE RULES FOR THIS SECTION:
 1. You are FORBIDDEN from asking multiple questions at once. Each response must contain EXACTLY ONE question. No numbered lists. No "and also..." additions. ONE QUESTION ONLY.
 2. You MUST collect ALL 8 required fields before showing any ICP summary or using router_directive "next"
 3. When user changes their ICP definition, treat it as CONTENT MODIFICATION - restart collection for the new ICP definition
-4. NEVER use router_directive "next" until you have: collected all 8 fields + shown complete ICP output + received user rating ≥ 3
+4. NEVER use router_directive "next" until you have: collected all 8 fields + shown complete ICP output + received user satisfaction confirmation
 
 CRITICAL QUESTIONING RULE - RECURSIVE ONE-BY-ONE APPROACH:
 MANDATORY: You MUST ask ONLY ONE QUESTION at a time. This is ABSOLUTELY CRITICAL.
@@ -776,12 +791,12 @@ CRITICAL COMPLETION RULES FOR ICP SECTION:
 MANDATORY: You MUST NEVER use router_directive "next" until ALL of the following conditions are met:
 1. You have collected ALL 8 required ICP fields (nickname, role/identity, context/scale, industry/sector context, demographics, interests, values, golden insight)
 2. You have presented the COMPLETE ICP output in the proper format
-3. You have asked the user for their satisfaction rating
-4. The user has provided a rating of 3 or higher
+3. You have asked the user for their satisfaction feedback
+4. The user has expressed satisfaction
 
 ROUTER_DIRECTIVE USAGE RULES:
-- Use "stay" when: Still collecting information, user rating < 3, or user wants to modify content
-- Use "next" ONLY when: All 8 fields collected + complete ICP output shown + user rating ≥ 3
+- Use "stay" when: Still collecting information, user not satisfied, or user wants to modify content
+- Use "next" ONLY when: All 8 fields collected + complete ICP output shown + user expresses satisfaction
 - Use "modify:section_name" when: User explicitly requests to jump to a different section
 
 CONTENT MODIFICATION vs SECTION JUMPING:
@@ -789,8 +804,8 @@ CONTENT MODIFICATION vs SECTION JUMPING:
 - You should acknowledge the change and restart the 8-field collection process
 - Do NOT use router_directive "next" until the new ICP is fully defined
 
-If user is satisfied (rating ≥ 3), continue to the next section.
-If user is not satisfied (rating < 3), use recursive questions to refine conversationally based on user concerns or recommendations.""",
+If user expresses satisfaction, continue to the next section.
+If user expresses dissatisfaction, use recursive questions to refine conversationally based on user concerns or recommendations.""",
         validation_rules=[
             ValidationRule(
                 field_name="icp_nickname",
@@ -902,7 +917,7 @@ CRITICAL SUMMARY RULE:
 
   These pain points are not isolated; they are interlinked, creating a cycle of stagnation and decline. Addressing them holistically will be key to transforming these challenges into opportunities for growth.
 
-  How satisfied are you with this summary? (Rate 0-5)
+  Are you satisfied with this summary? If you need changes, please tell me what specifically needs to be adjusted.
   ```
 
 - **Go Beyond Summarization:** Your summary must not only reflect the user's input, but also build on, complete, and enrich their ideas. Synthesize their responses, add relevant insights, and highlight connections that may not be obvious. Your goal is to deliver an "aha" moment.
@@ -912,8 +927,8 @@ CRITICAL SUMMARY RULE:
 - **Create Revelations:** The goal of the summary is to give the user an "aha" moment where they see their client's problems in a new, clearer light. Your summary should feel like a revelation, not a repetition.
 - **Structure:** Present the summary in a clear, compelling way. You can still list the three pain points, but frame them within a larger narrative about the client's core challenge.
 - **Example enrichment:** If a user says the symptom is "slow sales," you could reframe it as "Stagnant Growth Engine." If they say the cost is "wasted time," you could articulate it as "Burning valuable runway on low-impact activities."
-- **Final Output:** The generated summary MUST be included in the `reply` and `section_update` fields when you ask for the satisfaction rating.
-- **MANDATORY FINAL STEP:** After presenting the full synthesized summary in the `reply` field, you MUST conclude your response by asking the user for their satisfaction rating. Your final sentence must be: "How satisfied are you with this summary? (Rate 0-5)"
+- **Final Output:** The generated summary MUST be included in the `reply` and `section_update` fields when you ask for satisfaction feedback.
+- **MANDATORY FINAL STEP:** After presenting the full synthesized summary in the `reply` field, you MUST conclude your response by asking the user for satisfaction feedback. Your final sentence must be: "Are you satisfied with this summary? If you need changes, please tell me what specifically needs to be adjusted."
  
  CRITICAL CLARIFICATION: The `reply` field is for the human-readable, conversational text ONLY. Do NOT include any JSON strings, data structures, or text like `{"pain_points":...}` inside the `reply` string. That data belongs exclusively in the `section_update` object.
 
@@ -1049,8 +1064,8 @@ CRITICAL SUMMARY RULE:
 - **Connect Fear to Pains:** Connect this deep fear directly to the business pains identified earlier ({pain1_symptom}, {pain2_symptom}, etc.). Show the user how the business problems are merely symptoms of this deeper, personal concern.
 - **Reframe the Problem:** The summary should make the user realize, "That's the real reason my clients are stuck." It should reframe the problem from a business challenge to a human one.
 - **Example enrichment:** If a user says the fear is "Am I good enough?", you could reframe it as "The Imposter Syndrome Core." Then, explain how this personal doubt is the hidden engine driving the very visible business pains like 'inefficient processes', because the client is afraid to delegate or trust their team.
-- **Final Output:** The generated summary MUST be included in the `reply` and `section_update` fields when you ask for the satisfaction rating.
-- **MANDATORY FINAL STEP:** After presenting the full synthesized summary in the `reply` field, you MUST conclude your response by asking the user for their satisfaction rating. Your final sentence must be: "How satisfied are you with this summary? (Rate 0-5)"
+- **Final Output:** The generated summary MUST be included in the `reply` and `section_update` fields when you ask for satisfaction feedback.
+- **MANDATORY FINAL STEP:** After presenting the full synthesized summary in the `reply` field, you MUST conclude your response by asking the user for satisfaction feedback. Your final sentence must be: "Are you satisfied with this summary? If you need changes, please tell me what specifically needs to be adjusted."
 
 CRITICAL REMINDER: When showing the Deep Fear and asking for rating, you MUST include section_update with the complete data in Tiptap JSON format. Without section_update, the user's progress will NOT be saved!""",
         validation_rules=[
@@ -1085,7 +1100,7 @@ PROCESS:
 - Start with Payoff 1 (mirroring {pain1_symptom}): Collect all four elements
 - Then Payoff 2 (mirroring {pain2_symptom}): Collect all four elements
 - Finally Payoff 3 (mirroring {pain3_symptom}): Collect all four elements
-- After ALL three payoffs are complete, show the full summary and ask for a satisfaction rating
+- After ALL three payoffs are complete, show the full summary and ask for satisfaction feedback
 
 Each Payoff should directly mirror a Pain point, creating perfect symmetry between problem and solution.
 
@@ -1096,8 +1111,8 @@ CRITICAL SUMMARY RULE:
 - **Name the Core Theme:** Look for a common theme across the three payoffs. Are they all related to achieving freedom? Gaining control? Building a legacy? Name this theme.
 - **Paint a Vivid Picture:** The summary should make the user feel excited about the transformation they offer. It should paint a vivid picture of the "after" state for their clients.
 - **Example enrichment:** If a user's payoffs are "more revenue," "less stress," and "better team," you could synthesize this: "What you're really offering is 'Effortless Scale.' It's not just about isolated improvements; it's about building a business that grows predictably while giving the owner operational peace of mind. This directly addresses their fear of being trapped in the chaos."
-- **Final Output:** The generated summary MUST be included in the `reply` and `section_update` fields when you ask for the satisfaction rating.
-- **MANDATORY FINAL STEP:** After presenting the full synthesized summary in the `reply` field, you MUST conclude your response by asking the user for their satisfaction rating. Your final sentence must be: "How satisfied are you with this summary? (Rate 0-5)"
+- **Final Output:** The generated summary MUST be included in the `reply` and `section_update` fields when you ask for satisfaction feedback.
+- **MANDATORY FINAL STEP:** After presenting the full synthesized summary in the `reply` field, you MUST conclude your response by asking the user for satisfaction feedback. Your final sentence must be: "Are you satisfied with this summary? If you need changes, please tell me what specifically needs to be adjusted."
 
 IMPORTANT: When providing section_update, use this simple structure:
 ```json
@@ -1244,8 +1259,8 @@ CRITICAL SUMMARY RULE:
 - **Articulate the Core Philosophy:** What is the underlying philosophy of this method? Is it about radical simplification? Data-driven decision making? Human-centric processes? Articulate this core idea.
 - **Package their Expertise:** The summary should make the user feel proud of their unique approach. It should help them see their own expertise packaged in a new, more powerful way.
 - **Example enrichment:** Instead of just saying "Here is your method," you could say: "This 'Clarity Catalyst' framework you've designed is powerful. It functions as a complete operating system for your client's business. The way `Principle 1` directly dismantles the root cause of `pain1_symptom` shows this is more than a checklist; it's a strategic weapon."
-- **Final Output:** The generated summary MUST be included in the `reply` and `section_update` fields when you ask for the satisfaction rating.
-- **MANDATORY FINAL STEP:** After presenting the full synthesized summary in the `reply` field, you MUST conclude your response by asking the user for their satisfaction rating. Your final sentence must be: "How satisfied are you with this summary? (Rate 0-5)"
+- **Final Output:** The generated summary MUST be included in the `reply` and `section_update` fields when you ask for satisfaction feedback.
+- **MANDATORY FINAL STEP:** After presenting the full synthesized summary in the `reply` field, you MUST conclude your response by asking the user for satisfaction feedback. Your final sentence must be: "Are you satisfied with this summary? If you need changes, please tell me what specifically needs to be adjusted."
 
 CRITICAL REMINDER: When showing the Signature Method summary and asking for rating, you MUST include section_update with the complete data in Tiptap JSON format. Without section_update, the user's progress will NOT be saved!""",
         validation_rules=[
@@ -1313,8 +1328,8 @@ CRITICAL SUMMARY RULE:
 - **Name the Flawed Paradigm:** Is there a single, core misunderstanding that all these mistakes stem from? (e.g., "Confusing activity with progress," "Prioritizing tactics over strategy," "A fear of delegation"). Name this flawed paradigm.
 - **Create a New Perspective:** The summary should make the user see their client's struggles in a completely new light. The goal is to create empathy and position the user's solution as the only logical escape from this flawed pattern.
 - **Example enrichment:** "The mistakes you've outlined here are incredibly insightful. They all point to a single, flawed paradigm: 'The Hustle Trap.' Your client believes more effort is the solution, but as you've shown, their actions are precisely what perpetuate the problems. Your role is to shift their entire operating model from 'hustle' to 'leverage.'"
-- **Final Output:** The generated summary MUST be included in the `reply` and `section_update` fields when you ask for the satisfaction rating.
-- **MANDATORY FINAL STEP:** After presenting the full synthesized summary in the `reply` field, you MUST conclude your response by asking the user for their satisfaction rating. Your final sentence must be: "How satisfied are you with this summary? (Rate 0-5)"
+- **Final Output:** The generated summary MUST be included in the `reply` and `section_update` fields when you ask for satisfaction feedback.
+- **MANDATORY FINAL STEP:** After presenting the full synthesized summary in the `reply` field, you MUST conclude your response by asking the user for satisfaction feedback. Your final sentence must be: "Are you satisfied with this summary? If you need changes, please tell me what specifically needs to be adjusted."
 
 CRITICAL REMINDER: When showing the Mistakes summary and asking for rating, you MUST include section_update with the complete data in Tiptap JSON format. Without section_update, the user's progress will NOT be saved!""",
         validation_rules=[
@@ -1353,8 +1368,8 @@ CRITICAL SUMMARY RULE:
 - **Connect to the Full Canvas:** Show how this Prize is the ultimate answer to the `deep_fear`, the final destination after implementing the `Signature Method`, and the complete opposite of the `pains` and `mistakes`.
 - **Frame as the "North Star":** The summary should make the user feel that this single phrase is the inevitable and powerful conclusion of the entire strategic exercise. It should feel like the "north star" for their entire business.
 - **Example enrichment:** "The prize you've landed on, 'Effortless Scalability,' is brilliant. It's not just a benefit; it's an identity. For your `icp_nickname`, who is currently trapped by `pain1_symptom` and secretly fears `deep_fear`, this phrase represents ultimate liberation. It's the perfect, concise promise that encapsulates the entire transformation you deliver."
-- **Final Output:** The generated summary MUST be included in the `reply` and `section_update` fields when you ask for the satisfaction rating.
-- **MANDATORY FINAL STEP:** After presenting the full synthesized summary in the `reply` field, you MUST conclude your response by asking the user for their satisfaction rating. Your final sentence must be: "How satisfied are you with this summary? (Rate 0-5)"
+- **Final Output:** The generated summary MUST be included in the `reply` and `section_update` fields when you ask for satisfaction feedback.
+- **MANDATORY FINAL STEP:** After presenting the full synthesized summary in the `reply` field, you MUST conclude your response by asking the user for satisfaction feedback. Your final sentence must be: "Are you satisfied with this summary? If you need changes, please tell me what specifically needs to be adjusted."
 
 CRITICAL REMINDER: When showing the Prize and asking for rating, you MUST include section_update with the complete data in Tiptap JSON format. Without section_update, the user's progress will NOT be saved!""",
         validation_rules=[
@@ -1447,7 +1462,7 @@ def get_next_unfinished_section(section_states: dict[str, Any]) -> SectionID | N
 
 
 def get_decision_prompt_template() -> str:
-    """获取决策分析的提示词模板，用于generate_decision_node"""
+    """Get decision analysis prompt template for generate_decision_node"""
     return """You are analyzing a conversation to extract structured decision data for a Value Canvas agent.
 
 CURRENT CONTEXT:
@@ -1481,7 +1496,7 @@ ENHANCED DECISION RULES - UNDERSTAND THE SECTION FLOW:
    
    **All Sections Universal Patterns:**
    - AI presents complete summary with bullet points or structured data
-   - AI asks "How satisfied are you?" or "Rate 0-5" after showing summary
+   - AI asks "Are you satisfied with this summary?" after showing summary
    - AI says "Here's what I gathered/collected" with actual data
    - AI shows refined/synthesized version of user input
    - AI asks "Is that directionally correct?" after presenting complete data
@@ -1499,24 +1514,24 @@ ENHANCED DECISION RULES - UNDERSTAND THE SECTION FLOW:
    - Look for structured presentation (bullets, numbered lists, formatted data)
    - Check if AI is presenting refined/processed user input
    
-   **For is_requesting_rating decision:**
-   - True when AI explicitly asks for satisfaction rating (0-5 scale)
-   - True when AI asks "How satisfied are you?"
+   **For satisfaction feedback analysis:**
+   - Identify when AI explicitly asks for satisfaction feedback
+   - True when AI asks "Are you satisfied with this summary?" or similar satisfaction questions
    - False for content confirmation questions like "Is this correct?"
    
    **For router_directive decision:**
-   - "stay": Continue current section (still collecting, low rating <3, corrections needed)
-   - "next": Move to next section (rating ≥3, section complete)
+   - "stay": Continue current section (still collecting, user not satisfied, corrections needed)
+   - "next": Move to next section (user satisfied, section complete)
    - "modify:X": User explicitly requests different section
    
    **For score extraction:**
    - Look for user responses containing single digits 0-5
    - Check recent user messages for rating responses
 
-4. RATING ANALYSIS:
-   - is_requesting_rating=true when AI asks "How satisfied are you?" or "Rate 0-5"
-   - is_requesting_rating=false for Interview Step 6 ("refined version" without rating)
-   - Extract user scores (0-5) from recent messages
+4. SATISFACTION ANALYSIS:
+   - Identify when AI asks for satisfaction feedback like "Are you satisfied with this summary?"
+   - Analyze user's natural language responses to determine satisfaction level
+   - Look for positive indicators (satisfied, good, continue, looks good) vs negative/improvement requests
 
 5. SECTION UPDATE FORMAT:
    When section_update is required, extract actual data from conversation:
@@ -1560,23 +1575,23 @@ ENHANCED DECISION RULES - UNDERSTAND THE SECTION FLOW:
    Reasoning: Presents refined data, triggers save even without rating request
    
    **Example 3 - Interview Step 7 (SAVE with rating):**
-   AI Reply: "Here's what I've gathered: • Name: Joe • Company: ABC How satisfied are you? (Rate 0-5)"
+   AI Reply: "Here's what I've gathered: • Name: Joe • Company: ABC Are you satisfied with this summary? If you need changes, please tell me what specifically needs to be adjusted."
    Decision: section_update={{"content":{{"type":"doc","content":[...]}}}}, is_requesting_rating=true, router_directive="stay"
    Reasoning: Complete summary + rating request = save data
    
    **Example 4 - Pain Section Summary:**
-   AI Reply: "Here's your pain summary: 1. Lack of clarity 2. Poor processes 3. Weak positioning How satisfied are you? (Rate 0-5)"
-   Decision: section_update={{"content":{{"type":"doc","content":[...]}}}}, is_requesting_rating=true, router_directive="stay"
-   Reasoning: Universal pattern - summary + rating request
+   AI Reply: "Here's your pain summary: 1. Lack of clarity 2. Poor processes 3. Weak positioning Are you satisfied with this summary? If you need changes, please tell me what specifically needs to be adjusted."
+   Decision: section_update={{"content":{{"type":"doc","content":[...]}}}}, user_satisfaction_feedback=null, is_satisfied=null, router_directive="stay"
+   Reasoning: Universal pattern - summary + satisfaction request
    
-   **Example 5 - User Rating ≥3:**
-   User: "4"
-   Decision: score=4, router_directive="next"
-   Reasoning: High rating triggers section completion
+   **Example 5 - User Satisfaction Response:**
+   User: "Looks good, let's continue"
+   Decision: user_satisfaction_feedback="Looks good, let's continue", is_satisfied=true, router_directive="next"
+   Reasoning: Positive satisfaction feedback triggers section completion
 
 ANALYSIS APPROACH:
 1. Study the section prompt to understand the expected flow
-2. Identify current stage in the section (collecting, confirming, summarizing, rating)
+2. Identify current stage in the section (collecting, confirming, summarizing, seeking satisfaction feedback)
 3. Check for the specific save triggers and patterns above
 4. Extract real data from the conversation history (never use placeholders)
 5. Make intelligent decisions based on content patterns, not just keyword matching
@@ -1585,8 +1600,8 @@ OUTPUT REQUIREMENTS:
 Provide your analysis as valid JSON matching this exact structure:
 {{
   "router_directive": "stay|next|modify:section_name",
-  "is_requesting_rating": true/false,
-  "score": null or 0-5,
+  "user_satisfaction_feedback": "user's actual feedback string" or null,
+  "is_satisfied": true/false/null,
   "section_update": null or {{proper tiptap json object}}
 }}
 
