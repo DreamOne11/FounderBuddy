@@ -23,6 +23,7 @@ def _get_config_based_on_url() -> tuple[dict[str, int], int]:
         # Value Canvas: section IDs 9-16, agent ID 2
         # Social Pitch: section IDs 17-22, agent ID 3
         # Mission Pitch: section IDs 23-31, agent ID 4
+        # Signature Pitch: section IDs 32-39, agent ID 5
         section_mapping = {
             # Value Canvas sections
             "interview": 9,
@@ -48,14 +49,22 @@ def _get_config_based_on_url() -> tuple[dict[str, int], int]:
             "three_year_vision": 27,
             "big_vision": 28,
             "implementation": 29,
+            # Signature Pitch sections
+            "active_change": 32,
+            "specific_who": 33,
+            "outcome_prize": 34,
+            "core_credibility": 35,
+            "story_spark": 36,
+            "signature_line": 37,
         }
         agent_id = 2  # Default to Value Canvas agent ID (will be overridden by agent-specific calls)
-        logger.info("Using GSD configuration: Value Canvas (IDs 9-16, agent 2), Social Pitch (IDs 17-22, agent 3), Mission Pitch (IDs 23-31, agent 4)")
+        logger.info("Using GSD configuration: Value Canvas (IDs 9-16, agent 2), Social Pitch (IDs 17-22, agent 3), Mission Pitch (IDs 23-31, agent 4), Signature Pitch (IDs 32-39, agent 5)")
     elif "dentappaibuilder.enspirittech.co.uk" in dentapp_api_url:
         # DentApp AI Builder configuration:
         # Value Canvas: section IDs 1-8, agent ID 1  
         # Social Pitch: section IDs 9-14, agent ID 3
         # Mission Pitch: section IDs 15-23, agent ID 4
+        # Signature Pitch: section IDs 24-31, agent ID 5
         section_mapping = {
             # Value Canvas sections
             "interview": 1,
@@ -81,9 +90,16 @@ def _get_config_based_on_url() -> tuple[dict[str, int], int]:
             "three_year_vision": 19,
             "big_vision": 20,
             "implementation": 21,
+            # Signature Pitch sections
+            "active_change": 24,
+            "specific_who": 25,
+            "outcome_prize": 26,
+            "core_credibility": 27,
+            "story_spark": 28,
+            "signature_line": 29,
         }
         agent_id = 1  # Default to Value Canvas agent ID (will be overridden by agent-specific calls)
-        logger.info("Using DentApp AI Builder configuration: Value Canvas (IDs 1-8, agent 1), Social Pitch (IDs 9-14, agent 3), Mission Pitch (IDs 15-23, agent 4)")
+        logger.info("Using DentApp AI Builder configuration: Value Canvas (IDs 1-8, agent 1), Social Pitch (IDs 9-14, agent 3), Mission Pitch (IDs 15-23, agent 4), Signature Pitch (IDs 24-31, agent 5)")
     else:
         # Default fallback to GSD configuration
         section_mapping = {
@@ -111,6 +127,13 @@ def _get_config_based_on_url() -> tuple[dict[str, int], int]:
             "three_year_vision": 27,
             "big_vision": 28,
             "implementation": 29,
+            # Signature Pitch sections
+            "active_change": 32,
+            "specific_who": 33,
+            "outcome_prize": 34,
+            "core_credibility": 35,
+            "story_spark": 36,
+            "signature_line": 37,
         }
         agent_id = 2  # Default to Value Canvas agent ID
         logger.warning(f"Unknown DENTAPP_API_URL: {dentapp_api_url}, using default GSD configuration")
@@ -125,6 +148,7 @@ SECTION_ID_MAPPING, AGENT_ID = _get_config_based_on_url()
 VALUE_CANVAS_AGENT_ID = 2  # GSD environment
 SOCIAL_PITCH_AGENT_ID = 3
 MISSION_PITCH_AGENT_ID = 4
+SIGNATURE_PITCH_AGENT_ID = 5
 
 # Adjust agent IDs based on environment
 dentapp_api_url = os.getenv("DENTAPP_API_URL", "")
@@ -133,6 +157,7 @@ if "dentappaibuilder.enspirittech.co.uk" in dentapp_api_url:
     VALUE_CANVAS_AGENT_ID = 1
     SOCIAL_PITCH_AGENT_ID = 3
     MISSION_PITCH_AGENT_ID = 4
+    SIGNATURE_PITCH_AGENT_ID = 5
 
 
 def get_agent_id_for_section(section_id_str: str, agent_context: str = None) -> int:
@@ -144,7 +169,7 @@ def get_agent_id_for_section(section_id_str: str, agent_context: str = None) -> 
         agent_context: Optional context to distinguish agents (e.g., "social_pitch", "value_canvas", "mission_pitch")
         
     Returns:
-        Agent ID (2/3/4 for GSD, 1/3/4 for DentApp)
+        Agent ID (2/3/4/5 for GSD, 1/3/4/5 for DentApp)
     """
     # If we have explicit agent context, use it
     if agent_context == "social_pitch":
@@ -153,6 +178,8 @@ def get_agent_id_for_section(section_id_str: str, agent_context: str = None) -> 
         return VALUE_CANVAS_AGENT_ID
     elif agent_context == "mission_pitch":
         return MISSION_PITCH_AGENT_ID
+    elif agent_context == "signature_pitch":
+        return SIGNATURE_PITCH_AGENT_ID
     
     # Value Canvas exclusive sections
     value_canvas_sections = {
@@ -171,6 +198,12 @@ def get_agent_id_for_section(section_id_str: str, agent_context: str = None) -> 
         "three_year_vision", "big_vision", "implementation"
     }
     
+    # Signature Pitch exclusive sections
+    signature_pitch_sections = {
+        "active_change", "specific_who", "outcome_prize", 
+        "core_credibility", "story_spark", "signature_line"
+    }
+    
     # Handle special cases
     if section_id_str == "sp_pain":
         return SOCIAL_PITCH_AGENT_ID
@@ -183,6 +216,8 @@ def get_agent_id_for_section(section_id_str: str, agent_context: str = None) -> 
         return SOCIAL_PITCH_AGENT_ID
     elif section_id_str in mission_pitch_sections:
         return MISSION_PITCH_AGENT_ID
+    elif section_id_str in signature_pitch_sections:
+        return SIGNATURE_PITCH_AGENT_ID
     else:
         logger.warning(f"Unknown section type: {section_id_str}, defaulting to Value Canvas agent")
         return VALUE_CANVAS_AGENT_ID
