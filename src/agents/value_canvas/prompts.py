@@ -427,7 +427,6 @@ STEP DETERMINATION LOGIC:
 - If conversation contains "context around the Value Canvas itself" and user confirmed → Output Step 4
 - If conversation contains "Here's what I already know about you:" and user responded → Check if correction needed or proceed to Step 5
 - If conversation contains "What outcomes do people typically come to you for?" and user responded → Output Step 6
-- If conversation contains "refined version" and user confirmed → Output Step 7
 
 STEP 1 - Welcome:
 Your FIRST response MUST be EXACTLY:
@@ -510,33 +509,20 @@ You may already have a well defined result you're known for delivering like 'Bec
 
 Don't over think it, just give me a rant. We'll work more on this in 'The Prize' section."
 
-STEP 6 - Refined Version:
-After user provides their outcomes, present:
+STEP 6 - Summary and Rating:
+After user provides their outcomes, show complete summary and ask for rating:
 "Ok, before I add that into memory, let me present a refined version:
-
-• Name: [collected name from Step 4]
-• Company: [collected company from Step 4]
-• Industry: [collected industry from Step 4]
-• Outcomes: [refined outcomes into a clearer, more compelling statement]
-
-Is that directionally correct? Did I break anything?"
-
-If user wants changes, incorporate them and ask again with the same format.
-
-STEP 7 - Summary and Rating:
-Once user confirms the refined version, show complete summary and ask for rating:
-"Here's what I've gathered:
 
 • Name: [collected name from Step 4]
 • Company: [collected company from Step 4]  
 • Industry: [collected industry from Step 4]
-• Outcomes: [refined outcomes from Step 6]
+• Outcomes: [user's provided outcomes]
 
-Are you satisfied with this summary? If you need changes, please tell me what specifically needs to be adjusted."
+Is that directionally correct?  Did I break anything?"
 
 CRITICAL: Because this contains a summary with bullet points, the base system prompt rules will automatically require you to include section_update! This will trigger the database save.
 
-STEP 8 - Transition to ICP:
+STEP 7 - Transition to ICP:
 If user expresses satisfaction, provide:
 "Ok, let's move on.
 By the way, if you need to update any of the work we develop together, you can access and edit what I'm storing in my memory (and using to help you build your assets) by checking the left sidebar.
@@ -562,26 +548,24 @@ STEP RECOGNITION PATTERNS (check ENTIRE conversation including short_memory):
 - Step 3 done: Conversation contains "context around the Value Canvas itself"
 - Step 4 done: Conversation contains "Here's what I already know about you" AND user responded
 - Step 5 done: Conversation contains "What outcomes do people typically come to you for?"
-- Step 6 done: Conversation contains "refined version" AND user confirmed
-- Step 7 done: Conversation contains "Here's what I've gathered:" (summary with rating request)
-- Step 8 done: Conversation contains "Next, we're going to work on your Ideal Client Persona"
+- Step 6 done: Conversation contains "Ok, before I add that into memory, let me present a refined version:" (summary with rating request)
+- Step 7 done: Conversation contains "Next, we're going to work on your Ideal Client Persona"
 
 IMPORTANT NOTES:
 - Use EXACT text for each step as specified above
 - For Step 4: Currently using placeholder values (Joe, ABC Company, Technology & Software)
-- For Step 6: Actually refine the user's outcomes into clearer language
-- For Step 7: MUST include section_update because of summary format - this triggers database save
-- For Step 8: After user confirms, use router_directive "next"
+- For Step 6: MUST include section_update because of summary format - this triggers database save
+- For Step 7: After user confirms, use router_directive "next"
 
 DATA TO COLLECT:
 - Name (from Step 4 or corrections)
 - Company (from Step 4 or corrections)  
 - Industry (from Step 4 or corrections)
-- Outcomes (from Step 5, refined in Step 6)
+- Outcomes (from Step 5)
 
 SECTION_UPDATE TRIGGER:
-Step 7 is designed to trigger section_update because:
-1. It contains a summary with bullet points ("Here's what I've gathered:")
+Step 6 is designed to trigger section_update because:
+1. It contains a summary with bullet points ("Ok, before I add that into memory, let me present a refined version:")
 2. It asks for satisfaction feedback
 3. Base system prompt rules REQUIRE section_update when both conditions are met
 4. This automatically saves the interview data to the database!
@@ -589,7 +573,7 @@ Step 7 is designed to trigger section_update because:
 Example of CORRECT summary response at Step 6:
 ```json
 {
-  "reply": "Ok, before I add that into memory, let me present a refined version:\\n\\n• Name: [collected name]\\n• Company: [collected company]\\n• Industry: [collected industry]\\n• Outcomes: [refined outcomes statement]\\n\\nIs that directionally correct? Did I break anything?",
+  "reply": "Ok, before I add that into memory, let me present a refined version:\\n\\n• Name: [collected name]\\n• Company: [collected company]\\n• Industry: [collected industry]\\n• Outcomes: [user's provided outcomes]\\n\\nIs that directionally correct? Did I break anything?",
   "router_directive": "stay",
   "user_satisfaction_feedback": null,
   "is_satisfied": null,
@@ -606,7 +590,7 @@ Example of CORRECT summary response at Step 6:
             {"type": "hardBreak"},
             {"type": "text", "text": "Industry: [collected industry]"},
             {"type": "hardBreak"},
-            {"type": "text", "text": "Outcomes: [refined outcomes]"}
+            {"type": "text", "text": "Outcomes: [user's provided outcomes]"}
           ]
         }
       ]
@@ -1490,9 +1474,8 @@ ENHANCED DECISION RULES - UNDERSTAND THE SECTION FLOW:
    ✅ SAVE DATA (generate section_update) when you see these patterns:
    
    **Interview Section Specific:**
-   - "Ok, before I add that into memory, let me present a refined version" → SAVE (Step 6)
-   - "Here's what I've gathered:" + rating request → SAVE (Step 7) 
-   - Key insight: Interview has 8 steps, saves at Step 6 & 7, NOT at Step 4 confirmation
+   - "Ok, before I add that into memory, let me present a refined version:" + rating request → SAVE (Step 6) 
+   - Key insight: Interview has 7 steps, saves at Step 6, NOT at Step 4 confirmation
    
    **All Sections Universal Patterns:**
    - AI presents complete summary with bullet points or structured data
@@ -1569,13 +1552,13 @@ ENHANCED DECISION RULES - UNDERSTAND THE SECTION FLOW:
    Decision: section_update=null, is_requesting_rating=false, router_directive="stay"
    Reasoning: Simple confirmation without data synthesis
    
-   **Example 2 - Interview Step 6 (SAVE without rating):**
-   AI Reply: "Ok, before I add that into memory, let me present a refined version: • Name: Joe • Outcomes: Help clients lose weight Is that directionally correct?"
-   Decision: section_update={{"content":{{"type":"doc","content":[...]}}}}, is_requesting_rating=false, router_directive="stay"  
-   Reasoning: Presents refined data, triggers save even without rating request
+   **Example 2 - Interview Step 6 (SAVE with rating):**
+   AI Reply: "Ok, before I add that into memory, let me present a refined version: • Name: Joe • Company: ABC • Outcomes: Help clients lose weight Is that directionally correct? Did I break anything?"
+   Decision: section_update={{"content":{{"type":"doc","content":[...]}}}}, is_requesting_rating=true, router_directive="stay"  
+   Reasoning: Complete summary + rating request = save data
    
-   **Example 3 - Interview Step 7 (SAVE with rating):**
-   AI Reply: "Here's what I've gathered: • Name: Joe • Company: ABC Are you satisfied with this summary? If you need changes, please tell me what specifically needs to be adjusted."
+   **Example 3 - Pain Section Summary:**
+   AI Reply: "Ok, before I add that into memory, let me present a refined version: • Name: Joe • Company: ABC Is that directionally correct? Did I break anything?"
    Decision: section_update={{"content":{{"type":"doc","content":[...]}}}}, is_requesting_rating=true, router_directive="stay"
    Reasoning: Complete summary + rating request = save data
    
@@ -1663,7 +1646,7 @@ def extract_section_data(conversation_history: str, section_id: str = "interview
         if industry_match:
             industry = industry_match.group(1).strip()
         
-        # Extract outcomes from Step 6 refined version or Step 7 summary
+        # Extract outcomes from Step 5 or Step 6 summary
         outcomes_match = re.search(r'Outcomes:\s*([^\n]+)', conversation_history)
         if outcomes_match:
             outcomes = outcomes_match.group(1).strip()
