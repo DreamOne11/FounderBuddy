@@ -880,9 +880,29 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
                 # 5. Safely update canvas_data with the extracted, validated data
                 canvas_data = state.get("canvas_data")
                 if canvas_data and extracted_data:
-                    for field, value in extracted_data.model_dump().items():
-                        if hasattr(canvas_data, field) and value is not None:
-                            setattr(canvas_data, field, value)
+                    # Special handling for SignatureMethodData
+                    if current_section == SectionID.SIGNATURE_METHOD and isinstance(extracted_data, SignatureMethodData):
+                        # Map SignatureMethodData to ValueCanvasData fields
+                        canvas_data.method_name = extracted_data.method_name
+                        
+                        # Convert principles list to the old format for compatibility
+                        if extracted_data.principles:
+                            canvas_data.sequenced_principles = [p.name for p in extracted_data.principles if p.name]
+                            canvas_data.principle_descriptions = {
+                                p.name: p.description for p in extracted_data.principles 
+                                if p.name and p.description
+                            }
+                        
+                        logger.info(
+                            f"CANVAS_DEBUG: Mapped SignatureMethodData to canvas_data - "
+                            f"method_name: {canvas_data.method_name}, "
+                            f"principles count: {len(canvas_data.sequenced_principles or [])}"
+                        )
+                    else:
+                        # Standard field mapping for other sections
+                        for field, value in extracted_data.model_dump().items():
+                            if hasattr(canvas_data, field) and value is not None:
+                                setattr(canvas_data, field, value)
                     
                     logger.info(
                         "CANVAS_DEBUG: Updated canvas_data with structured info for section "
