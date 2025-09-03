@@ -90,12 +90,12 @@ async def router_node(state: ValueCanvasState, config: RunnableConfig) -> ValueC
         section_id = directive.split(":", 1)[1].lower()  # handle case-insensitive IDs like "ICP"
         try:
             new_section = SectionID(section_id)
+            prev_section = state.get("current_section")
             logger.section_transition(
                 prev_section.value if prev_section else "unknown",
                 new_section.value,
                 "modify"
             )
-            prev_section = state.get("current_section")
             state["current_section"] = new_section
             
             # Only clear short_memory when switching to a different section

@@ -118,9 +118,6 @@ CRITICAL SUMMARY RULE:
  
  CRITICAL CLARIFICATION: Focus on generating natural, conversational responses. Do NOT include any JSON strings or data structures in your conversational text.
 
-WHEN THE USER PROVIDES FEEDBACK:
-- If user expresses satisfaction (score 3 or higher, or positive feedback): Provide a transitional message indicating readiness to move to the next section. For example: "Thank you for your feedback! Let's move on to the next section: Deep Fear."
-- If user expresses dissatisfaction (score 2 or lower, or concerns): Offer to refine the current section. For example: "Thank you for your feedback! Let's refine this section together – what would you like to adjust?"
 
  Current progress in this section:
  - Pain Point 1: {{pain1_symptom if pain1_symptom else "Not yet collected"}}
