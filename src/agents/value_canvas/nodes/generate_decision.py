@@ -188,17 +188,19 @@ async def generate_decision_node(state: ValueCanvasState, config: RunnableConfig
         state["temp_agent_output"] = agent_output  # For memory_updater
         state["agent_output"] = agent_output
 
-        # Determine router directive based on satisfaction, per design doc
+        # Trust the LLM's router_directive decision based on full context
+        state["router_directive"] = agent_output.router_directive
+
+        # Log when satisfaction might influence routing for debugging
         if agent_output.is_satisfied is not None:
-            if agent_output.is_satisfied:
-                calculated_directive = RouterDirective.NEXT
-            else:
-                calculated_directive = RouterDirective.STAY
-                
-            state["router_directive"] = calculated_directive
-        else:
-            # Fallback to value supplied by model (may be stay/next/modify)
-            state["router_directive"] = agent_output.router_directive
+            logger.info(f"User satisfaction: {agent_output.is_satisfied}, "
+                        f"LLM router decision: {agent_output.router_directive}")
+
+        # Safety check: Log warning if satisfaction seems inconsistent with directive
+        if agent_output.is_satisfied and agent_output.router_directive == "stay":
+            logger.info("User satisfied but staying in section - likely collecting more data")
+        elif agent_output.is_satisfied is False and agent_output.router_directive == "next":
+            logger.warning("⚠️ Moving to next section despite user not satisfied - verify this is intended")
 
         # --- MVP Fallback: ensure reply contains clear question -----------------------
         need_question = (

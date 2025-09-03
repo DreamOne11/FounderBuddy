@@ -180,20 +180,35 @@ ENHANCED DECISION RULES - UNDERSTAND THE SECTION FLOW:
    - False for content confirmation questions like "Is this correct?"
    
    **For router_directive decision:**
+   
+   🚨 CRITICAL: Your router_directive is the FINAL decision and will NOT be overridden.
+   
    - "stay": Continue current section when:
      - Section-specific completion criteria NOT met (check section prompt for exact requirements)
      - Still collecting required information
      - User needs to provide corrections
      - ANY intermediate step is in progress
+     - User confirms understanding but section work continues
      
    - "next": Move to next section ONLY when:
      - ALL section-specific completion criteria are met
-     - The section prompt explicitly indicates readiness to move (e.g., "Ready to proceed?" in Interview Step 7)
-     - User has expressed satisfaction with the FINAL summary/output of the section
-     - NOT just satisfaction with intermediate steps or explanations
+     - ALL required data has been collected AND presented
+     - Section-specific final step is reached (e.g., Interview Step 7)
+     - User has confirmed satisfaction with COMPLETE section output
+     - The section prompt explicitly indicates readiness to move
      
-   - "modify:X": User explicitly requests different section
+   - "modify:X": User explicitly requests different section OR requests to modify core framework data
+     - Common section jumping patterns: "Let's work on...", "I want to do the...", "What about the..."
+     - ICP modification patterns: "adjust my icp", "change the role to", "focus on [different segment]", "target [different decision maker]", "modify the icp"
+     - Pain modification patterns: "change the pain points", "adjust the problems", "modify the pain"
+     - Payoffs modification patterns: "change the benefits", "adjust the outcomes", "modify the payoffs"
+     - When in ICP Stress Test and user wants to implement suggested ICP changes: → "modify:icp"
 
+   ⚠️ IMPORTANT: is_satisfied does NOT automatically mean "next"!
+   - is_satisfied=true with incomplete section → router_directive="stay"
+   - is_satisfied=true with complete section → router_directive="next"
+   - Let the section completion status, not just satisfaction, guide your decision
+   
    CRITICAL: "User satisfaction" alone is NOT sufficient for "next". 
    Each section defines its own completion criteria in its prompt. 
    You MUST verify these criteria are fully met before using "next".
