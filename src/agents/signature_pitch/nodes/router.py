@@ -5,7 +5,8 @@ import logging
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 
-from ..models import SignaturePitchState, SignaturePitchSectionID, RouterDirective, ContextPacket
+from ..models import SignaturePitchState, ContextPacket
+from ..enums import SignaturePitchSectionID, RouterDirective
 from ..prompts import get_next_unfinished_section
 from ..tools import get_context
 

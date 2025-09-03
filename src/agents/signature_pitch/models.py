@@ -1,6 +1,5 @@
 '''Pydantic models for Signature Pitch Agent.'''
 
-from enum import Enum
 from typing import Any, Literal
 from uuid import UUID
 import uuid
@@ -9,33 +8,7 @@ from langchain_core.messages import BaseMessage
 from langgraph.graph import MessagesState
 from pydantic import BaseModel, Field, field_validator
 
-
-class SectionStatus(str, Enum):
-    """Status of a Signature Pitch section."""
-    PENDING = "pending"
-    IN_PROGRESS = "in_progress"
-    DONE = "done"
-
-
-class RouterDirective(str, Enum):
-    """Router directive for navigation control."""
-    STAY = "stay"
-    NEXT = "next"
-    MODIFY = "modify"  # Format: "modify:section_id"
-
-
-class SignaturePitchSectionID(str, Enum):
-    """Signature Pitch section identifiers."""
-    # The 6 core Signature Pitch components
-    ACTIVE_CHANGE = "active_change"         # The transformation you create
-    SPECIFIC_WHO = "specific_who"          # The exact audience you serve
-    OUTCOME_PRIZE = "outcome_prize"        # The compelling result they desire
-    CORE_CREDIBILITY = "core_credibility"  # Proof you can deliver
-    STORY_SPARK = "story_spark"           # A short narrative hook or example
-    SIGNATURE_LINE = "signature_line"      # The concise pitch (90 seconds → 1 line)
-
-    # Implementation/Export
-    IMPLEMENTATION = "implementation"
+from .enums import SectionStatus, RouterDirective, SignaturePitchSectionID
 
 
 class TiptapTextNode(BaseModel):
@@ -133,6 +106,38 @@ class SignaturePitchData(BaseModel):
     # Overall Signature Pitch
     complete_pitch: str | None = None
     pitch_confidence: int | None = Field(None, ge=0, le=5)
+
+
+class ChatAgentDecision(BaseModel):
+    """Structured decision data from Decision Agent node."""
+    
+    router_directive: str = Field(
+        ...,
+        description="Navigation control: 'stay' to continue on the current section, 'next' to proceed to the next section, or 'modify:<section_id>' to jump to a specific section.",
+    )
+    user_satisfaction_feedback: str | None = Field(
+        None, description="User's natural language feedback about satisfaction with the section content."
+    )
+    is_satisfied: bool | None = Field(
+        None, description="AI's interpretation of user satisfaction based on their feedback. True if satisfied, False if needs improvement."
+    )
+    section_update: dict[str, Any] | None = Field(
+        None,
+        description="Content for the current section in Tiptap JSON format. REQUIRED when providing summary or asking for rating. Example: {'content': {'type': 'doc', 'content': [{'type': 'paragraph', 'content': [{'type': 'text', 'text': 'content here'}]}]}}",
+    )
+
+    @field_validator("router_directive")
+    def validate_router_directive(cls, v):
+        """Validate the router_directive field."""
+        if v not in ["stay", "next"] and not v.startswith("modify:"):
+            raise ValueError(
+                "router_directive must be 'stay', 'next', or start with 'modify:'"
+            )
+        if v.startswith("modify:"):
+            section_id = v.split(":", 1)[1]
+            if not section_id:
+                raise ValueError("modify directive must include a section_id")
+        return v
 
 
 class ChatAgentOutput(BaseModel):

@@ -5,7 +5,8 @@ import uuid
 
 from langchain_core.runnables import RunnableConfig
 
-from ..models import MissionPitchState, MissionSectionID, RouterDirective, MissionPitchData
+from ..models import MissionPitchState, MissionPitchData
+from ..enums import MissionSectionID, RouterDirective
 
 logger = logging.getLogger(__name__)
 

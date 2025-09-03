@@ -5,7 +5,8 @@ import uuid
 
 from langchain_core.runnables import RunnableConfig
 
-from ..models import SignaturePitchState, SignaturePitchSectionID, RouterDirective, SignaturePitchData
+from ..models import SignaturePitchState, SignaturePitchData
+from ..enums import SignaturePitchSectionID, RouterDirective
 
 logger = logging.getLogger(__name__)
 

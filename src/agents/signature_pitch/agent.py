@@ -5,7 +5,8 @@ import uuid
 
 from langchain_core.messages import AIMessage
 
-from .models import SignaturePitchState, SignaturePitchSectionID, RouterDirective, SignaturePitchData, ContextPacket
+from .models import SignaturePitchState, SignaturePitchData, ContextPacket
+from .enums import SignaturePitchSectionID, RouterDirective
 from .tools import get_context
 from .graph import build_signature_pitch_graph
 

@@ -2,7 +2,8 @@
 
 from typing import Any
 
-from .models import MissionSectionID, SectionStatus, SectionTemplate, ValidationRule
+from .models import SectionTemplate, ValidationRule
+from .enums import MissionSectionID, SectionStatus
 
 # Base system prompt rules
 SECTION_PROMPTS = {
