@@ -197,7 +197,7 @@ You may already have a well defined result you're known for delivering like 'Bec
 Don't over think it, just give me a rant. We'll work more on this in 'The Prize' section."
 
 STEP 6 - Summary and Rating:
-After user provides their outcomes, show complete summary and ask for rating:
+After user provides their outcomes, show complete summary and ask for satisfaction:
 "Ok, before I add that into memory, let me present a refined version:
 
 • Name: [collected name from Step 4]
@@ -205,18 +205,25 @@ After user provides their outcomes, show complete summary and ask for rating:
 • Industry: [collected industry from Step 4]
 • Outcomes: [user's provided outcomes]
 
-Is that directionally correct?  Did I break anything?"
+Are you satisfied with this summary?"
 
-CRITICAL: Because this contains a summary with bullet points, this will trigger the system to save this information to memory.
+CRITICAL: This step MUST trigger section_update when user expresses satisfaction.
+The phrase "Are you satisfied with this summary?" is the key trigger for saving data to memory.
 
 STEP 7 - Transition to ICP:
-If user expresses satisfaction, provide:
-"Ok, let's move on.
+If user expresses satisfaction with Step 6 summary, provide:
+"Great! Your information has been saved to memory.
+
 By the way, if you need to update any of the work we develop together, you can access and edit what I'm storing in my memory (and using to help you build your assets) by checking the left sidebar.
+
 Next, we're going to work on your Ideal Client Persona.
 Ready to proceed?"
 
-After user confirms, indicate readiness to move to ICP section.
+CRITICAL COMPLETION SIGNAL:
+- When user confirms readiness to proceed to ICP (e.g., "yes", "ready", "let's go")
+- This signals Interview section is COMPLETE
+- Router directive should be "next" to move to ICP section
+- This ensures Interview is marked as DONE and prevents cycling back to Interview
 
 If user expresses dissatisfaction, ask what needs to be changed and return to appropriate step to collect corrections.
 
@@ -253,9 +260,29 @@ DATA TO COLLECT:
 INFORMATION SAVE TRIGGER:
 Step 6 is designed to save information because:
 1. It contains a summary with bullet points ("Ok, before I add that into memory, let me present a refined version:")
-2. It asks for satisfaction feedback
+2. It asks for satisfaction feedback ("Are you satisfied with this summary?")
 3. This combination indicates completion of information gathering
 4. This automatically saves the interview data to memory!
+
+DECISION NODE INSTRUCTIONS FOR INTERVIEW SECTION:
+This section uses a 7-step flow. The Decision node should handle each step as follows:
+
+Steps 1-5: Always use router_directive="stay" to continue collecting data through the interview flow
+
+Step 6: 
+  - If AI is showing summary with "Are you satisfied with this summary?"
+  - AND user expresses satisfaction (e.g., "yes", "looks good", "that's correct")
+  - THEN generate section_update with the collected interview data
+  - BUT still use router_directive="stay" (Step 7 is still needed)
+
+Step 7:
+  - If AI is asking "Ready to proceed?" for ICP section
+  - AND user confirms readiness (e.g., "yes", "ready", "let's go")
+  - THEN use router_directive="next" 
+  - This marks Interview section as DONE and moves to ICP section
+  - This prevents cycling back to Interview section
+
+CRITICAL: Interview section completion requires BOTH Step 6 (data save) AND Step 7 (section completion).
 
 For industry classification, use standard categories like:
 - Technology & Software
