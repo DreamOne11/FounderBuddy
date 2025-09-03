@@ -86,17 +86,18 @@ def _get_config_based_on_url() -> tuple[dict[str, int], int]:
             "name": 9,
             "same": 10,
             "fame": 11,
-            "sp_pain": 12,  # Social Pitch pain (different from Value Canvas pain)
+            "pain": 12,  # Social Pitch pain (uses "pain" in enum, not "sp_pain")
             "aim": 13,
             "game": 14,
+            "implementation": 15,  # Social Pitch implementation section
             # Mission Pitch sections
-            "hidden_theme": 15,
-            "personal_origin": 16,
-            "business_origin": 17,
-            "mission": 18,
-            "three_year_vision": 19,
-            "big_vision": 20,
-            "implementation": 21,
+            "hidden_theme": 16,
+            "personal_origin": 17,
+            "business_origin": 18,
+            "mission": 19,
+            "three_year_vision": 20,
+            "big_vision": 21,
+            "implementation": 22,  # Mission Pitch implementation
             # Signature Pitch sections
             "active_change": 24,
             "specific_who": 25,
@@ -104,6 +105,7 @@ def _get_config_based_on_url() -> tuple[dict[str, int], int]:
             "core_credibility": 27,
             "story_spark": 28,
             "signature_line": 29,
+            "implementation": 30,  # Signature Pitch implementation
             # Special Report sections
             "topic_selection": 32,
             "content_development": 33,
@@ -111,7 +113,7 @@ def _get_config_based_on_url() -> tuple[dict[str, int], int]:
             "sr_implementation": 35,  # Special Report implementation
         }
         agent_id = 1  # Default to Value Canvas agent ID (will be overridden by agent-specific calls)
-        logger.info("Using DentApp AI Builder configuration: Value Canvas (IDs 1-8, agent 1), Social Pitch (IDs 9-14, agent 3), Mission Pitch (IDs 15-23, agent 4), Signature Pitch (IDs 24-31, agent 5)")
+        logger.info("Using DentApp AI Builder configuration: Value Canvas (IDs 1-8, agent 1), Social Pitch (IDs 9-14, agent 3), Mission Pitch (IDs 15-23, agent 4), Signature Pitch (IDs 24-31, agent 5), Special Report (IDs 32-35, agent 6)")
     else:
         # Default fallback to GSD configuration
         section_mapping = {
@@ -128,17 +130,18 @@ def _get_config_based_on_url() -> tuple[dict[str, int], int]:
             "name": 17,
             "same": 18,
             "fame": 19,
-            "sp_pain": 20,  # Social Pitch pain (different from Value Canvas pain)
+            "pain": 20,  # Social Pitch pain (uses "pain" in enum, not "sp_pain")
             "aim": 21,
             "game": 22,
+            "implementation": 23,  # Social Pitch implementation
             # Mission Pitch sections
-            "hidden_theme": 23,
-            "personal_origin": 24,
-            "business_origin": 25,
-            "mission": 26,
-            "three_year_vision": 27,
-            "big_vision": 28,
-            "implementation": 29,
+            "hidden_theme": 24,
+            "personal_origin": 25,
+            "business_origin": 26,
+            "mission": 27,
+            "three_year_vision": 28,
+            "big_vision": 29,
+            "implementation": 30,  # Mission Pitch implementation
             # Signature Pitch sections
             "active_change": 32,
             "specific_who": 33,
@@ -146,6 +149,7 @@ def _get_config_based_on_url() -> tuple[dict[str, int], int]:
             "core_credibility": 35,
             "story_spark": 36,
             "signature_line": 37,
+            "implementation": 38,  # Signature Pitch implementation
             # Special Report sections
             "topic_selection": 40,
             "content_development": 41,
