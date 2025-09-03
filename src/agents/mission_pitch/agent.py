@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 graph = build_mission_pitch_graph()
 
 
-async def initialize_mission_pitch_state(user_id: int, thread_id: str | None = None) -> MissionPitchState:
+async def initialize_mission_pitch_state(user_id: int = None, thread_id: str | None = None) -> MissionPitchState:
     """
     Initialize a new Mission Pitch state with the given user and thread IDs.
     

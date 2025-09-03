@@ -203,3 +203,4 @@ async def generate_reply_node(state: MissionPitchState, config: RunnableConfig) 
         state.setdefault("short_memory", []).append(AIMessage(content=default_reply))
     
     return state
+

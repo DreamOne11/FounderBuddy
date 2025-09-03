@@ -16,11 +16,11 @@ from integrations.dentapp.dentapp_utils import (
     tiptap_to_plain_text,
 )
 
-from .models import (
-    MissionSectionID,
-    SectionStatus,
-    TiptapDocument,
-)
+from .models import TiptapDocument
+from .enums import SectionStatus, MissionSectionID
+
+
+
 from .prompts import SECTION_PROMPTS, SECTION_TEMPLATES
 
 logger = logging.getLogger(__name__)
