@@ -4,8 +4,8 @@ import logging
 
 from langchain_core.runnables import RunnableConfig
 
-from ..models import ValueCanvasState, ValueCanvasData, ContextPacket
-from ..enums import SectionID, RouterDirective
+from ..enums import RouterDirective, SectionID
+from ..models import ValueCanvasData, ValueCanvasState
 
 logger = logging.getLogger(__name__)
 

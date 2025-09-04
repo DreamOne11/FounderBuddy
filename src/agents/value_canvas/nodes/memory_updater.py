@@ -6,26 +6,27 @@ from langgraph.prebuilt import ToolNode
 
 from core.llm import get_model
 from core.logging_config import get_logger, log_node_entry, log_node_exit
+
+from ..enums import RouterDirective, SectionID, SectionStatus
 from ..models import (
-    ValueCanvasState,
-    SectionState,
-    SectionContent,
-    TiptapDocument,
-    InterviewData,
-    ICPData,
-    PainData,
     DeepFearData,
-    PayoffsData,
-    SignatureMethodData,
+    ICPData,
+    InterviewData,
     MistakesData,
+    PainData,
+    PayoffsData,
     PrizeData,
+    SectionContent,
+    SectionState,
+    SignatureMethodData,
+    TiptapDocument,
+    ValueCanvasState,
 )
-from ..enums import SectionID, SectionStatus, RouterDirective
 from ..tools import (
-    save_section,
-    get_all_sections_status,
     create_tiptap_content,
     extract_plain_text,
+    get_all_sections_status,
+    save_section,
     validate_field,
 )
 

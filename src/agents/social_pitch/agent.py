@@ -10,29 +10,29 @@ from langgraph.constants import END, START
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
 
-from core.llm import get_model, LLMConfig
+from core.llm import LLMConfig, get_model
 
 from .models import (
+    AimData,
     ChatAgentOutput,
     ContextPacket,
-    NameData,
-    SameData,
     FameData,
-    PainData,
-    AimData,
     GameData,
+    NameData,
+    PainData,
     RouterDirective,
+    SameData,
     SectionContent,
     SectionID,
     SectionState,
     SectionStatus,
-    TiptapDocument,
     SocialPitchData,
     SocialPitchState,
+    TiptapDocument,
 )
 from .prompts import (
-    get_next_unfinished_section,
     SECTION_NAMES,
+    get_next_unfinished_section,
 )
 from .tools import (
     create_tiptap_content,
@@ -364,7 +364,7 @@ async def chat_agent_node(state: SocialPitchState, config: RunnableConfig) -> So
 
     # --- Pre-LLM Context Injection ---
     try:
-        from .prompts import SECTION_TEMPLATES, get_next_unfinished_section
+        from .prompts import get_next_unfinished_section
         
         temp_states = state.get("section_states", {}).copy()
         current_section_id = state["current_section"].value

@@ -624,32 +624,32 @@ def _generate_social_pitch_content(pitch_data: dict[str, Any]) -> str:
     
     # NAME Component
     if pitch_data.get('user_name') and pitch_data.get('user_position') and pitch_data.get('company_name'):
-        content += f"## NAME (Clarity & Presence)\\n"
+        content += "## NAME (Clarity & Presence)\\n"
         content += f"**My name is {pitch_data['user_name']}, I'm the {pitch_data['user_position']} of a company called {pitch_data['company_name']}.**\\n\\n"
     
     # SAME Component
     if pitch_data.get('same_statement'):
-        content += f"## SAME (Instant Understanding)\\n"
+        content += "## SAME (Instant Understanding)\\n"
         content += f"**{pitch_data['same_statement']}**\\n\\n"
     
     # FAME Component
     if pitch_data.get('fame_statement'):
-        content += f"## FAME (Differentiation)\\n"
+        content += "## FAME (Differentiation)\\n"
         content += f"**{pitch_data['fame_statement']}**\\n\\n"
     
     # PAIN Component
     if pitch_data.get('pain_statement'):
-        content += f"## PAIN (Recognition)\\n"
+        content += "## PAIN (Recognition)\\n"
         content += f"**{pitch_data['pain_statement']}**\\n\\n"
     
     # AIM Component
     if pitch_data.get('aim_statement'):
-        content += f"## AIM (Momentum)\\n"
+        content += "## AIM (Momentum)\\n"
         content += f"**{pitch_data['aim_statement']}**\\n\\n"
     
     # GAME Component
     if pitch_data.get('game_statement'):
-        content += f"## GAME (Purpose)\\n"
+        content += "## GAME (Purpose)\\n"
         content += f"**{pitch_data['game_statement']}**\\n\\n"
     
     # Complete Pitch

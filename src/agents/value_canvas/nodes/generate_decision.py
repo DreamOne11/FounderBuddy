@@ -6,13 +6,14 @@ import re
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
 
-from core.llm import get_model, LLMConfig
+from core.llm import LLMConfig, get_model
+
+from ..enums import RouterDirective
 from ..models import (
-    ValueCanvasState,
     ChatAgentDecision,
     ChatAgentOutput,
+    ValueCanvasState,
 )
-from ..enums import RouterDirective
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ async def generate_decision_node(state: ValueCanvasState, config: RunnableConfig
     last_ai_reply = messages[-1].content
     
     # Use the modular prompt template from prompts.py
-    from ..prompts import get_decision_prompt_template, format_conversation_for_decision
+    from ..prompts import format_conversation_for_decision, get_decision_prompt_template
     
     # DEBUG: Log conversation messages before formatting
     logger.info("=== DECISION_NODE_CONVERSATION_HISTORY_DEBUG ===")
@@ -140,7 +141,7 @@ async def generate_decision_node(state: ValueCanvasState, config: RunnableConfig
         if decision.router_directive == "next" and state['current_section'].value == "interview":
             logger.warning("🚨 POTENTIAL ISSUE: Interview section returning 'next' - Check if this is correct!")
             logger.warning(f"   Last AI reply was: {last_ai_reply[:200]}...")
-            logger.warning(f"   This suggests Step 7 completion, but verify in logs above")
+            logger.warning("   This suggests Step 7 completion, but verify in logs above")
 
         # Create complete ChatAgentOutput by combining reply + decision
         agent_output = ChatAgentOutput(
@@ -198,7 +199,7 @@ async def generate_decision_node(state: ValueCanvasState, config: RunnableConfig
 
         # Apply satisfaction-based safety rail
         if agent_output.is_satisfied is not None and not agent_output.is_satisfied:
-            logger.info(f"User not satisfied detected from decision. Forcing 'stay' directive.")
+            logger.info("User not satisfied detected from decision. Forcing 'stay' directive.")
             agent_output.router_directive = "stay"
 
         # Save to state

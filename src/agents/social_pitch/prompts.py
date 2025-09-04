@@ -2,7 +2,6 @@
 
 from .models import SectionID, SectionStatus, SectionTemplate, ValidationRule
 
-
 # Base rules that apply to all sections
 SECTION_PROMPTS = {
     "base_rules": """You are an AI Agent specifically designed to help business owners develop their Social Pitch—a compelling and concise answer to the question "What do you do?" using the 6-component framework.

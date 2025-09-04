@@ -1,7 +1,7 @@
 """Prompts and templates for the Implementation section."""
 
 from ...enums import SectionID
-from ..base_prompt import BASE_RULES, SectionTemplate, ValidationRule
+from ..base_prompt import BASE_RULES, SectionTemplate
 
 # Implementation section specific prompts
 IMPLEMENTATION_SYSTEM_PROMPT = f"""{BASE_RULES}

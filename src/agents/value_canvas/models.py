@@ -1,35 +1,26 @@
 '''Pydantic models for Value Canvas Agent - Compatibility layer after refactoring.'''
 
-from typing import Any, Literal
-from uuid import UUID
 import uuid
+from typing import Any, Literal
 
 from langchain_core.messages import BaseMessage
 from langgraph.graph import MessagesState
 from pydantic import BaseModel, Field, field_validator
 
 # Import enums and base models
-from .enums import SectionStatus, RouterDirective, SectionID
-from .sections.base_prompt import ValidationRule, SectionTemplate
+from .enums import RouterDirective, SectionID, SectionStatus
+from .sections.base_prompt import SectionTemplate, ValidationRule
+from .sections.deep_fear import DeepFearData
+from .sections.icp import ICPData
+from .sections.implementation import ImplementationData
 
 # Import section-specific models
 from .sections.interview import InterviewData
-from .sections.icp import ICPData
-from .sections.icp_stress_test import ICPStressTestData
+from .sections.mistakes import Mistake, MistakesData
 from .sections.pain import PainData, PainPoint
-from .sections.deep_fear import DeepFearData
-from .sections.payoffs import PayoffsData, PayoffPoint
-from .sections.pain_payoff_symmetry import PainPayoffSymmetryData
-from .sections.signature_method import SignatureMethodData, Principle
-from .sections.mistakes import MistakesData, Mistake
+from .sections.payoffs import PayoffPoint, PayoffsData
 from .sections.prize import PrizeData
-from .sections.implementation import ImplementationData
-
-
-
-
-
-
+from .sections.signature_method import Principle, SignatureMethodData
 
 
 class TiptapTextNode(BaseModel):

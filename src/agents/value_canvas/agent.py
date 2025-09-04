@@ -3,10 +3,10 @@
 import logging
 import uuid
 
-from .models import ValueCanvasState, ContextPacket
-from .enums import SectionID, RouterDirective
-from .tools import get_context
+from .enums import RouterDirective, SectionID
 from .graph import build_value_canvas_graph
+from .models import ContextPacket, ValueCanvasState
+from .tools import get_context
 
 logger = logging.getLogger(__name__)
 

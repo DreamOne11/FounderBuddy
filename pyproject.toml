@@ -54,7 +54,7 @@ dependencies = [
     "setuptools ~=75.6.0",
     "tiktoken >=0.8.0",
     "uvicorn ~=0.32.1",
-
+    "pip>=25.2",
 ]
 
 [dependency-groups]

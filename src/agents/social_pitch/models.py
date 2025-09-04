@@ -1,9 +1,8 @@
 """Pydantic models for Social Pitch Agent."""
 
+import uuid
 from enum import Enum
 from typing import Any, Literal
-from uuid import UUID
-import uuid
 
 from langchain_core.messages import BaseMessage
 from langgraph.graph import MessagesState

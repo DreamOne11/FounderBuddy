@@ -2,7 +2,10 @@
     "python_version": "3.12",
     "dependencies": ["./src"],
     "graphs": {
-        "value_canvas": "agents.value_canvas.agent:graph"
+        "value_canvas": "agents.value_canvas.agent:graph",
+        "social_pitch": "agents.social_pitch.agent:graph",
+        "mission_pitch": "agents.mission_pitch.agent:graph",
+        "special_report": "agents.special_report.agent:graph"
     },
     "env": "./.env"
 }
