@@ -386,7 +386,24 @@ async def memory_updater_node(
                 # Update local state consistently, whether it existed before or not.
                 # Convert content_to_save to TiptapDocument
                 if isinstance(content_to_save, dict):
-                    tiptap_doc = TiptapDocument.model_validate(content_to_save)
+                    # Convert bullet lists to paragraphs before validation
+                    converted_content = convert_bullet_list_to_paragraphs(content_to_save)
+                    try:
+                        tiptap_doc = TiptapDocument.model_validate(converted_content)
+                    except Exception as e:
+                        logger.warning(f"Failed to validate converted content: {e}")
+                        logger.debug(f"Converted content: {converted_content}")
+                        # Fallback to basic paragraph structure
+                        tiptap_doc = TiptapDocument(
+                            type="doc", 
+                            content=[TiptapParagraphNode(
+                                type="paragraph",
+                                content=[TiptapTextNode(
+                                    type="text",
+                                    text="Content validation failed - please regenerate summary"
+                                )]
+                            )]
+                        )
                 else:
                     tiptap_doc = content_to_save
 

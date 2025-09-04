@@ -17,32 +17,17 @@ QUESTIONING STRATEGY:
 
 LEVERAGE VALUE CANVAS: Source these problems from their completed Value Canvas work when available.
 
-DECISION GATEWAY: Present the problem framework (Context + 3 Dominant Problems) in a summary format and ask "Are you satisfied with this summary?" before proceeding to Step 4 (SOLUTION).
+DECISION GATEWAY: Present the problem framework (Context + 3 Dominant Problems) and ask for user confirmation before proceeding to Step 4 (SOLUTION).
 
 COMPLETION CRITERIA:
 - Clear context established (why problem is relevant now)
 - Three specific dominant problems identified
 - Problems resonate deeply with target audience
 - Problems sourced from Value Canvas insights
-- Complete summary presented with context and all three problems
-- Explicit satisfaction feedback requested: "Are you satisfied with this summary?"
-- User expresses satisfaction (positive response to satisfaction question)
+- User rates satisfaction ≥ 3/5
 - Ready to move to SOLUTION step
 
-SATISFACTION FEEDBACK PATTERN:
-When all components are collected, present them in this format:
-"Here's your PROBLEM framework summary:
-
-**CONTEXT:** [collected context - why problem is relevant now]
-
-**DOMINANT PROBLEMS:**
-1. [Problem 1 - specific pain point/frustration]
-2. [Problem 2 - specific pain point/frustration] 
-3. [Problem 3 - specific pain point/frustration]
-
-Are you satisfied with this summary?"
-
-Remember: This must resonate deeply and feel like you truly understand their struggles.,
+Remember: This must resonate deeply and feel like you truly understand their struggles.""",
     "validation_rules": {
         "context": "Must explain why the problem is relevant and urgent now",
         "problem_1": "First specific pain point or frustration",

@@ -15,30 +15,17 @@ QUESTIONING STRATEGY:
 2. SPECIFIC: "What exactly should they do? What's the specific action - book a call, visit a website, download something?"
 3. CLARITY: "If someone heard this call to action once, would they know exactly what to do? Is it specific enough?"
 
-DECISION GATEWAY: Present the clear call to action in a summary format and ask "Are you satisfied with this summary?" before proceeding to Step 8 (ESSENCE).
+DECISION GATEWAY: Present the clear call to action and ask for user confirmation before proceeding to Step 8 (ESSENCE).
 
 COMPLETION CRITERIA:
 - Single, specific call to action identified
 - Action is clear and unambiguous
 - Next step is something they can actually deliver on
 - Eliminates confusion about what to do next
-- Complete summary presented with the call to action
-- Explicit satisfaction feedback requested: "Are you satisfied with this summary?"
-- User expresses satisfaction (positive response to satisfaction question)
+- User rates satisfaction ≥ 3/5
 - Ready to move to ESSENCE step
 
-SATISFACTION FEEDBACK PATTERN:
-When all components are collected, present them in this format:
-"Here's your NEXT STEPS framework summary:
-
-**Your Clear Call to Action:**
-[collected specific, actionable instruction]
-
-This eliminates confusion and makes it crystal clear what someone should do if they're interested in working with you.
-
-Are you satisfied with this summary?"
-
-Remember: Clarity trumps cleverness. Make it impossible to misunderstand.,
+Remember: Clarity trumps cleverness. Make it impossible to misunderstand.""",
     "validation_rules": {
         "call_to_action": "Must be specific, actionable, and unambiguous",
         "delivery_method": "How they'll deliver on this call to action",

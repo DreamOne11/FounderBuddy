@@ -14,30 +14,17 @@ QUESTIONING STRATEGY:
 2. FEELING: "What emotion do you want your audience to experience when they think of you and your work?"
 3. INTEGRATION: "How does this reputation and feeling connect back to your overall value proposition?"
 
-COMPLETION GATEWAY: Present the ESSENCE (Reputation + Feeling) in a summary format and ask "Are you satisfied with this summary?" Upon completion with satisfactory feedback, congratulate them on completing the full CAPSTONE framework.
+COMPLETION GATEWAY: Present the ESSENCE (Reputation + Feeling) and ask for user confirmation. Upon completion with satisfactory rating, congratulate them on completing the full CAPSTONE framework.
 
 COMPLETION CRITERIA:
 - Clear reputation goal defined
 - Specific desired audience feeling identified
 - Essence reinforces their overall value proposition
 - Creates memorable, positive lasting impression
-- Complete summary presented with both elements
-- Explicit satisfaction feedback requested: "Are you satisfied with this summary?"
-- User expresses satisfaction (positive response to satisfaction question)
+- User rates satisfaction ≥ 3/5
 - CAPSTONE framework complete - ready for implementation
 
-SATISFACTION FEEDBACK PATTERN:
-When all components are collected, present them in this format:
-"Here's your ESSENCE framework summary:
-
-• **REPUTATION:** [collected lasting impression goal]
-• **FEELING:** [collected desired audience emotion]
-
-This essence reinforces your overall value proposition and creates the memorable impression that will linger after your presentation.
-
-Are you satisfied with this summary?"
-
-Remember: This is their final note - the impression that lingers after they've left the room.,
+Remember: This is their final note - the impression that lingers after they've left the room.""",
     "validation_rules": {
         "reputation": "The lasting impression they want to leave behind",
         "feeling": "The specific emotion they want audience to experience",

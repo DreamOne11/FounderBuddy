@@ -15,31 +15,17 @@ QUESTIONING STRATEGY:
 2. MISSION: "What is your deeper purpose? What drives you to do this work every day?"
 3. VISION: "What's your long-term vision? What ultimate goal or change are you working toward?"
 
-DECISION GATEWAY: Present the WHY framework (Origin + Mission + Vision) in a summary format and ask "Are you satisfied with this summary?" before proceeding to Step 6 (OPPORTUNITY).
+DECISION GATEWAY: Present the WHY framework (Origin + Mission + Vision) and ask for user confirmation before proceeding to Step 6 (OPPORTUNITY).
 
 COMPLETION CRITERIA:
 - Compelling origin story that explains their journey
 - Clear mission statement that reveals purpose
 - Inspiring vision for long-term impact
 - Story creates emotional connection with audience
-- Complete summary presented with all three elements
-- Explicit satisfaction feedback requested: "Are you satisfied with this summary?"
-- User expresses satisfaction (positive response to satisfaction question)
+- User rates satisfaction ≥ 3/5
 - Ready to move to OPPORTUNITY step
 
-SATISFACTION FEEDBACK PATTERN:
-When all components are collected, present them in this format:
-"Here's your WHY framework summary:
-
-• **ORIGIN:** [collected personal story/journey catalyst]
-• **MISSION:** [collected deeper purpose/what drives them]
-• **VISION:** [collected long-term goal/ultimate change]
-
-This story creates an emotional connection and shows the human side behind your professional expertise.
-
-Are you satisfied with this summary?"
-
-Remember: This is where logic meets emotion - the story that makes them human and relatable.,
+Remember: This is where logic meets emotion - the story that makes them human and relatable.""",
     "validation_rules": {
         "origin": "Personal story of how they began this journey",
         "mission": "Their deeper purpose and what drives them",

@@ -15,31 +15,17 @@ QUESTIONING STRATEGY:
 2. WEDDING: "What does the collaboration look like? How do you work together once they say yes?"
 3. HONEYMOON: "What's the successful outcome? What does the 'honeymoon period' of successful implementation look like?"
 
-DECISION GATEWAY: Present the OPPORTUNITY framework (Proposal + Wedding + Honeymoon) in a summary format and ask "Are you satisfied with this summary?" before proceeding to Step 7 (NEXT STEPS).
+DECISION GATEWAY: Present the OPPORTUNITY framework (Proposal + Wedding + Honeymoon) and ask for user confirmation before proceeding to Step 7 (NEXT STEPS).
 
 COMPLETION CRITERIA:
 - Clear proposal/invitation to work together
 - Defined collaboration framework (wedding)
 - Compelling vision of successful outcome (honeymoon)
 - Logical bridge from story to partnership
-- Complete summary presented with all three elements
-- Explicit satisfaction feedback requested: "Are you satisfied with this summary?"
-- User expresses satisfaction (positive response to satisfaction question)
+- User rates satisfaction ≥ 3/5
 - Ready to move to NEXT STEPS
 
-SATISFACTION FEEDBACK PATTERN:
-When all components are collected, present them in this format:
-"Here's your OPPORTUNITY framework summary:
-
-• **PROPOSAL:** [collected initial offer/invitation]
-• **WEDDING:** [collected collaboration process/framework]
-• **HONEYMOON:** [collected vision of successful outcome]
-
-This creates a logical bridge from your personal story to a compelling partnership invitation.
-
-Are you satisfied with this summary?"
-
-Remember: This makes the partnership feel inevitable and desirable, not pushy.,
+Remember: This makes the partnership feel inevitable and desirable, not pushy.""",
     "validation_rules": {
         "proposal": "Initial offer or invitation to work together",
         "wedding": "What the collaboration process looks like",

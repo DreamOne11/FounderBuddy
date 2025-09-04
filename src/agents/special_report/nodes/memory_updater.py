@@ -14,6 +14,8 @@ from ..models import (
     SpecialReportSection,
     SpecialReportState,
     TiptapDocument,
+    TiptapParagraphNode,
+    TiptapTextNode,
 )
 from ..tools import (
     create_tiptap_content,
@@ -22,6 +24,93 @@ from ..tools import (
 )
 
 logger = get_logger(__name__)
+
+
+def convert_bullet_list_to_paragraphs(tiptap_content: dict) -> dict:
+    """
+    Convert Tiptap bulletList structures to paragraph format for model validation.
+    
+    Args:
+        tiptap_content: Tiptap JSON content that may contain bulletList structures
+        
+    Returns:
+        Tiptap JSON content with bulletList converted to paragraphs
+    """
+    if not isinstance(tiptap_content, dict):
+        return tiptap_content
+    
+    def extract_text_from_node(node: dict) -> str:
+        """Recursively extract text from any Tiptap node."""
+        if not isinstance(node, dict):
+            return ""
+        
+        if node.get("type") == "text":
+            return node.get("text", "")
+        
+        text_parts = []
+        if "content" in node and isinstance(node["content"], list):
+            for child in node["content"]:
+                text_parts.append(extract_text_from_node(child))
+        
+        return "".join(text_parts)
+    
+    # Create a copy to avoid modifying the original
+    converted_content = {"type": "doc", "content": []}
+    
+    if "content" in tiptap_content and isinstance(tiptap_content["content"], list):
+        for item in tiptap_content["content"]:
+            if isinstance(item, dict):
+                if item.get("type") == "bulletList":
+                    # Convert bulletList to paragraphs
+                    if "content" in item and isinstance(item["content"], list):
+                        for list_item in item["content"]:
+                            if isinstance(list_item, dict) and list_item.get("type") == "listItem":
+                                # Extract all text from the list item
+                                text = extract_text_from_node(list_item).strip()
+                                if text:
+                                    # Create a paragraph with bullet point
+                                    paragraph = {
+                                        "type": "paragraph",
+                                        "content": [{
+                                            "type": "text",
+                                            "text": f"• {text}"
+                                        }]
+                                    }
+                                    converted_content["content"].append(paragraph)
+                elif item.get("type") == "paragraph":
+                    # Keep paragraphs as-is but ensure proper structure
+                    paragraph = {
+                        "type": "paragraph",
+                        "content": []
+                    }
+                    
+                    if "content" in item and isinstance(item["content"], list):
+                        for content_item in item["content"]:
+                            if isinstance(content_item, dict) and content_item.get("type") == "text":
+                                paragraph["content"].append({
+                                    "type": "text",
+                                    "text": content_item.get("text", "")
+                                })
+                            elif isinstance(content_item, dict) and content_item.get("type") == "hardBreak":
+                                paragraph["content"].append({
+                                    "type": "hardBreak"
+                                })
+                    
+                    converted_content["content"].append(paragraph)
+                else:
+                    # For other types, try to extract text and convert to paragraph
+                    text = extract_text_from_node(item).strip()
+                    if text:
+                        paragraph = {
+                            "type": "paragraph",
+                            "content": [{
+                                "type": "text",
+                                "text": text
+                            }]
+                        }
+                        converted_content["content"].append(paragraph)
+    
+    return converted_content
 
 
 async def memory_updater_node(
@@ -255,7 +344,24 @@ async def memory_updater_node(
                 # Update local state consistently, whether it existed before or not.
                 # Convert content_to_save to TiptapDocument
                 if isinstance(content_to_save, dict):
-                    tiptap_doc = TiptapDocument.model_validate(content_to_save)
+                    # Convert bullet lists to paragraphs before validation
+                    converted_content = convert_bullet_list_to_paragraphs(content_to_save)
+                    try:
+                        tiptap_doc = TiptapDocument.model_validate(converted_content)
+                    except Exception as e:
+                        logger.warning(f"Failed to validate converted content: {e}")
+                        logger.debug(f"Converted content: {converted_content}")
+                        # Fallback to basic paragraph structure
+                        tiptap_doc = TiptapDocument(
+                            type="doc", 
+                            content=[TiptapParagraphNode(
+                                type="paragraph",
+                                content=[TiptapTextNode(
+                                    type="text",
+                                    text="Content validation failed - please regenerate summary"
+                                )]
+                            )]
+                        )
                 else:
                     tiptap_doc = content_to_save
 
