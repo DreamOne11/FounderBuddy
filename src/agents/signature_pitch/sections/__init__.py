@@ -1,13 +1,13 @@
 """Signature Pitch sections package."""
 
 # Import section-specific models and prompts
-from .active_change import ActiveChangeData, ACTIVE_CHANGE_PROMPTS
-from .specific_who import SpecificWhoData, SPECIFIC_WHO_PROMPTS  
-from .outcome_prize import OutcomePrizeData, OUTCOME_PRIZE_PROMPTS
-from .core_credibility import CoreCredibilityData, CORE_CREDIBILITY_PROMPTS
-from .story_spark import StorySparkData, STORY_SPARK_PROMPTS
-from .signature_line import SignatureLineData, SIGNATURE_LINE_PROMPTS
-from .implementation import ImplementationData, IMPLEMENTATION_PROMPTS
+from .active_change import ACTIVE_CHANGE_PROMPTS, ActiveChangeData
+from .core_credibility import CORE_CREDIBILITY_PROMPTS, CoreCredibilityData
+from .implementation import IMPLEMENTATION_PROMPTS, ImplementationData
+from .outcome_prize import OUTCOME_PRIZE_PROMPTS, OutcomePrizeData
+from .signature_line import SIGNATURE_LINE_PROMPTS, SignatureLineData
+from .specific_who import SPECIFIC_WHO_PROMPTS, SpecificWhoData
+from .story_spark import STORY_SPARK_PROMPTS, StorySparkData
 
 __all__ = [
     # Data models

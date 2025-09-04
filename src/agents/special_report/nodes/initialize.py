@@ -1,12 +1,12 @@
 """Initialize node for Special Report Agent."""
 
-import logging
 
 from langchain_core.runnables import RunnableConfig
 
 from core.logging_config import get_logger
-from ..models import SpecialReportState, SpecialReportData
-from ..enums import SpecialReportSection, RouterDirective
+
+from ..enums import RouterDirective, SpecialReportSection
+from ..models import SpecialReportData, SpecialReportState
 
 logger = get_logger(__name__)
 

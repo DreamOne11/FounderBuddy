@@ -1,14 +1,13 @@
 '''Pydantic models for Signature Pitch Agent.'''
 
-from typing import Any, Literal
-from uuid import UUID
 import uuid
+from typing import Any, Literal
 
 from langchain_core.messages import BaseMessage
 from langgraph.graph import MessagesState
 from pydantic import BaseModel, Field, field_validator
 
-from .enums import SectionStatus, RouterDirective, SignaturePitchSectionID
+from .enums import RouterDirective, SectionStatus, SignaturePitchSectionID
 
 
 class TiptapTextNode(BaseModel):

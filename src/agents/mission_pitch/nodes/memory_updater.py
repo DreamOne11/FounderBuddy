@@ -6,25 +6,26 @@ from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 
 from core.llm import get_model
+
 from ..models import (
+    BigVisionData,
+    BusinessOriginData,
+    HiddenThemeData,
+    MissionData,
     MissionPitchState,
     MissionSectionID,
-    SectionState,
-    SectionContent,
-    SectionStatus,
-    TiptapDocument,
-    RouterDirective,
-    HiddenThemeData,
     PersonalOriginData,
-    BusinessOriginData,
-    MissionData,
+    RouterDirective,
+    SectionContent,
+    SectionState,
+    SectionStatus,
     ThreeYearVisionData,
-    BigVisionData,
+    TiptapDocument,
 )
 from ..tools import (
-    save_section,
     create_tiptap_content,
     extract_plain_text,
+    save_section,
 )
 
 logger = logging.getLogger(__name__)

@@ -1,11 +1,11 @@
 """Implementation node for Special Report Agent."""
 
-import logging
 
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
 
 from core.logging_config import get_logger
+
 from ..models import SpecialReportState
 from ..tools import export_report
 

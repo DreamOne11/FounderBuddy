@@ -1,7 +1,7 @@
 """Models for report_structure section."""
 
+
 from pydantic import BaseModel, Field
-from typing import Optional
 
 
 class ReportStructureData(BaseModel):

@@ -1,16 +1,16 @@
 """Generate reply node for Special Report Agent."""
 
-import logging
 
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 
 from core.llm import get_model
 from core.logging_config import get_logger
-from ..models import SpecialReportState, SectionState
-from ..enums import SpecialReportSection, SectionStatus
-from ..tools import extract_plain_text
+
+from ..enums import SectionStatus, SpecialReportSection
+from ..models import SectionState, SpecialReportState
 from ..prompts import SECTION_TEMPLATES, get_next_unfinished_section
+from ..tools import extract_plain_text
 
 logger = get_logger(__name__)
 
@@ -135,7 +135,7 @@ async def generate_reply_node(state: SpecialReportState, config: RunnableConfig)
         else:
             reply_content = str(reply_response)
         
-        logger.info(f"=== REPLY_OUTPUT_DEBUG ===")
+        logger.info("=== REPLY_OUTPUT_DEBUG ===")
         logger.info(f"Raw reply content: {reply_content[:200]}...")
         logger.info(f"Final reply content: {reply_content[:200]}...")
         
@@ -157,7 +157,7 @@ async def generate_reply_node(state: SpecialReportState, config: RunnableConfig)
         base_mem.append(AIMessage(content=reply_content))
         state["short_memory"] = base_mem
 
-        logger.info(f"DEBUG_GENERATE_REPLY: Reply generated successfully")
+        logger.info("DEBUG_GENERATE_REPLY: Reply generated successfully")
 
     except Exception as e:
         logger.error(f"Failed to generate reply: {e}")

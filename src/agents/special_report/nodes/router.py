@@ -1,15 +1,15 @@
 """Router node for Special Report Agent."""
 
-import logging
 
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 
 from core.logging_config import get_logger
-from ..models import SpecialReportState, ContextPacket, SectionState
-from ..enums import SpecialReportSection, RouterDirective, SectionStatus
-from ..tools import get_context
+
+from ..enums import RouterDirective, SpecialReportSection
+from ..models import ContextPacket, SpecialReportState
 from ..prompts import get_next_unfinished_section
+from ..tools import get_context
 
 logger = get_logger(__name__)
 

@@ -6,19 +6,20 @@ from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 
 from core.llm import get_model
+
 from ..models import (
-    SignaturePitchState,
-    SignaturePitchSectionID,
-    SectionState,
-    SectionContent,
-    SectionStatus,
-    TiptapDocument,
     RouterDirective,
+    SectionContent,
+    SectionState,
+    SectionStatus,
+    SignaturePitchSectionID,
+    SignaturePitchState,
+    TiptapDocument,
 )
 from ..tools import (
-    save_section,
     create_tiptap_content,
     extract_plain_text,
+    save_section,
 )
 
 logger = logging.getLogger(__name__)
@@ -280,11 +281,11 @@ async def extract_and_update_canvas_data(
         # Import section-specific data models
         from ..sections import (
             ActiveChangeData,
-            SpecificWhoData,
-            OutcomePrizeData,
             CoreCredibilityData,
-            StorySparkData,
+            OutcomePrizeData,
             SignatureLineData,
+            SpecificWhoData,
+            StorySparkData,
         )
         
         if section_id == SignaturePitchSectionID.ACTIVE_CHANGE.value:

@@ -1,7 +1,7 @@
 """Models for content_development section."""
 
+
 from pydantic import BaseModel, Field
-from typing import Optional
 
 
 class ContentDevelopmentData(BaseModel):

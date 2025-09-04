@@ -5,8 +5,9 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.prebuilt import ToolNode
 
 from core.logging_config import get_logger
-from ..models import ValueCanvasState, ContextPacket
-from ..enums import SectionID, RouterDirective
+
+from ..enums import RouterDirective, SectionID
+from ..models import ContextPacket, ValueCanvasState
 from ..prompts import get_next_unfinished_section
 from ..tools import get_context
 
@@ -64,9 +65,9 @@ async def router_node(state: ValueCanvasState, config: RunnableConfig) -> ValueC
             # Only clear short_memory when transitioning to a different section
             if previous_section != next_section:
                 state["short_memory"] = []
-                logger.debug(f"Cleared short_memory for new section")
+                logger.debug("Cleared short_memory for new section")
             else:
-                logger.debug(f"Preserved short_memory for same section")
+                logger.debug("Preserved short_memory for same section")
 
             # Get context for new section
             context = await get_context.ainvoke({
@@ -101,9 +102,9 @@ async def router_node(state: ValueCanvasState, config: RunnableConfig) -> ValueC
             # Only clear short_memory when switching to a different section
             if prev_section != new_section:
                 state["short_memory"] = []
-                logger.debug(f"Cleared short_memory for section jump")
+                logger.debug("Cleared short_memory for section jump")
             else:
-                logger.debug(f"Preserved short_memory for same-section refresh")
+                logger.debug("Preserved short_memory for same-section refresh")
             
             # Get context for new section
             context = await get_context.ainvoke({

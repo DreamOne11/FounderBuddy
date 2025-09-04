@@ -2,8 +2,8 @@
 
 from typing import Any
 
+from .enums import SectionStatus, SignaturePitchSectionID
 from .models import SectionTemplate, ValidationRule
-from .enums import SignaturePitchSectionID, SectionStatus
 
 # Base system prompt rules
 SECTION_PROMPTS = {

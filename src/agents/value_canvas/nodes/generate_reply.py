@@ -6,8 +6,9 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from langchain_core.runnables import RunnableConfig
 
 from core.llm import get_model
-from ..models import ValueCanvasState
+
 from ..enums import SectionID, SectionStatus
+from ..models import ValueCanvasState
 from ..tools import extract_plain_text
 
 logger = logging.getLogger(__name__)
@@ -209,7 +210,7 @@ async def generate_reply_node(state: ValueCanvasState, config: RunnableConfig) -
         base_mem.append(AIMessage(content=reply_content))
         state["short_memory"] = base_mem
 
-        logger.info(f"DEBUG_REPLY_NODE: Reply generated successfully")
+        logger.info("DEBUG_REPLY_NODE: Reply generated successfully")
         
     except Exception as e:
         logger.error(f"Failed to generate reply: {e}")

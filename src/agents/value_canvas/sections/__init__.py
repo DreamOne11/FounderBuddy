@@ -1,23 +1,23 @@
 """Value Canvas sections module - aggregates all section templates and prompts."""
 
-from typing import Dict, Any
+from typing import Any, Dict
 
 # Import all section templates and prompts
-from .base_prompt import BASE_RULES, BASE_PROMPTS
-from .interview import INTERVIEW_TEMPLATE, INTERVIEW_PROMPTS
-from .icp import ICP_TEMPLATE, ICP_PROMPTS
-from .icp_stress_test import ICP_STRESS_TEST_TEMPLATE, ICP_STRESS_TEST_PROMPTS
-from .pain import PAIN_TEMPLATE, PAIN_PROMPTS
-from .deep_fear import DEEP_FEAR_TEMPLATE, DEEP_FEAR_PROMPTS
-from .payoffs import PAYOFFS_TEMPLATE, PAYOFFS_PROMPTS
-from .pain_payoff_symmetry import PAIN_PAYOFF_SYMMETRY_TEMPLATE, PAIN_PAYOFF_SYMMETRY_PROMPTS
-from .signature_method import SIGNATURE_METHOD_TEMPLATE, SIGNATURE_METHOD_PROMPTS
-from .mistakes import MISTAKES_TEMPLATE, MISTAKES_PROMPTS
-from .prize import PRIZE_TEMPLATE, PRIZE_PROMPTS
-from .implementation import IMPLEMENTATION_TEMPLATE, IMPLEMENTATION_PROMPTS
+from .base_prompt import BASE_PROMPTS, BASE_RULES
+from .deep_fear import DEEP_FEAR_PROMPTS, DEEP_FEAR_TEMPLATE
+from .icp import ICP_PROMPTS, ICP_TEMPLATE
+from .icp_stress_test import ICP_STRESS_TEST_PROMPTS, ICP_STRESS_TEST_TEMPLATE
+from .implementation import IMPLEMENTATION_PROMPTS, IMPLEMENTATION_TEMPLATE
+from .interview import INTERVIEW_PROMPTS, INTERVIEW_TEMPLATE
+from .mistakes import MISTAKES_PROMPTS, MISTAKES_TEMPLATE
+from .pain import PAIN_PROMPTS, PAIN_TEMPLATE
+from .pain_payoff_symmetry import PAIN_PAYOFF_SYMMETRY_PROMPTS, PAIN_PAYOFF_SYMMETRY_TEMPLATE
+from .payoffs import PAYOFFS_PROMPTS, PAYOFFS_TEMPLATE
+from .prize import PRIZE_PROMPTS, PRIZE_TEMPLATE
+from .signature_method import SIGNATURE_METHOD_PROMPTS, SIGNATURE_METHOD_TEMPLATE
 
 # Aggregate all section templates
-SECTION_TEMPLATES: Dict[str, Any] = {
+SECTION_TEMPLATES: dict[str, Any] = {
     INTERVIEW_TEMPLATE.section_id.value: INTERVIEW_TEMPLATE,
     ICP_TEMPLATE.section_id.value: ICP_TEMPLATE,
     ICP_STRESS_TEST_TEMPLATE.section_id.value: ICP_STRESS_TEST_TEMPLATE,
@@ -32,7 +32,7 @@ SECTION_TEMPLATES: Dict[str, Any] = {
 }
 
 # Aggregate all section prompts
-SECTION_PROMPTS: Dict[str, Any] = {
+SECTION_PROMPTS: dict[str, Any] = {
     "base_rules": BASE_RULES,
     "interview": INTERVIEW_PROMPTS,
     "icp": ICP_PROMPTS,

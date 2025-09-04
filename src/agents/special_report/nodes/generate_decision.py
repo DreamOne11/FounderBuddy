@@ -1,14 +1,13 @@
 """Generate decision node for Special Report Agent."""
 
-import logging
 
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 
 from core.llm import get_model
 from core.logging_config import get_logger
-from ..models import SpecialReportState, ChatAgentOutput
-from ..enums import RouterDirective
+
+from ..models import ChatAgentOutput, SpecialReportState
 
 logger = get_logger(__name__)
 

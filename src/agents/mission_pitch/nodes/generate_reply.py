@@ -6,8 +6,9 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from langchain_core.runnables import RunnableConfig
 
 from core.llm import get_model
+
+from ..enums import SectionStatus
 from ..models import MissionPitchState
-from ..enums import MissionSectionID, SectionStatus
 
 logger = logging.getLogger(__name__)
 
@@ -193,7 +194,7 @@ async def generate_reply_node(state: MissionPitchState, config: RunnableConfig) 
         base_mem.append(AIMessage(content=reply_content))
         state["short_memory"] = base_mem
 
-        logger.info(f"DEBUG_REPLY_NODE: Reply generated successfully")
+        logger.info("DEBUG_REPLY_NODE: Reply generated successfully")
         
     except Exception as e:
         logger.error(f"Failed to generate reply: {e}")
@@ -203,4 +204,6 @@ async def generate_reply_node(state: MissionPitchState, config: RunnableConfig) 
         state.setdefault("short_memory", []).append(AIMessage(content=default_reply))
     
     return state
+
+
 

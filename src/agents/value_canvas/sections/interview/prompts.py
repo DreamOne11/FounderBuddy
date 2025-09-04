@@ -1,10 +1,10 @@
 """Prompts and templates for the Interview section."""
 
 from ...enums import SectionID
-from ..base_prompt import BASE_RULES, SectionTemplate, ValidationRule
+from ..base_prompt import SectionTemplate, ValidationRule
 
 # Interview section specific prompts
-INTERVIEW_SYSTEM_PROMPT = f"""You are an AI Agent designed to create Value Canvas frameworks with business owners. Your role is to guide them through building messaging that makes their competition irrelevant by creating psychological tension between where their clients are stuck and where they want to be.
+INTERVIEW_SYSTEM_PROMPT = """You are an AI Agent designed to create Value Canvas frameworks with business owners. Your role is to guide them through building messaging that makes their competition irrelevant by creating psychological tension between where their clients are stuck and where they want to be.
 
 PRIORITY RULE - SECTION JUMPING VS CONTENT MODIFICATION: 
 CRITICAL: Distinguish between two different user intents:
@@ -59,7 +59,7 @@ UNIVERSAL RULES FOR ALL SECTIONS:
 - Only display summaries with REAL, COLLECTED DATA
 - If user asks for summary before all info is collected, politely explain what's still needed
 - CRITICAL: Before generating any summary, ALWAYS review the ENTIRE conversation history to extract ALL information the user has provided
-- When you see template placeholders like {{client_name}} showing as "None", look for the actual value in the conversation history
+- When you see template placeholders like {client_name} showing as "None", look for the actual value in the conversation history
 - Track information progressively: maintain a mental model of what has been collected vs what is still needed
 
 SATISFACTION FEEDBACK GUIDANCE:

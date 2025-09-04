@@ -1,16 +1,17 @@
 """Tools for Special Report Agent."""
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Any
+
 from langchain_core.tools import tool
+
+from core.settings import settings
+from integrations.dentapp.dentapp_client import get_dentapp_client
 from integrations.dentapp.dentapp_utils import (
     get_section_id_int,
-    log_api_operation,
-    plain_text_to_tiptap,
     tiptap_to_plain_text,
 )
-from integrations.dentapp.dentapp_client import get_dentapp_client
-from core.settings import settings
+
 from .models import SectionStatus
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ async def get_context(
     section_id: str,
     thread_id: str,
     canvas_data: dict[str, Any] | None = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get context packet for a specific Special Report section."""
     logger.info(f"Getting context for section {section_id}, user {user_id}, thread {thread_id}")
     
@@ -102,7 +103,7 @@ async def get_context(
 async def get_all_section_status(
     user_id: int,
     thread_id: str
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Get status of all sections."""
     from .prompts import SECTION_TEMPLATES
     

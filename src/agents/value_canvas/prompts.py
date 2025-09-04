@@ -3,13 +3,13 @@
 from typing import Any
 
 from .enums import SectionID, SectionStatus
-from .sections.base_prompt import SectionTemplate, ValidationRule
+from .sections import (
+    SECTION_PROMPTS as SECTION_PROMPTS_DICT,
+)
 
 # Import everything from the sections module
 from .sections import (
-    BASE_RULES,
     SECTION_TEMPLATES,
-    SECTION_PROMPTS as SECTION_PROMPTS_DICT,
 )
 
 # Re-export SECTION_TEMPLATES for backward compatibility

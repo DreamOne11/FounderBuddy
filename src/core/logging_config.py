@@ -8,11 +8,10 @@ Environment Variables:
 - LOG_FORMAT: Logging format (simple/detailed)
 """
 
+import json
 import logging
 import os
-import json
-from typing import Any, Optional
-
+from typing import Any
 
 # Get configuration from environment
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -67,7 +66,7 @@ class SmartLogger:
             if old_state != new_state:
                 self.logger.info(f"[STATE] {section}: {old_state} -> {new_state} {action}".strip())
     
-    def stream_event(self, event_type: str, details: Optional[dict] = None):
+    def stream_event(self, event_type: str, details: dict | None = None):
         """Log streaming events efficiently."""
         if LOG_STREAM_EVENTS or LOG_LEVEL == "DEBUG":
             # Batch similar events
@@ -92,7 +91,7 @@ class SmartLogger:
         """Log section transitions concisely."""
         self.logger.info(f"[SECTION] {from_section} -> {to_section} ({directive})")
     
-    def llm_call(self, section: str, token_count: Optional[int] = None):
+    def llm_call(self, section: str, token_count: int | None = None):
         """Log LLM calls efficiently."""
         msg = f"[LLM] {section}"
         if token_count:
@@ -114,14 +113,14 @@ class SmartLogger:
         else:
             self.logger.info(f"[DECISION] {section}: {directive}")
     
-    def memory_update(self, section: str, action: str, details: Optional[str] = None):
+    def memory_update(self, section: str, action: str, details: str | None = None):
         """Log memory updates efficiently."""
         msg = f"[MEMORY] {section}: {action}"
         if details and LOG_LEVEL == "DEBUG":
             msg += f" - {details}"
         self.logger.info(msg)
     
-    def agent_output(self, section: str, has_update: bool, is_satisfied: Optional[bool], directive: str):
+    def agent_output(self, section: str, has_update: bool, is_satisfied: bool | None, directive: str):
         """Log agent output in one line."""
         self.logger.info(
             f"[AGENT] {section}: update={has_update}, satisfied={is_satisfied}, directive={directive}"

@@ -1,7 +1,9 @@
 """Base prompt template and rules for Special Report Agent."""
 
-from pydantic import BaseModel, Field
 from typing import Any
+
+from pydantic import BaseModel, Field
+
 from ..enums import SpecialReportSection
 
 

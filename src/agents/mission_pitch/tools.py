@@ -1,7 +1,6 @@
 """Tools for Mission Pitch Agent."""
 
 import logging
-import uuid
 from datetime import datetime
 from typing import Any
 
@@ -12,15 +11,10 @@ from integrations.dentapp.dentapp_client import get_dentapp_client
 from integrations.dentapp.dentapp_utils import (
     get_section_id_int,
     log_api_operation,
-    plain_text_to_tiptap,
     tiptap_to_plain_text,
 )
 
-from .models import TiptapDocument
-from .enums import SectionStatus, MissionSectionID
-
-
-
+from .enums import MissionSectionID
 from .prompts import SECTION_PROMPTS, SECTION_TEMPLATES
 
 logger = logging.getLogger(__name__)

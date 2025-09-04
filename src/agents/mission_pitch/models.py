@@ -1,14 +1,13 @@
 '''Pydantic models for Mission Pitch Agent.'''
 
-from typing import Any, Literal
-from uuid import UUID
 import uuid
+from typing import Any, Literal
 
 from langchain_core.messages import BaseMessage
 from langgraph.graph import MessagesState
 from pydantic import BaseModel, Field, field_validator
 
-from .enums import SectionStatus, RouterDirective, MissionSectionID
+from .enums import MissionSectionID, RouterDirective, SectionStatus
 
 
 class TiptapTextNode(BaseModel):

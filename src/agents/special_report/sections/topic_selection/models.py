@@ -1,7 +1,7 @@
 """Models for topic_selection section."""
 
+
 from pydantic import BaseModel, Field
-from typing import Optional
 
 
 class TopicSelectionData(BaseModel):

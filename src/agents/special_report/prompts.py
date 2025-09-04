@@ -1,15 +1,17 @@
 """Global prompts and section management for Special Report Agent."""
 
-from typing import Any, List
+from typing import Any
 
-from .enums import SpecialReportSection, SectionStatus
-from .models import SectionTemplate
+from .enums import SectionStatus, SpecialReportSection
+from .sections.content_development.prompts import (
+    CONTENT_DEVELOPMENT_PROMPTS,
+    CONTENT_DEVELOPMENT_TEMPLATE,
+)
+from .sections.implementation.prompts import IMPLEMENTATION_PROMPTS, IMPLEMENTATION_TEMPLATE
+from .sections.report_structure.prompts import REPORT_STRUCTURE_PROMPTS, REPORT_STRUCTURE_TEMPLATE
 
 # Import all section prompts
 from .sections.topic_selection.prompts import TOPIC_SELECTION_PROMPTS, TOPIC_SELECTION_TEMPLATE
-from .sections.content_development.prompts import CONTENT_DEVELOPMENT_PROMPTS, CONTENT_DEVELOPMENT_TEMPLATE
-from .sections.report_structure.prompts import REPORT_STRUCTURE_PROMPTS, REPORT_STRUCTURE_TEMPLATE
-from .sections.implementation.prompts import IMPLEMENTATION_PROMPTS, IMPLEMENTATION_TEMPLATE
 
 # Section templates registry
 SECTION_TEMPLATES = {
@@ -28,7 +30,7 @@ SECTION_PROMPTS = {
 }
 
 
-def get_section_order() -> List[SpecialReportSection]:
+def get_section_order() -> list[SpecialReportSection]:
     """Get the ordered list of sections."""
     return [
         SpecialReportSection.TOPIC_SELECTION,

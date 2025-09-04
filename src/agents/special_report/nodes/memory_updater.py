@@ -1,25 +1,25 @@
 """Memory updater node for Special Report Agent."""
 
-import logging
 
 from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 
 from core.llm import get_model
 from core.logging_config import get_logger
+
 from ..models import (
-    SpecialReportState,
-    SpecialReportSection,
-    SectionState,
-    SectionContent,
-    SectionStatus,
-    TiptapDocument,
     RouterDirective,
+    SectionContent,
+    SectionState,
+    SectionStatus,
+    SpecialReportSection,
+    SpecialReportState,
+    TiptapDocument,
 )
 from ..tools import (
-    save_section,
     create_tiptap_content,
     extract_plain_text,
+    save_section,
 )
 
 logger = get_logger(__name__)

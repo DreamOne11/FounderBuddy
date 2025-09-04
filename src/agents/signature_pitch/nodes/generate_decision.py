@@ -6,13 +6,14 @@ import re
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
 
-from core.llm import get_model, LLMConfig
+from core.llm import LLMConfig, get_model
+
+from ..enums import RouterDirective
 from ..models import (
-    SignaturePitchState,
     ChatAgentDecision,
     ChatAgentOutput,
+    SignaturePitchState,
 )
-from ..enums import RouterDirective
 
 logger = logging.getLogger(__name__)
 
@@ -227,7 +228,7 @@ Analyze the AI's latest reply: {last_ai_reply}"""
 
         # Apply satisfaction-based safety rail
         if agent_output.is_satisfied is not None and not agent_output.is_satisfied:
-            logger.info(f"User not satisfied detected from decision. Forcing 'stay' directive.")
+            logger.info("User not satisfied detected from decision. Forcing 'stay' directive.")
             agent_output.router_directive = "stay"
 
         # Save to state
@@ -286,4 +287,6 @@ Analyze the AI's latest reply: {last_ai_reply}"""
         state["awaiting_user_input"] = True
 
     return state
+
+
 
