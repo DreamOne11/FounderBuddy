@@ -13,10 +13,12 @@ from ..models import SignaturePitchState
 logger = logging.getLogger(__name__)
 
 
-async def generate_reply_node(state: SignaturePitchState, config: RunnableConfig) -> SignaturePitchState:
+async def generate_reply_node(
+    state: SignaturePitchState, config: RunnableConfig
+) -> SignaturePitchState:
     """
     Reply generation node that produces streaming conversational responses.
-    
+
     Responsibilities:
     - Generate conversational reply based on context_packet system prompt
     - Support streaming output token by token
@@ -24,10 +26,10 @@ async def generate_reply_node(state: SignaturePitchState, config: RunnableConfig
     - Update short_memory
     """
     logger.info(f"Generate reply node - Section: {state['current_section']}")
-    
+
     # Get LLM - no tools, no structured output for streaming
     llm = get_model()
-    
+
     messages: list[BaseMessage] = []
     last_human_msg: HumanMessage | None = None
 
@@ -36,7 +38,7 @@ async def generate_reply_node(state: SignaturePitchState, config: RunnableConfig
     current_section = state["current_section"]
     section_state = state.get("section_states", {}).get(current_section.value)
     section_has_content = bool(section_state and section_state.content)
-    
+
     # Only add summary reminder if section already has saved content that needs rating
     if section_has_content and not awaiting:
         summary_reminder = (
@@ -44,7 +46,9 @@ async def generate_reply_node(state: SignaturePitchState, config: RunnableConfig
             "Review the saved content and ask for their satisfaction rating if not already provided."
         )
         messages.append(SystemMessage(content=summary_reminder))
-        logger.info(f"SUMMARY_REMINDER: Added reminder to check existing content for section {current_section.value}")
+        logger.info(
+            f"SUMMARY_REMINDER: Added reminder to check existing content for section {current_section.value}"
+        )
 
     # Section-specific system prompt from context packet
     if state.get("context_packet"):
@@ -53,18 +57,20 @@ async def generate_reply_node(state: SignaturePitchState, config: RunnableConfig
         section_state = state.get("section_states", {}).get(current_section_id)
 
         if section_state and section_state.content:
-            logger.info(f"MEMORY_DEBUG: Found existing content for {current_section_id}. Prioritizing it.")
+            logger.info(
+                f"MEMORY_DEBUG: Found existing content for {current_section_id}. Prioritizing it."
+            )
             try:
                 # Extract plain text from existing content for context
                 content_dict = section_state.content.content.model_dump()
                 # Simple extraction - get text content from Tiptap structure
                 plain_text_summary = ""
-                if 'content' in content_dict:
-                    for paragraph in content_dict['content']:
-                        if paragraph.get('type') == 'paragraph' and 'content' in paragraph:
-                            for text_node in paragraph['content']:
-                                if text_node.get('type') == 'text':
-                                    plain_text_summary += text_node.get('text', '') + " "
+                if "content" in content_dict:
+                    for paragraph in content_dict["content"]:
+                        if paragraph.get("type") == "paragraph" and "content" in paragraph:
+                            for text_node in paragraph["content"]:
+                                if text_node.get("type") == "text":
+                                    plain_text_summary += text_node.get("text", "") + " "
 
                 review_prompt = (
                     "CRITICAL CONTEXT: The user is reviewing a section they have already completed. "
@@ -75,7 +81,9 @@ async def generate_reply_node(state: SignaturePitchState, config: RunnableConfig
                 )
                 messages.append(SystemMessage(content=review_prompt))
             except Exception as e:
-                logger.error(f"MEMORY_DEBUG: Failed to extract plain text from existing state for {current_section_id}: {e}")
+                logger.error(
+                    f"MEMORY_DEBUG: Failed to extract plain text from existing state for {current_section_id}: {e}"
+                )
                 # Fallback to the original prompt if extraction fails
                 messages.append(SystemMessage(content=state["context_packet"].system_prompt))
         else:
@@ -85,22 +93,24 @@ async def generate_reply_node(state: SignaturePitchState, config: RunnableConfig
         # Add progress information based on section_states
         section_names = {
             "active_change": "Active Change",
-            "specific_who": "Specific Who", 
+            "specific_who": "Specific Who",
             "outcome_prize": "Outcome/Prize",
             "core_credibility": "Core Credibility",
             "story_spark": "Story Spark",
             "signature_line": "Signature Line",
-            "implementation": "Implementation"
+            "implementation": "Implementation",
         }
-        
+
         completed_sections = []
         for section_id, section_state in state.get("section_states", {}).items():
             if section_state.status == SectionStatus.DONE:
                 section_name = section_names.get(section_id, section_id)
                 completed_sections.append(section_name)
-        
-        current_section_name = section_names.get(state["current_section"].value, state["current_section"].value)
-        
+
+        current_section_name = section_names.get(
+            state["current_section"].value, state["current_section"].value
+        )
+
         progress_info = (
             f"\n\nSYSTEM STATUS:\n"
             f"- Total sections: 7\n"
@@ -109,9 +119,9 @@ async def generate_reply_node(state: SignaturePitchState, config: RunnableConfig
         if completed_sections:
             progress_info += f" ({', '.join(completed_sections)})"
         progress_info += f"\n- Currently working on: {current_section_name}\n"
-        
+
         messages.append(SystemMessage(content=progress_info))
-        
+
         # Add clarification for new sections without content
         current_section_id = state["current_section"].value
         section_state = state.get("section_states", {}).get(current_section_id)
@@ -136,20 +146,22 @@ async def generate_reply_node(state: SignaturePitchState, config: RunnableConfig
             last_human_msg = _last_msg
 
     # Override JSON output requirement with a simple instruction
-    messages.append(SystemMessage(
-        content="OVERRIDE: Generate a natural conversational response. "
-                "Do NOT output JSON format. Just provide your direct reply to the user."
-    ))
+    messages.append(
+        SystemMessage(
+            content="OVERRIDE: Generate a natural conversational response. "
+            "Do NOT output JSON format. Just provide your direct reply to the user."
+        )
+    )
 
     try:
         # DEBUG: Log LLM input
         logger.info("=== LLM_REPLY_INPUT_DEBUG ===")
         logger.info(f"Current section: {state['current_section']}")
         logger.info(f"Total messages count: {len(messages)}")
-        
+
         # Use standard LLM for streaming response (no structured output)
         logger.info("🚀 Generating streaming reply without structured output")
-        
+
         # Generate the reply
         reply_message = await llm.ainvoke(messages)
         reply_content = reply_message.content
@@ -163,9 +175,10 @@ async def generate_reply_node(state: SignaturePitchState, config: RunnableConfig
             logger.info("🔧 Reply contains JSON, attempting to extract reply field")
             try:
                 import json
+
                 # Clean markdown code blocks if present
                 cleaned = reply_content.replace("```json", "").replace("```", "").strip()
-                
+
                 # Try to parse as JSON
                 response_data = json.loads(cleaned)
                 if isinstance(response_data, dict) and "reply" in response_data:
@@ -195,15 +208,12 @@ async def generate_reply_node(state: SignaturePitchState, config: RunnableConfig
         state["short_memory"] = base_mem
 
         logger.info("DEBUG_REPLY_NODE: Reply generated successfully")
-        
+
     except Exception as e:
         logger.error(f"Failed to generate reply: {e}")
         default_reply = "Sorry, I encountered an error generating my response. Could you rephrase your question?"
         state["current_reply"] = default_reply
         state["messages"].append(AIMessage(content=default_reply))
         state.setdefault("short_memory", []).append(AIMessage(content=default_reply))
-    
+
     return state
-
-
-

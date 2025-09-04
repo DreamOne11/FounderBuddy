@@ -9,7 +9,7 @@ from .router import router_node
 
 __all__ = [
     "initialize_node",
-    "router_node", 
+    "router_node",
     "generate_reply_node",
     "generate_decision_node",
     "memory_updater_node",

@@ -19,7 +19,7 @@ from .prompts import SECTION_PROMPTS, SECTION_TEMPLATES
 
 logger = logging.getLogger(__name__)
 
-# Signature Pitch uses agent ID 5  
+# Signature Pitch uses agent ID 5
 SIGNATURE_PITCH_AGENT_ID = 5
 
 
@@ -32,67 +32,72 @@ async def get_context(
 ) -> dict[str, Any]:
     """
     Get context packet for a specific Signature Pitch section.
-    
+
     This tool fetches section data from the database and generates
     the appropriate system prompt based on the section template.
-    
+
     Args:
         user_id: Integer user ID from frontend
         thread_id: Thread identifier
         section_id: Section identifier (e.g., 'active_change', 'specific_who')
         canvas_data: Current canvas data for template rendering
-    
+
     Returns:
         Context packet with system prompt and draft content
     """
     logger.info("=== DATABASE_DEBUG: get_context() ENTRY ===")
     logger.info(f"DATABASE_DEBUG: Section: {section_id}, User: {user_id}, Thread: {thread_id}")
-    logger.debug(f"DATABASE_DEBUG: User ID type: {type(user_id)}, Thread ID type: {type(thread_id)}")
+    logger.debug(
+        f"DATABASE_DEBUG: User ID type: {type(user_id)}, Thread ID type: {type(thread_id)}"
+    )
     logger.debug(f"DATABASE_DEBUG: Canvas data provided: {bool(canvas_data)}")
-    
+
     # Get section template
     template = SECTION_TEMPLATES.get(section_id)
     if not template:
         raise ValueError(f"Unknown section ID: {section_id}")
-    
+
     # Generate system prompt
     base_prompt = SECTION_PROMPTS.get("base_rules", "")
     section_prompt = template.system_prompt_template
-    
+
     # Render template with canvas data if provided
     if canvas_data is None:
         canvas_data = {}
 
     # Allow partial rendering: missing keys will be replaced with empty string
     import re
+
     def _replace_placeholder(match):
         key = match.group(1)
         return str(canvas_data.get(key, "")) if isinstance(canvas_data, dict) else ""
 
     # Only replace simple placeholders like {identifier}, keep other braces unchanged
     section_prompt = re.sub(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", _replace_placeholder, section_prompt)
-    
+
     system_prompt = f"{base_prompt}\\n\\n---\\n\\n{section_prompt}"
-    
+
     # Fetch draft from database
     logger.debug("DATABASE_DEBUG: Starting database fetch for existing section state...")
     draft = None
     status = "pending"
-    
+
     # Try DentApp API first (if enabled)
     if settings.USE_DENTAPP_API:
         logger.info("=== TOOLS_API_CALL: get_context() using DentApp API ===")
-        logger.info(f"TOOLS_API_CALL: section_id='{section_id}', user_id='{user_id}', thread_id='{thread_id}'")
+        logger.info(
+            f"TOOLS_API_CALL: section_id='{section_id}', user_id='{user_id}', thread_id='{thread_id}'"
+        )
         try:
             # Convert section_id for DentApp API
             section_id_int = get_section_id_int(section_id)
-            
+
             if section_id_int is None:
                 logger.error(f"TOOLS_API_CALL: ❌ Invalid section_id: {section_id}")
                 raise ValueError(f"Unknown section ID: {section_id}")
-            
+
             logger.info(f"TOOLS_API_CALL: Mapped section_id '{section_id}' -> {section_id_int}")
-            
+
             # Get DentApp client and fetch data
             client = get_dentapp_client()
             response = await client.get_section_state(
@@ -100,25 +105,33 @@ async def get_context(
                 section_id=section_id_int,
                 user_id=user_id,
             )
-            
-            log_api_operation("get_context", "success", {
-                "section_id": section_id,
-                "section_id_int": section_id_int,
-                "user_id": user_id,
-                "thread_id": thread_id,
-                "response_data": bool(response),
-            })
-            
+
+            log_api_operation(
+                "get_context",
+                "success",
+                {
+                    "section_id": section_id,
+                    "section_id_int": section_id_int,
+                    "user_id": user_id,
+                    "thread_id": thread_id,
+                    "response_data": bool(response),
+                },
+            )
+
             if response and response.get("content"):
                 logger.info(f"TOOLS_API_CALL: ✅ Found existing data for section {section_id}")
-                logger.debug(f"TOOLS_API_CALL: Content preview: {str(response.get('content', ''))[:200]}...")
-                
+                logger.debug(
+                    f"TOOLS_API_CALL: Content preview: {str(response.get('content', ''))[:200]}..."
+                )
+
                 # Create draft content from database response
                 draft = {
                     "content": response["content"],
-                    "plain_text": tiptap_to_plain_text(response["content"]) if response.get("content") else None,
+                    "plain_text": tiptap_to_plain_text(response["content"])
+                    if response.get("content")
+                    else None,
                 }
-                
+
                 # Determine status based on score
                 score = response.get("score")
                 if score is not None and score >= 3:
@@ -127,29 +140,29 @@ async def get_context(
                     status = "in_progress"
                 else:
                     status = "pending"
-                    
+
                 logger.info(f"TOOLS_API_CALL: Status determined: {status} (score: {score})")
             else:
                 logger.info(f"TOOLS_API_CALL: ✅ No existing data for section {section_id}")
-                
+
         except Exception as e:
             logger.error(f"TOOLS_API_CALL: ❌ DentApp API error in get_context: {e}")
-            log_api_operation("get_context", 
-                                 section_id=section_id,
-                                 status="error",
-                                 error=str(e))
+            log_api_operation("get_context", section_id=section_id, status="error", error=str(e))
             # Continue without data (will use defaults)
             pass
-    
+
     logger.info(f"DATABASE_DEBUG: Final status: {status}, draft: {bool(draft)}")
     logger.info("=== DATABASE_DEBUG: get_context() EXIT ===")
-    
+
     return {
         "section_id": section_id,
         "status": status,
         "system_prompt": system_prompt,
         "draft": draft,
-        "validation_rules": {str(i): rule.model_dump() for i, rule in enumerate(getattr(template, "validation_rules", []))},
+        "validation_rules": {
+            str(i): rule.model_dump()
+            for i, rule in enumerate(getattr(template, "validation_rules", []))
+        },
     }
 
 
@@ -164,7 +177,7 @@ async def save_section(
 ) -> dict[str, Any]:
     """
     Save section content to database.
-    
+
     Args:
         user_id: Integer user ID from frontend
         thread_id: Thread identifier
@@ -172,32 +185,34 @@ async def save_section(
         content: Tiptap JSON content
         score: User satisfaction score (0-5)
         status: Section status
-    
+
     Returns:
         Save operation result
     """
     logger.info("=== TOOLS_API_CALL: save_section() ENTRY ===")
-    logger.info(f"TOOLS_API_CALL: section_id='{section_id}', user_id={user_id}, thread_id='{thread_id}'")
+    logger.info(
+        f"TOOLS_API_CALL: section_id='{section_id}', user_id={user_id}, thread_id='{thread_id}'"
+    )
     logger.info(f"TOOLS_API_CALL: score={score}, status='{status}'")
     logger.debug(f"TOOLS_API_CALL: content type: {type(content)}")
-    
+
     if settings.USE_DENTAPP_API:
         try:
             # Convert section_id for DentApp API
             section_id_int = get_section_id_int(section_id)
-            
+
             if section_id_int is None:
                 logger.error(f"TOOLS_API_CALL: ❌ Invalid section_id: {section_id}")
                 raise ValueError(f"Unknown section ID: {section_id}")
-            
+
             logger.info(f"TOOLS_API_CALL: Mapped section_id '{section_id}' -> {section_id_int}")
-            
+
             # Get DentApp client and save data (matching value canvas pattern)
             from integrations.dentapp.dentapp_utils import tiptap_to_plain_text
-            
+
             # Convert tiptap content to plain text for database
             plain_text = tiptap_to_plain_text(content) if content else ""
-            
+
             dentapp_client = get_dentapp_client()
             async with dentapp_client as client:
                 response = await client.save_section_state(
@@ -205,23 +220,27 @@ async def save_section(
                     section_id=section_id_int,
                     user_id=user_id,  # Use the actual user_id parameter
                     content=plain_text,
-                    metadata={}  # Empty metadata for MVP
+                    metadata={},  # Empty metadata for MVP
                 )
-            
+
             logger.info(f"TOOLS_API_CALL: save_section_state returned: {response is not None}")
-            
+
             if response:
                 logger.info(f"TOOLS_API_CALL: ✅ Successfully saved section {section_id}")
-                
-                log_api_operation("save_section", "success", {
-                    "section_id": section_id,
-                    "section_id_int": section_id_int,
-                    "user_id": user_id,
-                    "thread_id": thread_id,
-                    "score": score,
-                    "status": status,
-                })
-                
+
+                log_api_operation(
+                    "save_section",
+                    "success",
+                    {
+                        "section_id": section_id,
+                        "section_id_int": section_id_int,
+                        "user_id": user_id,
+                        "thread_id": thread_id,
+                        "score": score,
+                        "status": status,
+                    },
+                )
+
                 return {
                     "success": True,
                     "section_id": section_id,
@@ -230,15 +249,12 @@ async def save_section(
             else:
                 logger.error(f"TOOLS_API_CALL: ❌ Failed to save section {section_id}")
                 raise Exception("Failed to save section to database")
-            
+
         except Exception as e:
             logger.error(f"TOOLS_API_CALL: ❌ DentApp API error in save_section: {e}")
-            log_api_operation("save_section",
-                                 section_id=section_id,
-                                 status="error", 
-                                 error=str(e))
+            log_api_operation("save_section", section_id=section_id, status="error", error=str(e))
             raise e
-    
+
     # Fallback: return success (for development without API)
     return {
         "success": True,
@@ -254,19 +270,19 @@ async def get_all_sections_status(
 ) -> dict[str, Any]:
     """
     Get status of all Signature Pitch sections.
-    
+
     Args:
         user_id: Integer user ID from frontend
         thread_id: Thread identifier
-    
+
     Returns:
         Status information for all sections
     """
     logger.info("=== TOOLS_API_CALL: get_all_sections_status() ENTRY ===")
     logger.info(f"TOOLS_API_CALL: user_id={user_id}, thread_id='{thread_id}'")
-    
+
     sections_status = {}
-    
+
     # Check all signature pitch sections
     all_sections = [
         SignaturePitchSectionID.ACTIVE_CHANGE,
@@ -277,11 +293,11 @@ async def get_all_sections_status(
         SignaturePitchSectionID.SIGNATURE_LINE,
         SignaturePitchSectionID.IMPLEMENTATION,
     ]
-    
+
     if settings.USE_DENTAPP_API:
         try:
             client = get_dentapp_client()
-            
+
             for section in all_sections:
                 section_id_int = get_section_id_int(section.value)
                 if section_id_int:
@@ -290,7 +306,7 @@ async def get_all_sections_status(
                         section_id=section_id_int,
                         user_id=user_id,  # Use the actual user_id parameter
                     )
-                    
+
                     if response and response.get("content"):
                         score = response.get("score", 0)
                         sections_status[section.value] = {
@@ -310,7 +326,7 @@ async def get_all_sections_status(
                         "score": None,
                         "has_content": False,
                     }
-                    
+
         except Exception as e:
             logger.error(f"TOOLS_API_CALL: ❌ Error getting sections status: {e}")
             # Return pending status for all sections on error
@@ -320,7 +336,7 @@ async def get_all_sections_status(
                     "score": None,
                     "has_content": False,
                 }
-    
+
     logger.info(f"TOOLS_API_CALL: ✅ Retrieved status for {len(sections_status)} sections")
     return sections_status
 
@@ -333,51 +349,51 @@ async def export_signature_pitch_framework(
 ) -> str:
     """
     Export complete signature pitch framework as formatted text.
-    
+
     Args:
         user_id: Integer user ID
         thread_id: Thread identifier
         canvas_data: Complete signature pitch data
-    
+
     Returns:
         Formatted signature pitch framework text
     """
     logger.info("=== TOOLS: export_signature_pitch_framework() ===")
-    
+
     content = "# Signature Pitch Framework\\n\\n"
-    
+
     # Client Information
-    if canvas_data.get('client_name'):
+    if canvas_data.get("client_name"):
         content += f"**Client:** {canvas_data['client_name']}\\n"
-    if canvas_data.get('company_name'):
+    if canvas_data.get("company_name"):
         content += f"**Company:** {canvas_data['company_name']}\\n"
-    if canvas_data.get('industry'):
+    if canvas_data.get("industry"):
         content += f"**Industry:** {canvas_data['industry']}\\n\\n"
-    
+
     # Active Change
-    if canvas_data.get('active_change'):
+    if canvas_data.get("active_change"):
         content += f"## Active Change\\n{canvas_data['active_change']}\\n\\n"
-    
+
     # Specific Who
-    if canvas_data.get('specific_who'):
+    if canvas_data.get("specific_who"):
         content += f"## Specific Who\\n{canvas_data['specific_who']}\\n\\n"
-    
+
     # Outcome/Prize
-    if canvas_data.get('outcome_prize'):
+    if canvas_data.get("outcome_prize"):
         content += f"## Outcome/Prize\\n{canvas_data['outcome_prize']}\\n\\n"
-    
+
     # Core Credibility
-    if canvas_data.get('core_credibility'):
+    if canvas_data.get("core_credibility"):
         content += f"## Core Credibility\\n{canvas_data['core_credibility']}\\n\\n"
-    
+
     # Story Spark
-    if canvas_data.get('story_spark'):
+    if canvas_data.get("story_spark"):
         content += f"## Story Spark\\n{canvas_data['story_spark']}\\n\\n"
-    
+
     # Signature Line
-    if canvas_data.get('signature_line'):
+    if canvas_data.get("signature_line"):
         content += f"## Signature Line\\n{canvas_data['signature_line']}\\n\\n"
-    
+
     # 90-Second Pitch Flow
     content += "## 90-Second Pitch Flow\\n"
     content += "1. **Hook with your Signature Line** (10 seconds)\\n"
@@ -386,7 +402,7 @@ async def export_signature_pitch_framework(
     content += "4. **Highlight Core Credibility** (15 seconds)\\n"
     content += "5. **Paint the Outcome/Prize** (15 seconds)\\n"
     content += "6. **Close with invitation to connect** (5 seconds)\\n\\n"
-    
+
     # Implementation steps
     content += "## Implementation Steps\\n"
     content += "1. Practice the 90-second flow until it feels natural\\n"
@@ -395,7 +411,7 @@ async def export_signature_pitch_framework(
     content += "4. Create variants (30-second, 2-minute, 5-minute versions)\\n"
     content += "5. Build assets (LinkedIn profile, website bio, speaker materials)\\n"
     content += "6. Refine based on real-world feedback\\n"
-    
+
     return content
 
 
@@ -406,61 +422,69 @@ async def create_tiptap_content(
 ) -> dict[str, Any]:
     """
     Create Tiptap JSON content from plain text.
-    
+
     Args:
         text: Plain text content
         format_type: Type of formatting (paragraph, heading, list)
-    
+
     Returns:
         Tiptap JSON document
     """
     content = []
-    
+
     if format_type == "paragraph":
-        content.append({
-            "type": "paragraph",
-            "content": [
-                {
-                    "type": "text",
-                    "text": text,
-                }
-            ],
-        })
+        content.append(
+            {
+                "type": "paragraph",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": text,
+                    }
+                ],
+            }
+        )
     elif format_type == "heading":
-        content.append({
-            "type": "heading",
-            "attrs": {"level": 2},
-            "content": [
-                {
-                    "type": "text",
-                    "text": text,
-                }
-            ],
-        })
+        content.append(
+            {
+                "type": "heading",
+                "attrs": {"level": 2},
+                "content": [
+                    {
+                        "type": "text",
+                        "text": text,
+                    }
+                ],
+            }
+        )
     elif format_type == "list":
         items = text.split("\\n")
         list_items = []
         for item in items:
             if item.strip():
-                list_items.append({
-                    "type": "listItem",
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": item.strip(),
-                                }
-                            ],
-                        }
-                    ],
-                })
-        content.append({
-            "type": "bulletList",
-            "content": list_items,
-        })
-    
+                list_items.append(
+                    {
+                        "type": "listItem",
+                        "content": [
+                            {
+                                "type": "paragraph",
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": item.strip(),
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                )
+        content.append(
+            {
+                "type": "bulletList",
+                "content": list_items,
+            }
+        )
+
     return {
         "type": "doc",
         "content": content,
@@ -471,27 +495,28 @@ async def create_tiptap_content(
 async def extract_plain_text(tiptap_json: dict[str, Any]) -> str:
     """
     Extract plain text from Tiptap JSON content.
-    
+
     Args:
         tiptap_json: Tiptap JSON document
-    
+
     Returns:
         Plain text string
     """
+
     def extract_text_from_node(node: dict[str, Any]) -> str:
         text_parts = []
-        
+
         if node.get("type") == "text":
             text_parts.append(node.get("text", ""))
         elif node.get("content"):
             for child_node in node["content"]:
                 text_parts.append(extract_text_from_node(child_node))
-        
+
         return "".join(text_parts)
-    
+
     if not isinstance(tiptap_json, dict):
         return str(tiptap_json)
-    
+
     return extract_text_from_node(tiptap_json)
 
 
@@ -503,28 +528,28 @@ async def validate_field(
 ) -> dict[str, Any]:
     """
     Validate a field value against defined rules.
-    
+
     Args:
         field_name: Name of the field to validate
         field_value: Value to validate
         validation_rules: Validation rules to apply
-    
+
     Returns:
         Validation result with is_valid flag and error messages
     """
     errors = []
-    
+
     # Add validation logic based on rules
     if validation_rules:
         # Example validation logic - customize as needed
         min_length = validation_rules.get("min_length")
         if min_length and len(field_value) < min_length:
             errors.append(f"{field_name} must be at least {min_length} characters")
-        
+
         max_length = validation_rules.get("max_length")
         if max_length and len(field_value) > max_length:
             errors.append(f"{field_name} must be no more than {max_length} characters")
-    
+
     return {
         "is_valid": len(errors) == 0,
         "errors": errors,
