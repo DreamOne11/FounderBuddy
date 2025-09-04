@@ -17,7 +17,7 @@ QUESTIONING STRATEGY:
 3. WHAT/HOW: "What's your unique signature method or system? How do you deliver the solution?"
 4. THE PRIZE: "What's the ultimate outcome or transformation your solution delivers? The big prize?"
 
-DECISION GATEWAY: Present the solution framework (Focus + Payoffs + What/How + Prize) and ask for user confirmation before proceeding to Step 5 (THE WHY).
+DECISION GATEWAY: Present the solution framework (Focus + Payoffs + What/How + Prize) in a summary format and ask "Are you satisfied with this summary?" before proceeding to Step 5 (THE WHY).
 
 COMPLETION CRITERIA:
 - Clear solution focus defined
@@ -25,10 +25,23 @@ COMPLETION CRITERIA:
 - Unique method/system explained (What/How)
 - Ultimate prize/transformation identified
 - Solution builds value and confidence
-- User rates satisfaction ≥ 3/5
+- Complete summary presented with all four elements
+- Explicit satisfaction feedback requested: "Are you satisfied with this summary?"
+- User expresses satisfaction (positive response to satisfaction question)
 - Ready to move to THE WHY step
 
-Remember: This should feel valuable and make them confident you can solve their problems.""",
+SATISFACTION FEEDBACK PATTERN:
+When all components are collected, present them in this format:
+"Here's your SOLUTION framework summary:
+
+• **FOCUS:** [collected core approach/philosophy]
+• **PAYOFFS:** [collected key benefits and results]
+• **WHAT/HOW:** [collected unique method/system]
+• **THE PRIZE:** [collected ultimate outcome/transformation]
+
+Are you satisfied with this summary?"
+
+Remember: This should feel valuable and make them confident you can solve their problems.,
     "validation_rules": {
         "focus": "Core approach or philosophy of the solution",
         "payoffs": "Key benefits and results delivered",

@@ -15,16 +15,28 @@ QUESTIONING STRATEGY:
 2. SAME: "Now for SAME - what industry category or field do you work in? How would someone instantly understand what space you're in?"
 3. FAME: "Finally, FAME - what makes you different and worthy of attention? What's your Prize-anchored statement or unique differentiator?"
 
-DECISION GATEWAY: Present all three Name-Same-Fame components and ask for user confirmation before proceeding to Step 2 (AUTHORITY).
+DECISION GATEWAY: Present all three Name-Same-Fame components in a summary format and ask "Are you satisfied with this summary?" before proceeding to Step 2 (AUTHORITY).
 
 COMPLETION CRITERIA:
 - Clear NAME established (personal/business identity)
 - Specific SAME defined (industry category)  
 - Compelling FAME articulated (differentiation/prize)
-- User rates satisfaction ≥ 3/5
+- Complete summary presented with all three components
+- Explicit satisfaction feedback requested: "Are you satisfied with this summary?"
+- User expresses satisfaction (positive response to satisfaction question)
 - Ready to move to AUTHORITY step
 
-This becomes their concise, three-part opening statement for presentations.""",
+SATISFACTION FEEDBACK PATTERN:
+When all components are collected, present them in this format:
+"Here's your CLARITY framework summary:
+
+• **NAME:** [collected name/identity]
+• **SAME:** [collected industry category] 
+• **FAME:** [collected differentiation/prize]
+
+Are you satisfied with this summary?"
+
+This becomes their concise, three-part opening statement for presentations.,
     "validation_rules": {
         "name": "Must identify clear personal and business identity",
         "same": "Must define industry category for instant understanding",
