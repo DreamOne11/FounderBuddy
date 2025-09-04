@@ -17,9 +17,11 @@ logger = get_logger(__name__)
 graph = build_special_report_graph()
 
 
-async def initialize_special_report_state(user_id: int = None, thread_id: str = None) -> SpecialReportState:
+async def initialize_special_report_state(
+    user_id: int = None, thread_id: str = None
+) -> SpecialReportState:
     """Initialize a new Special Report state."""
-    
+
     if not user_id:
         user_id = 1
         logger.info(f"Using default user_id: {user_id}")
@@ -35,31 +37,33 @@ async def initialize_special_report_state(user_id: int = None, thread_id: str = 
         except ValueError:
             thread_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, thread_id))
             logger.info(f"Converted non-UUID thread_id to UUID: {thread_id}")
-    
+
     initial_state = SpecialReportState(
         user_id=user_id,
         thread_id=thread_id,
         messages=[],
-        current_section=SpecialReportSection.TOPIC_SELECTION,
+        current_section=SpecialReportSection.ATTRACT,
         router_directive=RouterDirective.NEXT,  # Start by loading first section
     )
-    
+
     # Get initial context
-    context = await get_context.ainvoke({
-        "user_id": user_id,
-        "thread_id": thread_id,
-        "section_id": SpecialReportSection.TOPIC_SELECTION.value,
-    })
-    
+    context = await get_context.ainvoke(
+        {
+            "user_id": user_id,
+            "thread_id": thread_id,
+            "section_id": SpecialReportSection.ATTRACT.value,
+        }
+    )
+
     initial_state["context_packet"] = ContextPacket(**context)
-    
+
     # Add welcome message
     welcome_msg = AIMessage(
-        content="Welcome! I'm here to help you create your Special Report. "
-        "Let's start with topic selection."
+        content="Welcome! I'm here to help you create your Special Report using the 7-Step Framework. "
+        "Let's start with Step 1: ATTRACT - creating a compelling topic that transforms prospects."
     )
     initial_state["messages"].append(welcome_msg)
-    
+
     return initial_state
 
 

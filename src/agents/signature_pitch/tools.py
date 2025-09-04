@@ -283,14 +283,16 @@ async def get_all_sections_status(
 
     sections_status = {}
 
-    # Check all signature pitch sections
+    # Check all CAPSTONE framework sections
     all_sections = [
-        SignaturePitchSectionID.ACTIVE_CHANGE,
-        SignaturePitchSectionID.SPECIFIC_WHO,
-        SignaturePitchSectionID.OUTCOME_PRIZE,
-        SignaturePitchSectionID.CORE_CREDIBILITY,
-        SignaturePitchSectionID.STORY_SPARK,
-        SignaturePitchSectionID.SIGNATURE_LINE,
+        SignaturePitchSectionID.CLARITY,
+        SignaturePitchSectionID.AUTHORITY,
+        SignaturePitchSectionID.PROBLEM,
+        SignaturePitchSectionID.SOLUTION,
+        SignaturePitchSectionID.THE_WHY,
+        SignaturePitchSectionID.OPPORTUNITY,
+        SignaturePitchSectionID.NEXT_STEPS,
+        SignaturePitchSectionID.ESSENCE,
         SignaturePitchSectionID.IMPLEMENTATION,
     ]
 
@@ -362,37 +364,79 @@ async def export_signature_pitch_framework(
 
     content = "# Signature Pitch Framework\\n\\n"
 
-    # Client Information
-    if canvas_data.get("client_name"):
-        content += f"**Client:** {canvas_data['client_name']}\\n"
-    if canvas_data.get("company_name"):
-        content += f"**Company:** {canvas_data['company_name']}\\n"
-    if canvas_data.get("industry"):
-        content += f"**Industry:** {canvas_data['industry']}\\n\\n"
+    # CAPSTONE Framework Sections
+    
+    # Step 1: CLARITY
+    if canvas_data.get("name") or canvas_data.get("same") or canvas_data.get("fame"):
+        content += "## Step 1: CLARITY\\n"
+        if canvas_data.get("name"):
+            content += f"**Name:** {canvas_data['name']}\\n"
+        if canvas_data.get("same"):
+            content += f"**Same:** {canvas_data['same']}\\n"
+        if canvas_data.get("fame"):
+            content += f"**Fame:** {canvas_data['fame']}\\n"
+        content += "\\n"
 
-    # Active Change
-    if canvas_data.get("active_change"):
-        content += f"## Active Change\\n{canvas_data['active_change']}\\n\\n"
+    # Step 2: AUTHORITY
+    if canvas_data.get("authority_pillars"):
+        content += f"## Step 2: AUTHORITY\\n{canvas_data['authority_pillars']}\\n\\n"
 
-    # Specific Who
-    if canvas_data.get("specific_who"):
-        content += f"## Specific Who\\n{canvas_data['specific_who']}\\n\\n"
+    # Step 3: PROBLEM
+    if canvas_data.get("context") or canvas_data.get("dominant_problems"):
+        content += "## Step 3: PROBLEM\\n"
+        if canvas_data.get("context"):
+            content += f"**Context:** {canvas_data['context']}\\n"
+        if canvas_data.get("dominant_problems"):
+            content += f"**Problems:** {canvas_data['dominant_problems']}\\n"
+        content += "\\n"
 
-    # Outcome/Prize
-    if canvas_data.get("outcome_prize"):
-        content += f"## Outcome/Prize\\n{canvas_data['outcome_prize']}\\n\\n"
+    # Step 4: SOLUTION
+    if canvas_data.get("focus") or canvas_data.get("payoffs") or canvas_data.get("what_how") or canvas_data.get("prize"):
+        content += "## Step 4: SOLUTION\\n"
+        if canvas_data.get("focus"):
+            content += f"**Focus:** {canvas_data['focus']}\\n"
+        if canvas_data.get("payoffs"):
+            content += f"**Payoffs:** {canvas_data['payoffs']}\\n"
+        if canvas_data.get("what_how"):
+            content += f"**Method:** {canvas_data['what_how']}\\n"
+        if canvas_data.get("prize"):
+            content += f"**Prize:** {canvas_data['prize']}\\n"
+        content += "\\n"
 
-    # Core Credibility
-    if canvas_data.get("core_credibility"):
-        content += f"## Core Credibility\\n{canvas_data['core_credibility']}\\n\\n"
+    # Step 5: THE WHY
+    if canvas_data.get("origin") or canvas_data.get("mission") or canvas_data.get("vision"):
+        content += "## Step 5: THE WHY\\n"
+        if canvas_data.get("origin"):
+            content += f"**Origin:** {canvas_data['origin']}\\n"
+        if canvas_data.get("mission"):
+            content += f"**Mission:** {canvas_data['mission']}\\n"
+        if canvas_data.get("vision"):
+            content += f"**Vision:** {canvas_data['vision']}\\n"
+        content += "\\n"
 
-    # Story Spark
-    if canvas_data.get("story_spark"):
-        content += f"## Story Spark\\n{canvas_data['story_spark']}\\n\\n"
+    # Step 6: OPPORTUNITY
+    if canvas_data.get("proposal") or canvas_data.get("wedding") or canvas_data.get("honeymoon"):
+        content += "## Step 6: OPPORTUNITY\\n"
+        if canvas_data.get("proposal"):
+            content += f"**Proposal:** {canvas_data['proposal']}\\n"
+        if canvas_data.get("wedding"):
+            content += f"**Wedding:** {canvas_data['wedding']}\\n"
+        if canvas_data.get("honeymoon"):
+            content += f"**Honeymoon:** {canvas_data['honeymoon']}\\n"
+        content += "\\n"
 
-    # Signature Line
-    if canvas_data.get("signature_line"):
-        content += f"## Signature Line\\n{canvas_data['signature_line']}\\n\\n"
+    # Step 7: NEXT STEPS
+    if canvas_data.get("call_to_action"):
+        content += f"## Step 7: NEXT STEPS\\n{canvas_data['call_to_action']}\\n\\n"
+
+    # Step 8: ESSENCE
+    if canvas_data.get("reputation") or canvas_data.get("feeling"):
+        content += "## Step 8: ESSENCE\\n"
+        if canvas_data.get("reputation"):
+            content += f"**Reputation:** {canvas_data['reputation']}\\n"
+        if canvas_data.get("feeling"):
+            content += f"**Feeling:** {canvas_data['feeling']}\\n"
+        content += "\\n"
 
     # 90-Second Pitch Flow
     content += "## 90-Second Pitch Flow\\n"

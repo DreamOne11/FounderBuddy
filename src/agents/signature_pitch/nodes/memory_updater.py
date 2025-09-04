@@ -380,14 +380,14 @@ async def extract_and_update_canvas_data(
                 ]
             )
 
-            # Update canvas_data with extracted fields
+            # Update canvas_data dict with extracted fields
             canvas_data = state["canvas_data"]
             if extracted_data.name:
-                canvas_data.name = extracted_data.name
+                canvas_data["name"] = extracted_data.name
             if extracted_data.same:
-                canvas_data.same = extracted_data.same
+                canvas_data["same"] = extracted_data.same
             if extracted_data.fame:
-                canvas_data.fame = extracted_data.fame
+                canvas_data["fame"] = extracted_data.fame
 
         elif section_id == SignaturePitchSectionID.AUTHORITY.value:
             structured_llm = llm.with_structured_output(AuthorityData)
@@ -400,14 +400,16 @@ async def extract_and_update_canvas_data(
             )
 
             canvas_data = state["canvas_data"]
-            if extracted_data.expertise:
-                canvas_data.expertise = extracted_data.expertise
+            if extracted_data.experience:
+                canvas_data["experience"] = extracted_data.experience
+            if extracted_data.associations:
+                canvas_data["associations"] = extracted_data.associations
+            if extracted_data.accolades:
+                canvas_data["accolades"] = extracted_data.accolades
             if extracted_data.results:
-                canvas_data.results = extracted_data.results
-            if extracted_data.social_proof:
-                canvas_data.social_proof = extracted_data.social_proof
-            if extracted_data.character:
-                canvas_data.character = extracted_data.character
+                canvas_data["results"] = extracted_data.results
+            if extracted_data.authority_pillars:
+                canvas_data["authority_pillars"] = extracted_data.authority_pillars
 
         elif section_id == SignaturePitchSectionID.PROBLEM.value:
             structured_llm = llm.with_structured_output(ProblemData)
@@ -421,9 +423,9 @@ async def extract_and_update_canvas_data(
 
             canvas_data = state["canvas_data"]
             if extracted_data.context:
-                canvas_data.context = extracted_data.context
+                canvas_data["context"] = extracted_data.context
             if extracted_data.dominant_problems:
-                canvas_data.dominant_problems = extracted_data.dominant_problems
+                canvas_data["dominant_problems"] = extracted_data.dominant_problems
 
         elif section_id == SignaturePitchSectionID.SOLUTION.value:
             structured_llm = llm.with_structured_output(SolutionData)
@@ -437,13 +439,13 @@ async def extract_and_update_canvas_data(
 
             canvas_data = state["canvas_data"]
             if extracted_data.focus:
-                canvas_data.focus = extracted_data.focus
+                canvas_data["focus"] = extracted_data.focus
             if extracted_data.payoffs:
-                canvas_data.payoffs = extracted_data.payoffs
+                canvas_data["payoffs"] = extracted_data.payoffs
             if extracted_data.what_how:
-                canvas_data.what_how = extracted_data.what_how
+                canvas_data["what_how"] = extracted_data.what_how
             if extracted_data.prize:
-                canvas_data.prize = extracted_data.prize
+                canvas_data["prize"] = extracted_data.prize
 
         elif section_id == SignaturePitchSectionID.THE_WHY.value:
             structured_llm = llm.with_structured_output(TheWhyData)
@@ -453,11 +455,11 @@ async def extract_and_update_canvas_data(
 
             canvas_data = state["canvas_data"]
             if extracted_data.origin:
-                canvas_data.origin = extracted_data.origin
+                canvas_data["origin"] = extracted_data.origin
             if extracted_data.mission:
-                canvas_data.mission = extracted_data.mission
+                canvas_data["mission"] = extracted_data.mission
             if extracted_data.vision:
-                canvas_data.vision = extracted_data.vision
+                canvas_data["vision"] = extracted_data.vision
 
         elif section_id == SignaturePitchSectionID.OPPORTUNITY.value:
             structured_llm = llm.with_structured_output(OpportunityData)
@@ -471,11 +473,11 @@ async def extract_and_update_canvas_data(
 
             canvas_data = state["canvas_data"]
             if extracted_data.proposal:
-                canvas_data.proposal = extracted_data.proposal
+                canvas_data["proposal"] = extracted_data.proposal
             if extracted_data.wedding:
-                canvas_data.wedding = extracted_data.wedding
+                canvas_data["wedding"] = extracted_data.wedding
             if extracted_data.honeymoon:
-                canvas_data.honeymoon = extracted_data.honeymoon
+                canvas_data["honeymoon"] = extracted_data.honeymoon
 
         elif section_id == SignaturePitchSectionID.NEXT_STEPS.value:
             structured_llm = llm.with_structured_output(NextStepsData)
@@ -488,10 +490,8 @@ async def extract_and_update_canvas_data(
             )
 
             canvas_data = state["canvas_data"]
-            if extracted_data.clear_action:
-                canvas_data.clear_action = extracted_data.clear_action
-            if extracted_data.easy_steps:
-                canvas_data.easy_steps = extracted_data.easy_steps
+            if extracted_data.call_to_action:
+                canvas_data["call_to_action"] = extracted_data.call_to_action
 
         elif section_id == SignaturePitchSectionID.ESSENCE.value:
             structured_llm = llm.with_structured_output(EssenceData)
@@ -505,11 +505,9 @@ async def extract_and_update_canvas_data(
 
             canvas_data = state["canvas_data"]
             if extracted_data.reputation:
-                canvas_data.reputation = extracted_data.reputation
+                canvas_data["reputation"] = extracted_data.reputation
             if extracted_data.feeling:
-                canvas_data.feeling = extracted_data.feeling
-            if extracted_data.lasting_impression:
-                canvas_data.lasting_impression = extracted_data.lasting_impression
+                canvas_data["feeling"] = extracted_data.feeling
 
         logger.info(f"Successfully extracted and updated canvas data for section: {section_id}")
 

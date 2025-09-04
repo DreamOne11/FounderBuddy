@@ -25,7 +25,7 @@ async def implementation_node(
             {
                 "user_id": state["user_id"],
                 "thread_id": state["thread_id"],
-                "canvas_data": state["canvas_data"].model_dump(),
+                "canvas_data": state["canvas_data"],
             }
         )
 

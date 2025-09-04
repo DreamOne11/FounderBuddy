@@ -52,7 +52,7 @@ async def router_node(state: SignaturePitchState, config: RunnableConfig) -> Sig
                     "user_id": state["user_id"],
                     "thread_id": state["thread_id"],
                     "section_id": next_section.value,
-                    "canvas_data": state["canvas_data"].model_dump()
+                    "canvas_data": state["canvas_data"]
                     if state.get("canvas_data")
                     else None,
                 }
@@ -80,7 +80,7 @@ async def router_node(state: SignaturePitchState, config: RunnableConfig) -> Sig
                     "user_id": state["user_id"],
                     "thread_id": state["thread_id"],
                     "section_id": section_id,
-                    "canvas_data": state["canvas_data"].model_dump()
+                    "canvas_data": state["canvas_data"]
                     if state.get("canvas_data")
                     else None,
                 }

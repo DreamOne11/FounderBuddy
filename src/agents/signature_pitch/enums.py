@@ -44,3 +44,4 @@ class SignaturePitchSectionID(str, Enum):
     CORE_CREDIBILITY = "core_credibility"
     STORY_SPARK = "story_spark"
     SIGNATURE_LINE = "signature_line"
+
