@@ -205,5 +205,6 @@ data/
 
 # Claude Code generated documentation
 CLAUDE.md
+CLAUDE.local.md
 *_GUIDE.md
 *_CONTEXT.md
