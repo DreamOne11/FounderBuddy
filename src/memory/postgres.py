@@ -1,5 +1,6 @@
 import logging
 from contextlib import AbstractAsyncContextManager
+from urllib.parse import quote
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.store.postgres import AsyncPostgresStore
@@ -34,11 +35,13 @@ def get_postgres_connection_string() -> str:
     """Build and return the PostgreSQL connection string from settings."""
     if settings.POSTGRES_PASSWORD is None:
         raise ValueError("POSTGRES_PASSWORD is not set")
+    # URL encode the password to handle special characters
+    encoded_password = quote(settings.POSTGRES_PASSWORD.get_secret_value(), safe='')
     return (
         f"postgresql://{settings.POSTGRES_USER}:"
-        f"{settings.POSTGRES_PASSWORD.get_secret_value()}@"
+        f"{encoded_password}@"
         f"{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/"
-        f"{settings.POSTGRES_DB}"
+        f"{settings.POSTGRES_DB}?sslmode=require"
     )
 
 
