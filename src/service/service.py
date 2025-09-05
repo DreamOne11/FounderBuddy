@@ -278,11 +278,11 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph, agent_id: str)
 
     # Check for interrupts that need to be resumed
     if not user_input.thread_id:
-        # 新线程 - 刚初始化状态，不会有中断需要恢复
-        # 避免调用aget_state引发graph意外执行
+        # New thread - freshly initialized state, no interrupts to resume
+        # Avoid calling aget_state which might trigger unexpected graph execution
         interrupted_tasks = []
     else:
-        # 现有线程 - 检查是否有中断需要恢复
+        # Existing thread - check if there are interrupts to resume
         state = await agent.aget_state(config=config)
         interrupted_tasks = [
             task for task in state.tasks if hasattr(task, "interrupts") and task.interrupts
