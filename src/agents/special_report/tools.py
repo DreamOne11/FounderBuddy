@@ -171,15 +171,14 @@ async def save_section(
 
             plain_text = tiptap_to_plain_text(content) if content else ""
 
-            dentapp_client = get_dentapp_client()
-            async with dentapp_client as client:
-                response = await client.save_section_state(  # ✅ Correct method name
-                    agent_id=SPECIAL_REPORT_AGENT_ID,
-                    section_id=section_id_int,
-                    user_id=user_id,
-                    content=plain_text,  # ✅ Convert to plain text
-                    metadata={},
-                )
+            client = get_dentapp_client()
+            response = await client.save_section_state(  # ✅ Correct method name
+                agent_id=SPECIAL_REPORT_AGENT_ID,
+                section_id=section_id_int,
+                user_id=user_id,
+                content=plain_text,  # ✅ Convert to plain text
+                metadata={},
+            )
 
             if response:
                 logger.info(f"TOOLS_API_CALL: ✅ Successfully saved section {section_id}")

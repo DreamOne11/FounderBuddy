@@ -9,205 +9,62 @@ logger = logging.getLogger(__name__)
 # No longer needed - frontend now passes integer user_id directly
 
 
-def _get_config_based_on_url() -> tuple[dict[str, int], int]:
-    """
-    Get SECTION_ID_MAPPING and AGENT_ID based on DENTAPP_API_URL.
-    
-    Returns:
-        tuple: (section_id_mapping, agent_id)
-    """
-    dentapp_api_url = os.getenv("DENTAPP_API_URL", "")
-    
-    if "gsd.keypersonofinfluence.com" in dentapp_api_url:
-        # GSD configuration: 
-        # Value Canvas: section IDs 9-16, agent ID 2
-        # Social Pitch: section IDs 17-22, agent ID 3
-        # Mission Pitch: section IDs 23-31, agent ID 4
-        # Signature Pitch: section IDs 32-39, agent ID 5
-        # Special Report: section IDs 40-43, agent ID 6
-        section_mapping = {
-            # Value Canvas sections
-            "interview": 9,
-            "icp": 10,
-            "pain": 11,
-            "deep_fear": 12,
-            "payoffs": 13,
-            "signature_method": 14,
-            "mistakes": 15,
-            "prize": 16,
-            # Social Pitch sections
-            "name": 17,
-            "same": 18,
-            "fame": 19,
-            "sp_pain": 20,  # Social Pitch pain (different from Value Canvas pain)
-            "aim": 21,
-            "game": 22,
-            # Mission Pitch sections
-            "hidden_theme": 23,
-            "personal_origin": 24,
-            "business_origin": 25,
-            "mission": 26,
-            "three_year_vision": 27,
-            "big_vision": 28,
-            "implementation": 29,
-            # Signature Pitch sections
-            "active_change": 32,
-            "specific_who": 33,
-            "outcome_prize": 34,
-            "core_credibility": 35,
-            "story_spark": 36,
-            "signature_line": 37,
-            # Special Report sections (old sections for backward compatibility)
-            "topic_selection": 40,
-            "content_development": 41,
-            "report_structure": 42,
-            "sr_implementation": 43,  # Special Report implementation
-            # Special Report sections (new 7-step framework)
-            "attract": 44,      # Step 1: Compelling topic
-            "disrupt": 45,      # Step 2: Challenge assumptions
-            "inform": 46,       # Step 3: Teach concept
-            "recommend": 47,    # Step 4: Recommend actions
-            "overcome": 48,     # Step 5: Handle objections
-            "reinforce": 49,    # Step 6: Reinforce value
-            "invite": 50,       # Step 7: Call to action
-            "implementation": 51,  # Implementation/Export
-        }
-        agent_id = 2  # Default to Value Canvas agent ID (will be overridden by agent-specific calls)
-        logger.info("Using GSD configuration: Value Canvas (IDs 9-16, agent 2), Social Pitch (IDs 17-22, agent 3), Mission Pitch (IDs 23-31, agent 4), Signature Pitch (IDs 32-39, agent 5)")
-    elif "dentappaibuilder.enspirittech.co.uk" in dentapp_api_url:
-        # DentApp AI Builder configuration:
-        # Value Canvas: section IDs 1-8, agent ID 1  
-        # Social Pitch: section IDs 9-14, agent ID 3
-        # Mission Pitch: section IDs 15-23, agent ID 4
-        # Signature Pitch: section IDs 24-31, agent ID 5
-        # Special Report: section IDs 32-35, agent ID 6
-        section_mapping = {
-            # Value Canvas sections
-            "interview": 1,
-            "icp": 2,
-            "pain": 3,
-            "deep_fear": 4,
-            "payoffs": 5,
-            "signature_method": 6,
-            "mistakes": 7,
-            "prize": 8,
-            # Social Pitch sections
-            "name": 9,
-            "same": 10,
-            "fame": 11,
-            "pain": 12,  # Social Pitch pain (uses "pain" in enum, not "sp_pain")
-            "aim": 13,
-            "game": 14,
-            "implementation": 15,  # Social Pitch implementation section
-            # Mission Pitch sections
-            "hidden_theme": 16,
-            "personal_origin": 17,
-            "business_origin": 18,
-            "mission": 19,
-            "three_year_vision": 20,
-            "big_vision": 21,
-            "implementation": 22,  # Mission Pitch implementation
-            # Signature Pitch sections
-            "active_change": 24,
-            "specific_who": 25,
-            "outcome_prize": 26,
-            "core_credibility": 27,
-            "story_spark": 28,
-            "signature_line": 29,
-            "implementation": 30,  # Signature Pitch implementation
-            # Special Report sections (old sections for backward compatibility)
-            "topic_selection": 32,
-            "content_development": 33,
-            "report_structure": 34,
-            "sr_implementation": 35,  # Special Report implementation
-            # Special Report sections (new 7-step framework)
-            "attract": 36,      # Step 1: Compelling topic
-            "disrupt": 37,      # Step 2: Challenge assumptions
-            "inform": 38,       # Step 3: Teach concept
-            "recommend": 39,    # Step 4: Recommend actions
-            "overcome": 40,     # Step 5: Handle objections
-            "reinforce": 41,    # Step 6: Reinforce value
-            "invite": 42,       # Step 7: Call to action
-            "implementation": 43,  # Implementation/Export
-        }
-        agent_id = 1  # Default to Value Canvas agent ID (will be overridden by agent-specific calls)
-        logger.info("Using DentApp AI Builder configuration: Value Canvas (IDs 1-8, agent 1), Social Pitch (IDs 9-14, agent 3), Mission Pitch (IDs 15-23, agent 4), Signature Pitch (IDs 24-31, agent 5), Special Report (IDs 32-35, agent 6)")
-    else:
-        # Default fallback to GSD configuration
-        section_mapping = {
-            # Value Canvas sections
-            "interview": 9,
-            "icp": 10,
-            "pain": 11,
-            "deep_fear": 12,
-            "payoffs": 13,
-            "signature_method": 14,
-            "mistakes": 15,
-            "prize": 16,
-            # Social Pitch sections
-            "name": 17,
-            "same": 18,
-            "fame": 19,
-            "pain": 20,  # Social Pitch pain (uses "pain" in enum, not "sp_pain")
-            "aim": 21,
-            "game": 22,
-            "implementation": 23,  # Social Pitch implementation
-            # Mission Pitch sections
-            "hidden_theme": 24,
-            "personal_origin": 25,
-            "business_origin": 26,
-            "mission": 27,
-            "three_year_vision": 28,
-            "big_vision": 29,
-            "implementation": 30,  # Mission Pitch implementation
-            # Signature Pitch sections
-            "active_change": 32,
-            "specific_who": 33,
-            "outcome_prize": 34,
-            "core_credibility": 35,
-            "story_spark": 36,
-            "signature_line": 37,
-            "implementation": 38,  # Signature Pitch implementation
-            # Special Report sections (old sections for backward compatibility)
-            "topic_selection": 40,
-            "content_development": 41,
-            "report_structure": 42,
-            "sr_implementation": 43,  # Special Report implementation
-            # Special Report sections (new 7-step framework)
-            "attract": 44,      # Step 1: Compelling topic
-            "disrupt": 45,      # Step 2: Challenge assumptions
-            "inform": 46,       # Step 3: Teach concept
-            "recommend": 47,    # Step 4: Recommend actions
-            "overcome": 48,     # Step 5: Handle objections
-            "reinforce": 49,    # Step 6: Reinforce value
-            "invite": 50,       # Step 7: Call to action
-            "implementation": 51,  # Implementation/Export
-        }
-        agent_id = 2  # Default to Value Canvas agent ID
-        logger.warning(f"Unknown DENTAPP_API_URL: {dentapp_api_url}, using default GSD configuration")
-    
-    return section_mapping, agent_id
+# GSD configuration is now the only configuration
+# Value Canvas: section IDs 45-54, agent ID 2
+# Social Pitch: section IDs 17-22, agent ID 3
+# Mission Pitch: section IDs 23-31, agent ID 4
+# Signature Pitch: section IDs 32-39, agent ID 5
+# Special Report: section IDs 40-44, agent ID 6
+SECTION_ID_MAPPING = {
+    # Value Canvas sections (updated to new IDs: 45-54)
+    "interview": 45,  # Initial Interview
+    "icp": 46,  # Ideal Customer Persona
+    "icp_stress_test": 47,  # ICP Stress Test
+    "pain": 48,  # The Pain
+    "deep_fear": 49,  # The Deep Fear
+    "payoffs": 50,  # The Payoffs
+    "pain_payoff_symmetry": 51,  # Pain-Payoff Symmetry
+    "signature_method": 52,  # Signature Method
+    "mistakes": 53,  # The Mistakes
+    "prize": 54,  # The Prize
+    # Social Pitch sections
+    "name": 19,
+    "same": 20,
+    "fame": 21,
+    "sp_pain": 22,  # Social Pitch pain (different from Value Canvas pain)
+    "aim": 23,
+    "game": 24,
+    # Mission Pitch sections
+    "hidden_theme": 23,
+    "personal_origin": 24,
+    "business_origin": 25,
+    "mission": 26,
+    "three_year_vision": 27,
+    "big_vision": 28,
+    "implementation": 29,
+    # Signature Pitch sections
+    "active_change": 32,
+    "specific_who": 33,
+    "outcome_prize": 34,
+    "core_credibility": 35,
+    "story_spark": 36,
+    "signature_line": 37,
+    # Special Report sections (old sections for backward compatibility)
+    "topic_selection": 40,
+    "content_development": 41,
+    "report_structure": 42,
+    "sr_implementation": 43,  # Special Report implementation (old framework)
+    # Note: Special Report new 7-step framework sections need new IDs to avoid conflicts
+    # These would need to be assigned by the API team
+}
 
-
-# Dynamic configuration based on environment
-SECTION_ID_MAPPING, AGENT_ID = _get_config_based_on_url()
-
-# Agent ID constants
-VALUE_CANVAS_AGENT_ID = 2  # GSD environment
+# Agent ID constants (GSD environment)
+VALUE_CANVAS_AGENT_ID = 2
 SOCIAL_PITCH_AGENT_ID = 3
 MISSION_PITCH_AGENT_ID = 4
 SIGNATURE_PITCH_AGENT_ID = 5
 SPECIAL_REPORT_AGENT_ID = 6
-
-# Adjust agent IDs based on environment
-dentapp_api_url = os.getenv("DENTAPP_API_URL", "")
-if "dentappaibuilder.enspirittech.co.uk" in dentapp_api_url:
-    # DentApp environment uses different IDs
-    VALUE_CANVAS_AGENT_ID = 1
-    SOCIAL_PITCH_AGENT_ID = 3
-    MISSION_PITCH_AGENT_ID = 4
-    SIGNATURE_PITCH_AGENT_ID = 5
-    SPECIAL_REPORT_AGENT_ID = 6
+AGENT_ID = 2  # Default to Value Canvas agent ID
 
 
 def get_agent_id_for_section(section_id_str: str, agent_context: str = None) -> int:
@@ -219,7 +76,7 @@ def get_agent_id_for_section(section_id_str: str, agent_context: str = None) -> 
         agent_context: Optional context to distinguish agents (e.g., "social_pitch", "value_canvas", "mission_pitch")
         
     Returns:
-        Agent ID (2/3/4/5 for GSD, 1/3/4/5 for DentApp)
+        Agent ID (2/3/4/5/6 for GSD)
     """
     # If we have explicit agent context, use it
     if agent_context == "social_pitch":

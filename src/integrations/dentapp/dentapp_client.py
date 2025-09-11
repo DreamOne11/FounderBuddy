@@ -14,7 +14,7 @@ class DentAppClient:
     """HTTP client for DentApp AI Builder API."""
     
     def __init__(self, base_url: str = None, timeout: int = 30):
-        self.base_url = base_url or getattr(settings, 'DENTAPP_API_URL', 'https://dentappaibuilder.enspirittech.co.uk')
+        self.base_url = base_url or getattr(settings, 'DENTAPP_API_URL', 'https://gsd.keypersonofinfluence.com')
         self.timeout = timeout
         # Initialize the client immediately instead of waiting for __aenter__
         self._client = AsyncClient(

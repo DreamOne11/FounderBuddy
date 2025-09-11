@@ -213,15 +213,14 @@ async def save_section(
             # Convert tiptap content to plain text for database
             plain_text = tiptap_to_plain_text(content) if content else ""
 
-            dentapp_client = get_dentapp_client()
-            async with dentapp_client as client:
-                response = await client.save_section_state(
-                    agent_id=SIGNATURE_PITCH_AGENT_ID,
-                    section_id=section_id_int,
-                    user_id=user_id,  # Use the actual user_id parameter
-                    content=plain_text,
-                    metadata={},  # Empty metadata for MVP
-                )
+            client = get_dentapp_client()
+            response = await client.save_section_state(
+                agent_id=SIGNATURE_PITCH_AGENT_ID,
+                section_id=section_id_int,
+                user_id=user_id,  # Use the actual user_id parameter
+                content=plain_text,
+                metadata={},  # Empty metadata for MVP
+            )
 
             logger.info(f"TOOLS_API_CALL: save_section_state returned: {response is not None}")
 

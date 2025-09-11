@@ -149,13 +149,12 @@ async def get_context(
             
             # Call DentApp API
             logger.info(f"TOOLS_API_CALL: Calling get_section_state(agent_id={SOCIAL_PITCH_AGENT_ID}, section_id={section_id_int}, user_id={user_id})")
-            dentapp_client = get_dentapp_client()
-            async with dentapp_client as client:
-                result = await client.get_section_state(
-                    agent_id=SOCIAL_PITCH_AGENT_ID,
-                    section_id=section_id_int,
-                    user_id=user_id
-                )
+            client = get_dentapp_client()
+            result = await client.get_section_state(
+                agent_id=SOCIAL_PITCH_AGENT_ID,
+                section_id=section_id_int,
+                user_id=user_id
+            )
             logger.info(f"TOOLS_API_CALL: get_section_state returned: {result is not None}")
             
             if result:
@@ -262,15 +261,14 @@ async def save_section(
             
             # Call DentApp API
             logger.info(f"TOOLS_API_CALL: Calling save_section_state(agent_id={SOCIAL_PITCH_AGENT_ID}, section_id={section_id_int}, user_id={user_id})")
-            dentapp_client = get_dentapp_client()
-            async with dentapp_client as client:
-                result = await client.save_section_state(
-                    agent_id=SOCIAL_PITCH_AGENT_ID,
-                    section_id=section_id_int,
-                    user_id=user_id,
-                    content=plain_text,
-                    metadata={}  # Empty metadata for MVP
-                )
+            client = get_dentapp_client()
+            result = await client.save_section_state(
+                agent_id=SOCIAL_PITCH_AGENT_ID,
+                section_id=section_id_int,
+                user_id=user_id,
+                content=plain_text,
+                metadata={}  # Empty metadata for MVP
+            )
             logger.info(f"TOOLS_API_CALL: save_section_state returned: {result is not None}")
             
             if result:
@@ -393,12 +391,11 @@ async def get_all_sections_status(
                                 user_id_int=user_id)
                 
                 # Call DentApp API
-                dentapp_client = get_dentapp_client()
-                async with dentapp_client as client:
-                    api_result = await client.get_all_sections_status(
-                        agent_id=SOCIAL_PITCH_AGENT_ID,
-                        user_id=user_id
-                    )
+                client = get_dentapp_client()
+                api_result = await client.get_all_sections_status(
+                    agent_id=SOCIAL_PITCH_AGENT_ID,
+                    user_id=user_id
+                )
                 
                 if api_result:
                     logger.info("DATABASE_DEBUG: ✅ Retrieved DentApp API response")
@@ -546,12 +543,11 @@ async def export_checklist(
                                 user_id_int=user_id)
                 
                 # Call DentApp API export
-                dentapp_client = get_dentapp_client()
-                async with dentapp_client as client:
-                    export_result = await client.export_agent_data(
-                        user_id=user_id,
-                        agent_id=SOCIAL_PITCH_AGENT_ID
-                    )
+                client = get_dentapp_client()
+                export_result = await client.export_agent_data(
+                    user_id=user_id,
+                    agent_id=SOCIAL_PITCH_AGENT_ID
+                )
                 
                 if export_result:
                     logger.info("DATABASE_DEBUG: ✅ Successfully exported Social Pitch via DentApp API")
