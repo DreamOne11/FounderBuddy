@@ -4,7 +4,7 @@ from ...enums import SectionID
 from ..base_prompt import BASE_RULES, SectionTemplate, ValidationRule
 
 # ICP Stress Test section specific prompts
-ICP_STRESS_TEST_SYSTEM_PROMPT = f"""{BASE_RULES}
+ICP_STRESS_TEST_SYSTEM_PROMPT = BASE_RULES + """
 
 ---
 

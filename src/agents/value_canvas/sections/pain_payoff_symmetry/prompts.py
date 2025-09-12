@@ -4,7 +4,7 @@ from ...enums import SectionID
 from ..base_prompt import BASE_RULES, SectionTemplate, ValidationRule
 
 # Pain-Payoff Symmetry section specific prompts
-PAIN_PAYOFF_SYMMETRY_SYSTEM_PROMPT = f"""{BASE_RULES}
+PAIN_PAYOFF_SYMMETRY_SYSTEM_PROMPT = BASE_RULES + """
 
 ---
 

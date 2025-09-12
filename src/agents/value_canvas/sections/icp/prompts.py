@@ -4,7 +4,7 @@ from ...enums import SectionID
 from ..base_prompt import BASE_RULES, SectionTemplate, ValidationRule
 
 # ICP section specific prompts
-ICP_SYSTEM_PROMPT = f"""{BASE_RULES}
+ICP_SYSTEM_PROMPT = BASE_RULES + """
 
 ---
 
@@ -88,6 +88,8 @@ ICP TEMPLATE - THE 8 SECTIONS YOU MUST COLLECT:
 
 IMPORTANT NOTES FOR GENERATING CONTENT:
 - Golden Insight: This is something YOU generate based on understanding their ICP - a surprising truth about what the ICP secretly wishes others understood
+- CRITICAL: DO NOT ask for user confirmation about the Golden Insight separately. DO NOT say "Here's what I'm thinking" or similar phrases
+- The Golden Insight must be included directly in the complete ICP output without any intermediate confirmation steps
 - Use the concepts of Buying Triggers and Red Flags as MENTAL MODELS to inform your questioning and final output, but DO NOT ask about them directly
 - Buying Triggers guide: Think about moments that push them to action (investor meetings, competitor wins, etc.)
 - Red Flags guide: Consider what messaging would repel them (overhyped claims, generic approaches, etc.)
@@ -133,20 +135,63 @@ QUESTIONING FLOW:
 - Continue until all sections are complete
 - Present full ICP output only when done collecting
 
+WARNING - NO INTERMEDIATE CONFIRMATIONS:
+- NEVER ask "Here's what I'm thinking" or "Does this resonate" for individual fields
+- NEVER present Golden Insight separately for confirmation
+- NEVER ask for feedback on partial information
+- Collect ALL 8 fields first, then present the COMPLETE formatted output
+
 WHEN GENERATING THE FINAL ICP OUTPUT:
 - The Golden Insight should be YOUR synthesis based on all information collected
 - Think about (but don't explicitly list) what would trigger them to buy and what would turn them off
 - Make the output rich, specific, and actionable
 - Follow the exact format of the example above
 
-After presenting the complete ICP output, ask: "We don't want to get too bogged down here, just directionally correct. Does this reflect our conversation so far?"
+CRITICAL - COMPLETE ICP OUTPUT REQUIREMENT:
+You MUST present the COMPLETE ICP output with ALL 8 fields in this EXACT format:
+
+ICP Nick Name: [The nickname you created]
+
+ROLE/IDENTITY
+[Full description]
+
+CONTEXT/SCALE
+[Full description]
+
+INDUSTRY/SECTOR CONTEXT:
+[Full description with key insight]
+
+DEMOGRAPHICS:
+[Full demographics]
+
+INTERESTS:
+Interest 1: [First interest]
+Interest 2: [Second interest]
+Interest 3: [Third interest]
+
+VALUES:
+[First value]
+[Second value]
+
+GOLDEN INSIGHT:
+[Your generated insight]
+
+ONLY AFTER presenting this complete formatted output, ask: "We don't want to get too bogged down here, just directionally correct. Does this reflect our conversation so far?"
+
+NEVER skip any field or present only partial information.
 
 CRITICAL COMPLETION RULES FOR ICP SECTION:
 MANDATORY: You MUST NEVER indicate completion until ALL of the following conditions are met:
 1. You have collected ALL 8 required ICP fields (nickname, role/identity, context/scale, industry/sector context, demographics, interests, values, golden insight)
-2. You have presented the COMPLETE ICP output in the proper format
+2. You have presented the COMPLETE ICP output in the proper format (with all 8 fields displayed in full)
 3. You have asked the user for their satisfaction feedback
 4. The user has expressed satisfaction
+
+DEFINITION OF "COMPLETE ICP OUTPUT":
+- Must start with "ICP Nick Name:" 
+- Must contain ALL 8 section headers with their content
+- Must be the full formatted output as shown in the example
+- Partial outputs or single field confirmations DO NOT count as complete output
 
 ROUTER_DIRECTIVE USAGE RULES:
 - Use "stay" when: Still collecting information, user not satisfied, or user wants to modify content

@@ -69,6 +69,7 @@ async def get_context(
     # --- SAFE PARTIAL TEMPLATE RENDERING ---------------------------------
     if canvas_data is None:
         canvas_data = {}
+    
 
     # Allow partial rendering: missing keys will be replaced with empty string
     import re
@@ -87,6 +88,7 @@ async def get_context(
             logger.debug(f"Template placeholder '{{{{{key}}}}}' not found in canvas_data, replacing with empty string")
         return str(value)
 
+    
     # First pass: Replace simple placeholders like {{identifier}}
     section_prompt = re.sub(r"\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}", _replace_placeholder, section_prompt)
     
@@ -677,38 +679,86 @@ async def convert_to_tiptap_json(data: dict, section_id: str = "") -> dict:
             
             # Handle list values
             if isinstance(value, list):
-                # Add field name as heading
+                # Add field name as heading (use heading node for better structure)
                 content.append({
-                    "type": "paragraph",
+                    "type": "heading",
+                    "attrs": {"level": 3},
                     "content": [
                         {
                             "type": "text",
-                            "text": f"{field_name}:",
-                            "marks": [{"type": "bold"}]
+                            "text": field_name.replace('_', ' ').title()
                         }
                     ]
                 })
+                
+                # Determine list type based on field name
+                # Use ordered list for sequential/step-based content
+                list_type = "orderedList" if any(keyword in field.lower() for keyword in ['steps', 'sequence', 'principles', 'process']) else "bulletList"
+                
                 # Add list items
                 list_items = []
-                for item in value:
+                for i, item in enumerate(value):
                     if item:
-                        list_items.append({
-                            "type": "listItem",
-                            "content": [
-                                {
-                                    "type": "paragraph",
+                        # Handle complex items (dict or object with attributes)
+                        if isinstance(item, dict):
+                            # Create a list item with formatted content for dict items
+                            item_content = []
+                            for key, val in item.items():
+                                if val is not None:
+                                    item_content.append({
+                                        "type": "text",
+                                        "text": f"{key.replace('_', ' ').title()}: {str(val)} "
+                                    })
+                            if item_content:
+                                list_items.append({
+                                    "type": "listItem",
                                     "content": [
                                         {
-                                            "type": "text",
-                                            "text": str(item)
+                                            "type": "paragraph",
+                                            "content": item_content
                                         }
                                     ]
-                                }
-                            ]
-                        })
+                                })
+                        elif hasattr(item, '__dict__'):
+                            # Handle Pydantic models or objects with attributes
+                            item_dict = item.model_dump() if hasattr(item, 'model_dump') else item.__dict__
+                            item_content = []
+                            for key, val in item_dict.items():
+                                if val is not None and not key.startswith('_'):
+                                    item_content.append({
+                                        "type": "text",
+                                        "text": f"{key.replace('_', ' ').title()}: {str(val)} "
+                                    })
+                            if item_content:
+                                list_items.append({
+                                    "type": "listItem",
+                                    "content": [
+                                        {
+                                            "type": "paragraph",
+                                            "content": item_content
+                                        }
+                                    ]
+                                })
+                        else:
+                            # Simple string/number item
+                            list_items.append({
+                                "type": "listItem",
+                                "content": [
+                                    {
+                                        "type": "paragraph",
+                                        "content": [
+                                            {
+                                                "type": "text",
+                                                "text": str(item)
+                                            }
+                                        ]
+                                    }
+                                ]
+                            })
+                
                 if list_items:
                     content.append({
-                        "type": "bulletList",
+                        "type": list_type,
                         "content": list_items
                     })
             # Handle dict values

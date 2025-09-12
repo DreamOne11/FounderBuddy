@@ -4,7 +4,7 @@ from ...enums import SectionID
 from ..base_prompt import BASE_RULES, SectionTemplate, ValidationRule
 
 # Pain section specific prompts
-PAIN_SYSTEM_PROMPT = f"""{BASE_RULES}
+PAIN_SYSTEM_PROMPT = BASE_RULES + """
 
 ---
 

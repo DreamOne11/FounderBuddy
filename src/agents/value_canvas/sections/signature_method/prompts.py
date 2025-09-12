@@ -4,7 +4,7 @@ from ...enums import SectionID
 from ..base_prompt import BASE_RULES, SectionTemplate, ValidationRule
 
 # Signature Method section specific prompts
-SIGNATURE_METHOD_SYSTEM_PROMPT = f"""{BASE_RULES}
+SIGNATURE_METHOD_SYSTEM_PROMPT = BASE_RULES + """
 
 ---
 

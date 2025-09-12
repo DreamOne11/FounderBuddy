@@ -4,7 +4,7 @@ from ...enums import SectionID
 from ..base_prompt import BASE_RULES, SectionTemplate, ValidationRule
 
 # Deep Fear section specific prompts
-DEEP_FEAR_SYSTEM_PROMPT = f"""{BASE_RULES}
+DEEP_FEAR_SYSTEM_PROMPT = BASE_RULES + """
 
 ---
 

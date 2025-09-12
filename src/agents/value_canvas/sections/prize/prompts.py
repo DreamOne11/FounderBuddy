@@ -4,7 +4,7 @@ from ...enums import SectionID
 from ..base_prompt import BASE_RULES, SectionTemplate, ValidationRule
 
 # Prize section specific prompts
-PRIZE_SYSTEM_PROMPT = f"""{BASE_RULES}
+PRIZE_SYSTEM_PROMPT = BASE_RULES + """
 
 ---
 

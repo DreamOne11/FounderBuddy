@@ -46,6 +46,34 @@ class TiptapParagraphNode(BaseModel):
     attrs: dict[str, Any] | None = None
 
 
+class TiptapListItemNode(BaseModel):
+    """Tiptap list item node."""
+    type: Literal["listItem"] = "listItem"
+    content: list['TiptapParagraphNode'] = Field(default_factory=list, max_length=10)
+    attrs: dict[str, Any] | None = None
+
+
+class TiptapBulletListNode(BaseModel):
+    """Tiptap bullet list node."""
+    type: Literal["bulletList"] = "bulletList"
+    content: list[TiptapListItemNode] = Field(default_factory=list, max_length=20)
+    attrs: dict[str, Any] | None = None
+
+
+class TiptapOrderedListNode(BaseModel):
+    """Tiptap ordered list node."""
+    type: Literal["orderedList"] = "orderedList"
+    content: list[TiptapListItemNode] = Field(default_factory=list, max_length=20)
+    attrs: dict[str, Any] | None = None
+
+
+class TiptapHeadingNode(BaseModel):
+    """Tiptap heading node."""
+    type: Literal["heading"] = "heading"
+    attrs: dict[str, int] = Field(default={"level": 2})  # Default to h2
+    content: list[TiptapInlineNode] = Field(default_factory=list, max_length=10)
+
+
 class TiptapNode(BaseModel):
     """Base Tiptap node structure."""
     type: str
@@ -55,10 +83,14 @@ class TiptapNode(BaseModel):
     marks: list[dict[str, Any]] | None = Field(None, max_length=2)  # Further reduced
 
 
+# Union type for block content nodes (paragraphs, lists, and headings)
+TiptapBlockNode = TiptapParagraphNode | TiptapBulletListNode | TiptapOrderedListNode | TiptapHeadingNode
+
+
 class TiptapDocument(BaseModel):
     """Tiptap document structure."""
     type: Literal["doc"] = "doc"
-    content: list[TiptapParagraphNode] = Field(default_factory=list, max_length=30)  # Relaxed for complex sections
+    content: list[TiptapBlockNode] = Field(default_factory=list, max_length=30)  # Relaxed for complex sections
 
 
 class SectionContent(BaseModel):

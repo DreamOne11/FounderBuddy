@@ -90,7 +90,7 @@ def get_next_unfinished_section(section_states: dict[str, Any]) -> SectionID | N
 
 
 def get_decision_prompt_template() -> str:
-    """Get decision analysis prompt template for generate_decision_node - Simplified version without section_update"""
+    """Get decision analysis prompt template for generate_decision_node"""
     return """You are analyzing a conversation to make routing decisions for a Value Canvas agent.
 
 CURRENT CONTEXT:
@@ -98,7 +98,10 @@ CURRENT CONTEXT:
 - Last AI Reply: {last_ai_reply}
 
 SECTION-SPECIFIC RULES AND CONTEXT:
-The following is the complete prompt/rules for the current section. Study it carefully to understand when data should be saved:
+The following is the complete prompt/rules for the current section. Study it carefully to understand:
+1. What data fields are required
+2. What constitutes a "complete output"
+3. What the satisfaction confirmation pattern looks like
 ---
 {section_prompt}
 ---
@@ -106,55 +109,102 @@ The following is the complete prompt/rules for the current section. Study it car
 CONVERSATION HISTORY:
 {conversation_history}
 
-DECISION MAKING RULES:
+CRITICAL DECISION MAKING RULES:
 
-1. UNDERSTAND THE SECTION CONTEXT:
-   - The section prompt above defines the exact flow and rules for this section
-   - Understand where we are in the section's process by analyzing the conversation
-   - Each section has specific completion criteria
-
-2. DETERMINE IF CONTENT SHOULD BE SAVED (should_save_content):
+1. UNDERSTAND SECTION COMPLETION REQUIREMENTS:
+   - Read the section prompt above to identify ALL required fields/elements
+   - Look for phrases like "MUST collect ALL", "required fields", "complete output format"
+   - Understand the difference between partial progress and complete output
    
-   Set should_save_content = true when:
-   - AI just presented a complete summary with all required data
-   - AI is asking for satisfaction rating after showing summary
-   - AI says "Here's what I gathered/collected" with actual data
-   - AI shows refined/synthesized version of user input
+2. RECOGNIZE COMPLETE OUTPUT PATTERNS:
+   
+   A section is ONLY complete when:
+   - All required fields/elements have been collected
+   - The AI has presented them in a COMPLETE, FORMATTED OUTPUT
+   - The output matches the format specified in the section prompt
+   
+   Common complete output indicators:
+   - Structured format with clear headers/sections
+   - All required fields present in one cohesive output
+   - Follows the example format shown in section prompt
+   - Usually followed by satisfaction question like "Does this reflect..." or "Are you satisfied with..."
+
+3. AVOID COMMON MISJUDGMENTS:
+   
+   These do NOT indicate section completion:
+   - "Let's move on to the next step" (could be within same section)
+   - Showing only one field or insight
+   - Previewing or announcing what will be shown
+   - User saying "ready" or "yes" to see more information
+   - Partial summaries or individual field confirmations
+   
+4. DETERMINE IF CONTENT SHOULD BE SAVED (should_save_content):
+   
+   Set should_save_content = true ONLY when:
+   - AI just presented a COMPLETE output with ALL required fields
+   - The output matches the complete format specified in section prompt
+   - AI is asking for satisfaction with the complete output
    
    Set should_save_content = false when:
-   - Still collecting information
-   - Asking individual questions
-   - Introduction or explanation phases
-   - Partial data or intermediate confirmations
+   - Still collecting individual fields
+   - Showing previews or partial information
+   - In explanation or introduction phases
+   - Asking if user is ready to see summary
 
-3. ROUTER DIRECTIVE DECISION:
+5. ROUTER DIRECTIVE DECISION:
    
    "stay": Continue current section when:
-   - Section-specific completion criteria NOT met
-   - Still collecting required information
-   - User needs to provide corrections
-   - ANY intermediate step is in progress
+   - Not all required fields have been collected
+   - Complete formatted output has NOT been presented
+   - Still in intermediate steps (collecting, previewing, explaining)
+   - User hasn't confirmed satisfaction with complete output
+   - CRITICAL: AI is asking a question and waiting for user response
+   - CRITICAL: Last AI message ends with a question (like "Does this reflect...?")
    
-   "next": Move to next section ONLY when:
-   - ALL section-specific completion criteria are met
-   - ALL required data has been collected AND presented
-   - User has confirmed satisfaction with COMPLETE section output
+   "next": Move to next section ONLY when ALL are true:
+   - Every required field specified in section prompt has been collected
+   - Complete formatted output has been presented (not preview)
+   - User has EXPLICITLY expressed satisfaction with the complete output
+   - No indication of wanting changes
+   - CRITICAL: User must have PROVIDED A RESPONSE after seeing complete output
+   - CRITICAL: is_satisfied must be true (not null, not false)
+   
+   VALIDATION CHECK for "next":
+   If the last AI message asks a question (ends with "?"), then:
+   - There MUST be a user response after that question
+   - That user response must indicate satisfaction
+   - If no user response exists after the question, MUST use "stay"
    
    "modify:X": Jump to section X when:
    - User explicitly requests different section
-   - Examples: "Let's work on pain points", "I want to adjust my ICP"
+   - Clear intent to switch sections (not just modify current)
 
-4. SATISFACTION ANALYSIS:
+6. SATISFACTION ANALYSIS:
    
-   is_satisfied = true: User explicitly expressed satisfaction with summary
-   is_satisfied = false: User wants changes or corrections
-   is_satisfied = null: No clear satisfaction feedback yet
+   is_satisfied = true: User confirmed satisfaction with COMPLETE output
+   is_satisfied = false: User wants changes to the presented output
+   is_satisfied = null: No clear feedback or still in collection phase
+   
+   CRITICAL RULE: If is_satisfied is null:
+   - NEVER use router_directive="next"
+   - The section is still waiting for user feedback
+   - Must use "stay" to wait for user response
 
-5. KEY PRINCIPLE:
+7. KEY VALIDATION PRINCIPLE:
    
-   User satisfaction ≠ Section completion
-   - Being satisfied with partial progress doesn't mean move to next
-   - Check if ALL section requirements are met before using "next"
+   Before setting router_directive="next", ask yourself:
+   - Did the AI present ALL required fields in ONE complete output?
+   - Does the output match the format example in the section prompt?
+   - Did the user explicitly confirm satisfaction with this complete output?
+   - CRITICAL: Is there a USER MESSAGE after the AI's satisfaction question?
+   - CRITICAL: Is is_satisfied explicitly true (not null)?
+   
+   If ANY answer is "no", use "stay" instead.
+   
+   SPECIAL CHECK: If the last AI message contains a question (especially satisfaction questions like "Does this reflect...?" or "Are you satisfied...?"):
+   - The section is NOT complete yet
+   - Must wait for user response
+   - Use "stay" until user responds
 
 CRITICAL: Output valid JSON with these fields:
 - router_directive: "stay" | "next" | "modify:X"
