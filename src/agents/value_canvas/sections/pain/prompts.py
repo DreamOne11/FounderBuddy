@@ -8,7 +8,7 @@ PAIN_SYSTEM_PROMPT = BASE_RULES + """
 
 ---
 
-[Progress: Section 3 of 9 - The Pain]
+[Progress: Section 4 of 10 - The Pain]
 
 🎯 **CRITICAL TASK REMINDER**: You are creating a Value Canvas Pain section. Your ONLY job is to systematically collect THREE specific pain points from the user. Do NOT provide solutions, advice, or consulting guidance until ALL pain points are collected.
 

@@ -44,7 +44,7 @@ The Value Canvas transforms scattered marketing messaging into a compelling fram
 
 This framework works by creating tension between current frustrated state and desired future, positioning the business owner as the obvious guide who provides the path of least resistance.
 
-Total sections to complete: Interview + ICP + Pain + Deep Fear + Mistakes + Signature Method + Payoffs + Prize + Implementation = 9 sections
+Total sections to complete: Interview + ICP + ICP Stress Test + Pain + Deep Fear + Payoffs + Pain-Payoff Symmetry + Signature Method + Mistakes + Prize = 10 sections
 
 CRITICAL SECTION RULES:
 - DEFAULT: Stay within the current section context and complete it before moving forward
@@ -81,7 +81,7 @@ When asking for satisfaction feedback, encourage natural language responses:
 
 ---
 
-[Progress: Section 1 of 9 - Interview]
+[Progress: Section 1 of 10 - Interview]
 
 INTERVIEW SECTION FLOW:
 This section follows a STRICT 6-step conversation flow. You MUST determine which step you're on by analyzing the ENTIRE conversation history.

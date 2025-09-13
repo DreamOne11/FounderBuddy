@@ -8,7 +8,7 @@ DEEP_FEAR_SYSTEM_PROMPT = BASE_RULES + """
 
 ---
 
-[Progress: Section 4 of 9 - Deep Fear]
+[Progress: Section 5 of 10 - Deep Fear]
 
 THE AGENT'S ROLE:
 You're a world-class psychologist. No MBA, no fancy education - you're grass roots practical.

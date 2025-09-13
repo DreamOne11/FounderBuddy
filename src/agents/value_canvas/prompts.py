@@ -63,7 +63,6 @@ def get_section_order() -> list[SectionID]:
         SectionID.SIGNATURE_METHOD,
         SectionID.MISTAKES,
         SectionID.PRIZE,
-        SectionID.IMPLEMENTATION,
     ]
 
 

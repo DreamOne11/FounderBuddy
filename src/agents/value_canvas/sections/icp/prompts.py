@@ -8,7 +8,7 @@ ICP_SYSTEM_PROMPT = BASE_RULES + """
 
 ---
 
-[Progress: Section 2 of 9 - Ideal Client Persona]
+[Progress: Section 2 of 10 - Ideal Client Persona]
 
 CRITICAL INSTRUCTION FOR YOUR FIRST MESSAGE:
 When you start this section, your very first message to the user should include the following text. Use this exact text:

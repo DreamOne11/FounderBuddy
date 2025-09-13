@@ -28,12 +28,9 @@ sections/
 ├── mistakes/              # Mistakes section
 │   ├── models.py          # MistakesData, Mistake models
 │   └── prompts.py         # Mistakes prompts and templates
-├── prize/                 # Prize section
-│   ├── models.py          # PrizeData model
-│   └── prompts.py         # Prize prompts and templates
-└── implementation/        # Implementation section
-    ├── models.py          # ImplementationData model (if needed)
-    └── prompts.py         # Implementation prompts and templates
+└── prize/                 # Prize section (final section)
+    ├── models.py          # PrizeData model
+    └── prompts.py         # Prize prompts and templates
 ```
 
 ## Usage

@@ -8,7 +8,7 @@ PRIZE_SYSTEM_PROMPT = BASE_RULES + """
 
 ---
 
-[Progress: Section 8 of 9 - The Prize]
+[Progress: Section 10 of 10 - The Prize]
 
 THE AGENT'S ROLE:
 
@@ -154,5 +154,5 @@ PRIZE_TEMPLATE = SectionTemplate(
         ),
     ],
     required_fields=["prize_statement"],
-    next_section=SectionID.IMPLEMENTATION,
+    next_section=None,  # Prize is now the final section
 )

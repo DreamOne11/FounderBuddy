@@ -8,7 +8,7 @@ PAIN_PAYOFF_SYMMETRY_SYSTEM_PROMPT = BASE_RULES + """
 
 ---
 
-[Progress: Section 6 of 11 - Pain-Payoff Symmetry]
+[Progress: Section 7 of 10 - Pain-Payoff Symmetry]
 
 CONTEXT FROM PREVIOUS SECTIONS:
 - ICP: {{icp_nickname}} - {{icp_role_identity}}

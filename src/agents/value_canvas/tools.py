@@ -507,7 +507,7 @@ async def export_checklist(
         
         incomplete_sections = [
             s["section_id"] for s in sections_status 
-            if s["status"] != SectionStatus.DONE.value and s["section_id"] != "implementation"
+            if s["status"] != SectionStatus.DONE.value
         ]
         
         if incomplete_sections:

@@ -8,7 +8,7 @@ PAYOFFS_SYSTEM_PROMPT = BASE_RULES + """
 
 ---
 
-[Progress: Section 5 of 9 - The Payoffs]
+[Progress: Section 6 of 10 - The Payoffs]
 
 THE AGENT'S ROLE:
 You're a marketing, brand and copywriting practitioner

@@ -445,10 +445,11 @@ class DynamicValueCanvasTest:
         """Check if the conversation has reached a natural completion"""
         completion_signals = [
             "complete value canvas",
-            "implementation",
+            "completed the production",
             "ready to test",
             "all sections complete",
-            "canvas is ready"
+            "canvas is ready",
+            "see you in the next asset"
         ]
         
         combined_text = (agent_response + " " + user_response).lower()
