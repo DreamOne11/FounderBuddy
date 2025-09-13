@@ -68,7 +68,7 @@ KEY MEMORY TO DRAW FROM:
 - Industry (from their interview section)
 - Outcomes Delivered (ensure this aligns with proposed ICP's likely goals)
 
-ICP TEMPLATE - THE 8 SECTIONS YOU MUST COLLECT:
+ICP TEMPLATE - THE 10 SECTIONS YOU MUST COLLECT:
 
 1. ICP NICKNAME: You will create a compelling 2-4 word nickname based on their role/situation
 
@@ -85,6 +85,10 @@ ICP TEMPLATE - THE 8 SECTIONS YOU MUST COLLECT:
 7. VALUES: 2 lifestyle indicators that show their values
 
 8. GOLDEN INSIGHT: A profound insight about their buying motivations (you will generate this based on all information collected)
+
+9. BUYING TRIGGERS: Identify the 3 moments, pressures, or events that push this ICP from ‘thinking about it’ to taking action. (you will generate this based on all information collected)
+
+10. RED FLAGS: Call out the attitudes, messages, or sales tactics that repel this ICP or make them shut down. (you will generate this based on all information collected)
 
 IMPORTANT NOTES FOR GENERATING CONTENT:
 - Golden Insight: This is something YOU generate based on understanding their ICP - a surprising truth about what the ICP secretly wishes others understood
@@ -122,11 +126,18 @@ Willing to invest in frameworks and clarity instead of flailing around with rand
 GOLDEN INSIGHT:
 They don't actually fear competition as much as they fear wasted time — they'll pay a premium for anything that reduces wasted cycles.
 
+BUYING TRIGGERS:
+Investor pressure before the next board meeting,” “a competitor winning a deal they thought they should have won,” “burn rate getting uncomfortably close to runway.
+
+RED FLAGS:
+They instantly distrust overhyped claims of ‘10x growth,’ they hate being lumped in with B2C tactics, and they avoid anyone who seems to treat them as just another generic startup founder.
+
+
 PROCESS FOR COLLECTING INFORMATION:
 1. Start by understanding what they've already shared in their initial brain dump
 2. CRITICAL: Ask ONLY ONE question at a time - NO EXCEPTIONS
 3. After each user response, ask the NEXT SINGLE question
-4. Continue this ONE-BY-ONE process until you have all 8 sections
+4. Continue this ONE-BY-ONE process until you have all 10 sections
 5. ONLY THEN present the complete ICP output
 
 QUESTIONING FLOW:
@@ -139,42 +150,66 @@ WARNING - NO INTERMEDIATE CONFIRMATIONS:
 - NEVER ask "Here's what I'm thinking" or "Does this resonate" for individual fields
 - NEVER present Golden Insight separately for confirmation
 - NEVER ask for feedback on partial information
-- Collect ALL 8 fields first, then present the COMPLETE formatted output
+- Collect ALL 10 fields first, then present the COMPLETE formatted output
 
 WHEN GENERATING THE FINAL ICP OUTPUT:
 - The Golden Insight should be YOUR synthesis based on all information collected
+- The buying triggers should be YOUR synthesis identify the 3 moments, pressures, or events that push this ICP from ‘thinking about it’ to taking action
+- The red flags should be YOUR synthesis calling out the attitudes, messages, or sales tactics that repel this ICP or make them shut down.
 - Think about (but don't explicitly list) what would trigger them to buy and what would turn them off
 - Make the output rich, specific, and actionable
 - Follow the exact format of the example above
 
 CRITICAL - COMPLETE ICP OUTPUT REQUIREMENT:
-You MUST present the COMPLETE ICP output with ALL 8 fields in this EXACT format:
+You MUST present the COMPLETE ICP output with ALL 10 fields in this EXACT format:
 
-ICP Nick Name: [The nickname you created]
+ICP Nick Name: 
 
-ROLE/IDENTITY
+[The nickname you created]
+
+ROLE/IDENTITY:
+
 [Full description]
 
-CONTEXT/SCALE
+CONTEXT/SCALE:
+
 [Full description]
 
 INDUSTRY/SECTOR CONTEXT:
+
 [Full description with key insight]
 
 DEMOGRAPHICS:
+
 [Full demographics]
 
 INTERESTS:
+
 Interest 1: [First interest]
 Interest 2: [Second interest]
 Interest 3: [Third interest]
 
 VALUES:
+
 [First value]
 [Second value]
 
 GOLDEN INSIGHT:
+
 [Your generated insight]
+
+BUYING TRIGGERS:
+
+[Identify the 3 moments, pressures, or events that push this ICP from ‘thinking about it’ to taking action.]
+
+Example: “Investor pressure before the next board meeting,” “a competitor winning a deal they thought they should have won,” “burn rate getting uncomfortably close to runway.”
+
+RED FLAGS:
+
+[Call out the attitudes, messages, or sales tactics that repel this ICP or make them shut down.]
+
+Example: “They instantly distrust overhyped claims of ‘10x growth,’ they hate being lumped in with B2C tactics, and they avoid anyone who seems to treat them as just another generic startup founder.”
+
 
 ONLY AFTER presenting this complete formatted output, ask: "We don't want to get too bogged down here, just directionally correct. Does this reflect our conversation so far?"
 
@@ -182,8 +217,8 @@ NEVER skip any field or present only partial information.
 
 CRITICAL COMPLETION RULES FOR ICP SECTION:
 MANDATORY: You MUST NEVER indicate completion until ALL of the following conditions are met:
-1. You have collected ALL 8 required ICP fields (nickname, role/identity, context/scale, industry/sector context, demographics, interests, values, golden insight)
-2. You have presented the COMPLETE ICP output in the proper format (with all 8 fields displayed in full)
+1. You have collected ALL 10 required ICP fields (nickname, role/identity, context/scale, industry/sector context, demographics, interests, values, golden insight, buying triggers, red flags)
+2. You have presented the COMPLETE ICP output in the proper format (with all 10 fields displayed in full)
 3. You have asked the user for their satisfaction feedback
 4. The user has expressed satisfaction
 
@@ -270,6 +305,18 @@ ICP_TEMPLATE = SectionTemplate(
             value=True,
             error_message="ICP golden insight is required"
         ),
+        ValidationRule(
+            field_name="icp_buying_triggers",
+            rule_type="required",
+            value=True,
+            error_message="ICP buying triggers is required"
+        ),
+        ValidationRule(
+            field_name="icp_red_flags",
+            rule_type="required",
+            value=True,
+            error_message="ICP red flags insight is required"
+        ),
     ],
     required_fields=[
         "icp_nickname",
@@ -279,7 +326,9 @@ ICP_TEMPLATE = SectionTemplate(
         "icp_demographics",
         "icp_interests",
         "icp_values",
-        "icp_golden_insight"
+        "icp_golden_insight",
+        "icp_buying_triggers",
+        "icp_red_flags"
     ],
     next_section=SectionID.ICP_STRESS_TEST,
 )
