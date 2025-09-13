@@ -8,11 +8,11 @@ from ..enums import RouterDirective
 from ..models import ValueCanvasState
 
 
-def route_decision(state: ValueCanvasState) -> Literal["implementation", "generate_reply"] | None:
+def route_decision(state: ValueCanvasState) -> Literal["generate_reply"] | None:
     """Determine the next node to go to based on current state."""
-    # 1. All sections complete → Implementation
+    # 1. All sections complete → End
     if state.get("finished", False):
-        return "implementation"
+        return None  # End the graph when finished
     
     # Helper: determine if there's an unresponded user message
     def has_pending_user_input() -> bool:

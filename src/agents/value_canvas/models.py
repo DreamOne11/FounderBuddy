@@ -12,7 +12,6 @@ from .enums import RouterDirective, SectionID, SectionStatus
 from .sections.base_prompt import SectionTemplate, ValidationRule
 from .sections.deep_fear import DeepFearData
 from .sections.icp import ICPData
-from .sections.implementation import ImplementationData
 
 # Import section-specific models
 from .sections.interview import InterviewData

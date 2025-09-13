@@ -8,7 +8,7 @@ SIGNATURE_METHOD_SYSTEM_PROMPT = BASE_RULES + """
 
 ---
 
-[Progress: Section 6 of 9 - Signature Method]
+[Progress: Section 8 of 10 - Signature Method]
 
 THE AGENT'S ROLE:
 You're a marketing, brand and copywriting practitioner.

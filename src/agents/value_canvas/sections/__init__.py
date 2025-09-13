@@ -7,7 +7,6 @@ from .base_prompt import BASE_PROMPTS, BASE_RULES
 from .deep_fear import DEEP_FEAR_TEMPLATE
 from .icp import ICP_TEMPLATE
 from .icp_stress_test import ICP_STRESS_TEST_TEMPLATE
-from .implementation import IMPLEMENTATION_TEMPLATE
 from .interview import INTERVIEW_TEMPLATE
 from .mistakes import MISTAKES_TEMPLATE
 from .pain import PAIN_TEMPLATE
@@ -28,7 +27,6 @@ SECTION_TEMPLATES: dict[str, Any] = {
     SIGNATURE_METHOD_TEMPLATE.section_id.value: SIGNATURE_METHOD_TEMPLATE,
     MISTAKES_TEMPLATE.section_id.value: MISTAKES_TEMPLATE,
     PRIZE_TEMPLATE.section_id.value: PRIZE_TEMPLATE,
-    IMPLEMENTATION_TEMPLATE.section_id.value: IMPLEMENTATION_TEMPLATE,
 }
 
 # Export BASE_RULES directly (previously wrapped in SECTION_PROMPTS dict)
@@ -47,5 +45,4 @@ __all__ = [
     "SIGNATURE_METHOD_TEMPLATE",
     "MISTAKES_TEMPLATE",
     "PRIZE_TEMPLATE",
-    "IMPLEMENTATION_TEMPLATE",
 ]

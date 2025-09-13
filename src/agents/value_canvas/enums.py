@@ -32,6 +32,3 @@ class SectionID(str, Enum):
     SIGNATURE_METHOD = "signature_method"  # Signature Method
     MISTAKES = "mistakes"  # The Mistakes
     PRIZE = "prize"  # The Prize
-    
-    # Implementation/Export
-    IMPLEMENTATION = "implementation"
