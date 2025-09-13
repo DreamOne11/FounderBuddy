@@ -140,16 +140,8 @@ class ValueCanvasData(BaseModel):
     icp_values: str | None = None  # VALUES section content (both lifestyle indicators)
     icp_golden_insight: str | None = None  # GOLDEN INSIGHT section content
 
-    # ICP Stress Test data
-    icp_stress_test_can_influence: int | None = None
-    icp_stress_test_like_working: int | None = None
-    icp_stress_test_afford_premium: int | None = None
-    icp_stress_test_decision_maker: int | None = None
-    icp_stress_test_significant_transformation: int | None = None
-    icp_stress_test_total_score: int | None = None
-    icp_stress_test_passed: bool | None = None
-    icp_stress_test_golden_insight: str | None = None
-    icp_stress_test_refinements: str | None = None
+    # Note: ICP Stress Test no longer saves separate data
+    # It modifies and saves ICP data directly when refinements are made
 
     # Pain points (3)
     pain1_symptom: str | None = None
