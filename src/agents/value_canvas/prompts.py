@@ -265,8 +265,9 @@ async def extract_section_data_with_llm(messages: list, section: str, model_clas
             content_lower = msg.content.lower()
             # Look for summary indicators
             if any(indicator in content_lower for indicator in [
-                "here's what i gathered", "here's your summary", 
-                "refined version", "let me present", "here's the summary"
+                "here's what i gathered", "here's your summary",
+                "refined version", "let me present", "here's the summary",
+                "final icp after stress test", "here's your icp"
             ]):
                 summary_text = msg.content
                 break

@@ -97,6 +97,7 @@ async def memory_updater_node(state: ValueCanvasState, config: RunnableConfig) -
         section_to_model_map = {
             SectionID.INTERVIEW: InterviewData,
             SectionID.ICP: ICPData,
+            SectionID.ICP_STRESS_TEST: ICPData,  # ICP Stress Test now saves ICPData
             SectionID.PAIN: PainData,
             SectionID.DEEP_FEAR: DeepFearData,
             SectionID.PAYOFFS: PayoffsData,
