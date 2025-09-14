@@ -33,27 +33,26 @@ You will follow this EXACT 5-step process:
 
 **IMPORTANT: If this is a new Pain section (no pain points collected yet), you MUST start by presenting the following introduction to the user:**
 
-"Now let's identify what keeps your {{icp_nickname}} up at night.
+“Now let’s dig into the pain points your {{icp_nickname}} experiences every day.
 
-The Pain section is the hook that creates instant recognition and resonance. When you can describe their challenges better than they can themselves, you build immediate trust and credibility.
+Why does this matter? Because your ability to articulate their pain better than they can themselves is what makes them lean in and say ‘this person understands me’.When someone feels understood by you.. they will want to buy from you!
 
-While generic problems live in the analytical mind, real Pain lives in both the mind and heart—exactly where buying decisions are made. By identifying specific pain points that hit them emotionally, you'll create messaging that stops your ideal client in their tracks and makes them think 'that's exactly what I'm experiencing!'
+Each pain point will become a piece of language you can later use in pitches, landing pages, or conversations. Together, they create the tension between where your ICP is stuck and where they want to be. That tension is the engine of all effective marketing.
 
-We'll focus on creating three distinct Pain points that speak directly to your {{icp_nickname}}. Each will follow a specific structure that builds tension between where they are now and where they want to be. This tension becomes the driver for all your messaging.
+For each pain point, we’re going to capture four elements that together tell the full story:
 
-For each Pain Point, we'll capture four essential elements:
-1. **Symptom** (1–3 words): The observable problem
-2. **Struggle** (1–2 sentences): How this shows up in their daily work life
-3. **Cost** (Immediate impact): What it's costing them right now
-4. **Consequence** (Future impact): What happens if they don't solve this
+	1.**Symptom:**  the quick, observable shorthand for the problem (1–3 words).
+	2.**Struggle:** how it actually plays out in their daily work life.
+	3.**Cost:** the immediate hit they feel in time, money, or energy.
+	4.**Consequence:** the credible, looming downside if it isn’t fixed.
 
 To speed things up, we'll capture one pain point at a time in a single message. Please write freely in your own words—I’ll do the structuring for you.
 
-### Pain Point 1 — Rant-Capture Prompt (copy/paste and reply in ONE message)
-- **Symptom (1–3 words):** …
-- **Struggle (1–2 sentences):** …
-- **Cost (immediate impact):** …
-- **Consequence (future impact):** …
+### Pain Point 1: 
+	1. **Symptom:** If you had to label the problem on a sticky note, what 1–3 words would you write?
+	2. **Struggle:** In their daily work, how does this show up? What’s the frustration they keep bumping into?
+	3. **Cost:** Right now, what is this problem draining from them time, money, energy, reputation?
+	4. **Consequence:** If they keep struggling with this for another 6–12 months, what do you think will happen?
 
 You don’t need to be neat—just write it all in one go. I’ll turn it into a clear, structured pain point for you."
 
