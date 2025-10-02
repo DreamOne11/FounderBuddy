@@ -962,6 +962,102 @@ async def sync_section(
         raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
 
 
+@router.post("/refine_section/{agent_id}/{section_id}")
+async def refine_section(
+    agent_id: str,
+    section_id: str,
+    user_id: int,
+    thread_id: str,
+    refinement_prompt: str,
+):
+    """
+    Refine section content using AI based on user's instruction.
+
+    This endpoint:
+    1. Fetches current LangGraph state to get canvas_data
+    2. Gets rendered section prompt with all dependencies
+    3. Fetches current section content from DentApp API
+    4. Constructs refinement prompt with clear structure
+    5. Calls OpenAI LLM to generate refined content
+    6. Returns refined content (does NOT save to database)
+
+    Frontend workflow:
+    1. User clicks "Refine" button
+    2. Frontend calls this endpoint
+    3. Refined content is displayed for user review
+    4. If user accepts, frontend saves to DentApp API and calls /sync_section
+
+    Args:
+        agent_id: Agent identifier (e.g., "value-canvas")
+        section_id: Section identifier (e.g., "interview", "icp")
+        user_id: User identifier
+        thread_id: Thread/conversation identifier
+        refinement_prompt: User's instruction for how to refine the content
+
+    Returns:
+        Refinement result with refined content in both plain text and Tiptap format
+    """
+    # Log refine request
+    logger.info(f"=== REFINE_SECTION_REQUEST: agent_id={agent_id}, section_id={section_id} ===")
+    logger.info(f"REFINE_SECTION_REQUEST: user_id={user_id}")
+    logger.info(f"REFINE_SECTION_REQUEST: thread_id={thread_id}")
+    logger.info(f"REFINE_SECTION_REQUEST: refinement_prompt={refinement_prompt[:100]}...")
+
+    # Validate required parameters
+    if not thread_id:
+        raise HTTPException(status_code=422, detail="Missing required parameter: thread_id")
+
+    if not refinement_prompt or not refinement_prompt.strip():
+        raise HTTPException(status_code=422, detail="Missing required parameter: refinement_prompt")
+
+    # Only value-canvas agent is supported for now
+    if agent_id != "value-canvas":
+        raise HTTPException(
+            status_code=422,
+            detail=f"Refine not yet supported for agent: {agent_id}. Currently only 'value-canvas' is supported."
+        )
+
+    # Get agent
+    try:
+        agent: AgentGraph = get_agent(agent_id)
+    except Exception as e:
+        logger.error(f"REFINE_ERROR: Failed to get agent {agent_id}: {e}")
+        raise HTTPException(status_code=404, detail=f"Agent not found: {agent_id}")
+
+    # Import refine function (only for value-canvas)
+    try:
+        from agents.value_canvas.refine import refine_section_content
+    except ImportError as e:
+        logger.error(f"REFINE_ERROR: Failed to import refine module: {e}")
+        raise HTTPException(status_code=500, detail="Refine module not available")
+
+    # Execute refinement
+    try:
+        result = await refine_section_content(
+            user_id=user_id,
+            thread_id=thread_id,
+            section_id=section_id,
+            refinement_prompt=refinement_prompt,
+            agent_graph=agent
+        )
+
+        # Log successful refinement
+        logger.info(f"=== REFINE_SECTION_SUCCESS: agent_id={agent_id}, section_id={section_id} ===")
+        logger.info(f"REFINE_SECTION_SUCCESS: refined_content_length={len(result.get('refined_content', {}).get('plain_text', ''))}")
+
+        return result
+
+    except ValueError as e:
+        logger.error(f"=== REFINE_SECTION_VALIDATION_ERROR: {str(e)} ===")
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error(f"=== REFINE_SECTION_ERROR: agent_id={agent_id}, section_id={section_id} ===")
+        logger.error(f"REFINE_SECTION_ERROR: {str(e)}")
+        logger.error(f"REFINE_SECTION_ERROR: user_id={user_id}")
+        logger.error(f"REFINE_SECTION_ERROR: thread_id={thread_id}")
+        raise HTTPException(status_code=500, detail=f"Refine failed: {str(e)}")
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
