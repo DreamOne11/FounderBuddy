@@ -162,7 +162,12 @@ Please revise the content according to the user's instruction while:
 - Keeping the Value Canvas tone and style
 - Only changing what the user explicitly requested
 
-Output ONLY the refined content in the same format as the original content. Do not include explanations or meta-commentary.
+IMPORTANT OUTPUT INSTRUCTIONS:
+- Output ONLY the refined content in plain text format
+- Do NOT use markdown code blocks (```) or any formatting wrappers
+- Do NOT include explanations, meta-commentary, or any text outside the refined content
+- Match the exact same format and structure as the original content above
+- Your response should be directly usable as the refined section content
 """
 
     logger.debug(f"REFINE: Constructed prompt (length: {len(full_refinement_prompt)})")
