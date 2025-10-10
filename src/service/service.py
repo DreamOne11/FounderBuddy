@@ -35,6 +35,8 @@ from agents.special_report.agent import initialize_special_report_state
 from agents.special_report.prompts import SECTION_TEMPLATES as SPECIAL_REPORT_TEMPLATES
 from agents.value_canvas.agent import initialize_value_canvas_state
 from agents.value_canvas.prompts import SECTION_TEMPLATES as VALUE_CANVAS_TEMPLATES
+from agents.concept_pitch.agent import initialize_concept_pitch_state
+from agents.concept_pitch.prompts import SECTION_TEMPLATES as CONCEPT_PITCH_TEMPLATES
 from core import settings
 from core.settings import DatabaseType
 from integrations.dentapp.dentapp_utils import SECTION_ID_MAPPING, get_section_string_id
@@ -289,12 +291,24 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph, agent_id: str)
             initial_state = await initialize_signature_pitch_state(user_id=user_id)
         elif agent_id == "special-report":
             initial_state = await initialize_special_report_state(user_id=user_id)
+        elif agent_id == "concept-pitch":
+            initial_state = await initialize_concept_pitch_state(user_id=user_id)
         else:
             raise ValueError(f"Unknown agent: {agent_id}")
         
         # Get the generated thread_id from initial_state
-        user_id = initial_state.get("user_id")
-        thread_id = initial_state.get("thread_id")
+        # For dict-like states, use .get(), for Pydantic models use direct access
+        logger.info(f"DEBUG: initial_state type = {type(initial_state)}")
+        logger.info(f"DEBUG: hasattr(initial_state, 'user_id') = {hasattr(initial_state, 'user_id')}")
+        
+        if hasattr(initial_state, 'user_id'):
+            user_id = initial_state.user_id
+            thread_id = initial_state.thread_id
+            logger.info(f"DEBUG: Got user_id={user_id}, thread_id={thread_id} from Pydantic model")
+        else:
+            user_id = initial_state.get("user_id")
+            thread_id = initial_state.get("thread_id")
+            logger.info(f"DEBUG: Got user_id={user_id}, thread_id={thread_id} from dict")
         
         logger.info(f"Initialized new thread with ID: {thread_id}")
     else:
@@ -376,8 +390,71 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> Invoke
     # in interrupt-agent, or a tool step in research-assistant), it's omitted. Arguably,
     # you'd want to include it. You could update the API to return a list of ChatMessages
     # in that case.
-    agent: AgentGraph = get_agent(agent_id)
-    kwargs, run_id = await _handle_input(user_input, agent, agent_id)
+    
+    # Use custom graph for concept-pitch agent
+    if agent_id == 'concept-pitch':
+        from agents.concept_pitch.agent import initialize_concept_pitch_state, graph as concept_pitch_graph
+        
+        # Initialize the state using the proper LangGraph state initialization
+        init_state = await initialize_concept_pitch_state(
+            user_id=user_input.user_id or 1,
+            thread_id=user_input.thread_id
+        )
+        
+        # Add the user message to the state
+        if user_input.message:
+            init_state["messages"].append(HumanMessage(content=user_input.message))
+        
+        # Build config for the agent
+        config = {
+            "configurable": {
+                "thread_id": init_state["thread_id"],
+                "user_id": init_state["user_id"],
+            }
+        }
+        
+        # Run the LangGraph agent
+        response_events = await concept_pitch_graph.ainvoke(init_state, config=config, stream_mode=["updates", "values"])
+        response_type, response = response_events[-1]
+        
+        if response_type == "values":
+            # Normal response, the agent completed successfully
+            output = langchain_to_chat_message(response["messages"][-1])
+            
+            # Extract concept pitch data if available
+            concept_pitch_data = {}
+            if "concept_pitch" in response:
+                concept_pitch_data = response["concept_pitch"]
+            
+            # Add concept pitch data to custom_data
+            if concept_pitch_data:
+                output.custom_data["concept_pitch"] = concept_pitch_data
+            
+        elif response_type == "updates" and "__interrupt__" in response:
+            # The last thing to occur was an interrupt
+            output = langchain_to_chat_message(
+                AIMessage(content=response["__interrupt__"][0].value)
+            )
+        else:
+            raise ValueError(f"Unexpected response type: {response_type}")
+        
+        # Create response
+        invoke_response = InvokeResponse(
+            output=output,
+            thread_id=init_state["thread_id"],
+            user_id=init_state["user_id"],
+        )
+        
+        logger.info(f"=== CONCEPT_PITCH_RESPONSE_SUCCESS ===")
+        logger.info(f"CONCEPT_PITCH_RESPONSE: thread_id={init_state['thread_id']}")
+        logger.info(f"CONCEPT_PITCH_RESPONSE: user_id={init_state['user_id']}")
+        logger.info(f"CONCEPT_PITCH_RESPONSE: response_type={response_type}")
+        logger.info(f"CONCEPT_PITCH_RESPONSE: has_concept_pitch={bool(output.custom_data.get('concept_pitch'))}")
+        
+        return invoke_response
+    else:
+        agent: AgentGraph = get_agent(agent_id)
+        kwargs, run_id = await _handle_input(user_input, agent, agent_id)
     
     logger.info(f"INVOKE_REQUEST: run_id={run_id}")
     logger.info(f"INVOKE_REQUEST: config_thread_id={kwargs['config']['configurable']['thread_id']}")
@@ -687,7 +764,9 @@ async def message_generator(
                     # So we only print non-empty content.
                     yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
     except Exception as e:
+        import traceback
         logger.error(f"[STREAM ERROR] {str(e)} (run_id={run_id}, agent={agent_id})")
+        logger.error(f"[STREAM ERROR TRACEBACK]\n{traceback.format_exc()}")
         yield f"data: {json.dumps({'type': 'error', 'content': 'Internal server error'})}\n\n"
     finally:
         # Always send section data at the end of the stream
@@ -707,6 +786,8 @@ async def message_generator(
                     section_templates = SIGNATURE_PITCH_TEMPLATES
                 elif agent_id == "special-report":
                     section_templates = SPECIAL_REPORT_TEMPLATES
+                elif agent_id == "concept-pitch":
+                    section_templates = CONCEPT_PITCH_TEMPLATES
                 else:  # default to value_canvas
                     section_templates = VALUE_CANVAS_TEMPLATES
                 
@@ -868,8 +949,23 @@ async def notify_section_update(
     # Require thread_id to ensure updates are scoped to the correct document/thread
     if not thread_id:
         raise HTTPException(status_code=422, detail="Missing required parameter: thread_id")
+    
+    # Choose the right section templates based on agent_id
+    if agent_id == "mission-pitch":
+        section_templates = MISSION_PITCH_TEMPLATES
+    elif agent_id == "social-pitch":
+        section_templates = SOCIAL_PITCH_TEMPLATES
+    elif agent_id == "signature-pitch":
+        section_templates = SIGNATURE_PITCH_TEMPLATES
+    elif agent_id == "special-report":
+        section_templates = SPECIAL_REPORT_TEMPLATES
+    elif agent_id == "concept-pitch":
+        section_templates = CONCEPT_PITCH_TEMPLATES
+    else:  # default to value_canvas
+        section_templates = VALUE_CANVAS_TEMPLATES
+    
     # Validate section_id
-    if section_id_str not in SECTION_TEMPLATES:
+    if section_id_str not in section_templates:
         raise HTTPException(status_code=422, detail=f"Unknown section_id: {section_id}")
 
     # Trigger a minimal graph run to refresh context

@@ -1,0 +1,25 @@
+{
+  "metadata": {
+    "project_id": "concept_pitch",
+    "timestamp": "2025-10-09T21:13:16.655778",
+    "user_id": 1,
+    "thread_id": "default",
+    "agent_version": "concept_pitch_v1.0",
+    "save_type": "final_pitch",
+    "refinement_count": 0
+  },
+  "pitch_variations": {
+    "pain_pitch": "Error generating pitch",
+    "gain_pitch": "Error generating pitch",
+    "prize_pitch": "Error generating pitch"
+  },
+  "selected_pitch": null,
+  "refinement_history": [],
+  "canvas_data": {},
+  "raw_data": {
+    "error": "Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}",
+    "pain_pitch": "Error generating pitch",
+    "gain_pitch": "Error generating pitch",
+    "prize_pitch": "Error generating pitch"
+  }
+}

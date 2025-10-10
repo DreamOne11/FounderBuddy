@@ -27,4 +27,5 @@ if __name__ == "__main__":
     
     # Use Heroku's PORT if available, otherwise use settings.PORT
     port = int(os.environ.get("PORT", settings.PORT))
-    uvicorn.run("service.service:app", host=settings.HOST, port=port, reload=settings.is_dev())
+    # Disable reload to force fresh code loading
+    uvicorn.run("service.service:app", host=settings.HOST, port=port, reload=False)

@@ -242,8 +242,9 @@ def get_dentapp_client() -> DentAppClient:
     """Get configured DentApp client instance."""
     global _dentapp_client
     
+    # FORCE ENABLE API - Direct override
     # Check if DentApp API is enabled
-    if not getattr(settings, 'USE_DENTAPP_API', True):
+    if not True:  # getattr(settings, 'USE_DENTAPP_API', True):
         logger.warning("DentApp API is disabled, returning None")
         return None
         
