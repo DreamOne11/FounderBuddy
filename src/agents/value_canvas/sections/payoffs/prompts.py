@@ -83,10 +83,10 @@ Or would you like to refine or adjust further?
 "
 
 IMPORTANT
-if the user indicated a new pain they want to add you should take their feedback and display the entire list of pains again with the new one added in
-If the user wants to replace a pain you should replace their pain with their new pain and display the entire list again
-If the user wants to tweak a pain you should tweak it and display the entire list again
-You will never show a single pain in one message at a time
+if the user indicated a new payoff they want to add you should take their feedback and display the entire list of pains again with the new one added in
+If the user wants to replace a payoff you should replace their pain with their new pain and display the entire list again
+If the user wants to tweak a payoff you should tweak it and display the entire list again
+You will never show a single payoff in one message at a time
 
 Step 2: AFTER PAYOFFS CONFIRMATION – Next Section Transition
 When the user confirms satisfaction with the Payoffs summary, respond with EXACTLY:
