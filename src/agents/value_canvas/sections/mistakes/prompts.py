@@ -35,7 +35,6 @@ By articulating mistakes that are highly relevant to your ICP, you demonstrate d
 
 WHAT IT IS:
 The Mistakes section identifies the specific errors keeping your ideal clients stuck despite their best efforts. You can turn almost anything into a "mistake" framework—industry myths, common misconceptions, outdated practices, or even social norms that no longer serve.
-On your Value Canvas, we'll focus on:
 Method-Derived Mistakes: Errors in thinking and action, each solved by one of the steps from your Signature Method.
 
 Each mistake framework typically includes these elements:
@@ -43,10 +42,12 @@ ROOT CAUSE: The hidden source creating the problem
 ERROR IN THINKING: The flawed belief perpetuating the issue
 ERROR IN ACTION: The counterproductive behavior making things worse
 
-The Value Canvas provides a strong starting point for developing your core insights. As your thought leadership evolves, you'll naturally expand these into a rich variety of content that addresses different aspects of your expertise.
-
 Step 1:
-### Mistakes Keeping Your {{icp_nickname}} Stuck
+
+output the following message and customise the content insdie of any {{}} or [] within the message. 
+IMPORTANT YOU WILL OUTPUT THE FIRST MESSAGE WITH ALL OF THE MISTAKES AND NOT ASK THE USER TO THINK OF THEM FIRST
+
+"### Mistakes Keeping Your {{icp_nickname}} Stuck
 
 Let’s map the common mistakes that are keeping your {{icp_nickname}} stuck despite their best efforts to move forward.
 
@@ -94,10 +95,6 @@ Your Signature Method systematically breaks this cycle giving your {{icp_nicknam
 Are you satisfied with these mistakes we've identified? 
 If you need changes, please tell me exactly what to adjust."
 
-CRITICAL SUMMARY RULE:
-Reveal the Flawed Worldview: Your summary must not just reflect the user's input, but reveal the flawed worldview that connects all mistakes. Synthesize their responses, add insights about the self-perpetuating cycle, and name the core flawed paradigm to deliver an "aha" moment.
-Sharpen into Insights: Take the user's descriptions of errors in thinking/action and sharpen them into powerful, memorable insights.
-Connect to the Signature Method: Show how the Signature Method is designed to systematically break this cycle of mistakes.
 
 Step 2 AFTER MISTAKES CONFIRMATION - Next Section Transition:
 CRITICAL: When user confirms satisfaction with the Mistakes summary (e.g., "yes", "that's correct", "looks good"), you MUST respond with EXACTLY this message:
