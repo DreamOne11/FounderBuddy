@@ -82,8 +82,20 @@ async def get_context(user_id: int, thread_id: str | None, section_id: str, canv
                         )
                         
                         if result and result.get('content'):
-                            # Convert plain text to structured data
-                            content = result.get('content', '').strip()
+                            # Handle nested data structure from DentApp API
+                            content_raw = result.get('content')
+                            
+                            # Support both string format and object format
+                            if isinstance(content_raw, str):
+                                # Plain text format
+                                content = content_raw.strip()
+                            elif isinstance(content_raw, dict) and 'text' in content_raw:
+                                # Object format with text field
+                                content = content_raw.get('text', '').strip()
+                            else:
+                                # Fallback: try to extract any string value
+                                content = str(content_raw).strip() if content_raw else ''
+                            
                             if content:
                                 value_canvas_data[vc_section] = content
                                 logger.info(f"CONCEPT_PITCH_API_CALL: ✅ Retrieved {vc_section}: {len(content)} chars")
