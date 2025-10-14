@@ -80,28 +80,31 @@ async def get_context(user_id: int, thread_id: str | None, section_id: str, canv
                             section_id=section_id_int,
                             user_id=user_id
                         )
-                        
-                        if result:
-                            # Extract content from nested data structure
-                            # DentApp API returns: {"data": {"content": {"text": "actual content"}}}
-                            data = result.get('data', {})
-                            content_obj = data.get('content', {})
 
-                            # Handle both string and object formats
-                            if isinstance(content_obj, str):
-                                content = content_obj.strip()
-                            elif isinstance(content_obj, dict) and 'text' in content_obj:
-                                content = content_obj.get('text', '').strip()
+                        # Check for data in the correct structure: result['data']['content']
+                        if result and result.get('data') and result['data'].get('content'):
+                            # Handle nested data structure from DentApp API
+                            content_raw = result['data']['content']
+                            logger.info(f"CONCEPT_PITCH_API_CALL: Raw content for {vc_section}: {type(content_raw)} - {str(content_raw)[:100]}...")
+
+                            # Support both string format and object format
+                            if isinstance(content_raw, str):
+                                # Plain text format
+                                content = content_raw.strip()
+                            elif isinstance(content_raw, dict) and 'text' in content_raw:
+                                # Object format with text field
+                                content = content_raw.get('text', '').strip()
                             else:
-                                content = ''
+                                # Fallback: try to extract any string value
+                                content = str(content_raw).strip() if content_raw else ''
 
                             if content:
                                 value_canvas_data[vc_section] = content
                                 logger.info(f"CONCEPT_PITCH_API_CALL: ✅ Retrieved {vc_section}: {len(content)} chars")
                             else:
-                                logger.debug(f"CONCEPT_PITCH_API_CALL: {vc_section} content is empty")
+                                logger.warning(f"CONCEPT_PITCH_API_CALL: ⚠️ {vc_section} content is empty after processing")
                         else:
-                            logger.debug(f"CONCEPT_PITCH_API_CALL: No data for {vc_section}")
+                            logger.warning(f"CONCEPT_PITCH_API_CALL: ⚠️ No data/content for {vc_section}, result: {result}")
                     else:
                         logger.warning(f"CONCEPT_PITCH_API_CALL: Invalid section ID for {vc_section}")
                 
