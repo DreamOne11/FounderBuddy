@@ -97,11 +97,12 @@ def langchain_to_chat_message(message: BaseMessage) -> ChatMessage:
                     # Get section name using helper function
                     section_name = _get_section_name(agent_name, section_id_str)
 
-                    # Add to custom_data (without saved_section flag for human messages)
+                    # Add to custom_data (saved_section is always False for human messages)
                     human_message.custom_data.update({
                         "section_id": section_id_int,
                         "section_name": section_name,
                         "agent_name": agent_name,
+                        "saved_section": False,
                     })
 
             return human_message
