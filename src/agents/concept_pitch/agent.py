@@ -314,7 +314,7 @@ async def initialize_concept_pitch_state(user_id: int = None, thread_id: str = N
         thread_id=thread_id,
         messages=[],
         current_section=SectionID.SUMMARY_CONFIRMATION,
-        router_directive=RouterDirective.NEXT,  # Start by loading first section
+        router_directive=RouterDirective.STAY,  # Start by executing summary_confirmation
     )
     
     # Get initial context with Value Canvas data

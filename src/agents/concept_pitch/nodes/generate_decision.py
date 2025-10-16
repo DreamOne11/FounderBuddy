@@ -28,7 +28,14 @@ async def generate_decision_node(state: ConceptPitchState, config: RunnableConfi
     - Update state with agent_output containing complete ChatAgentOutput
     - Set router_directive and other state flags
     """
-    logger.info(f"Generate decision node - Section: {state['current_section']}")
+    # Use context_packet's section_id instead of state['current_section'] to avoid state inconsistency
+    context_packet = state.get("context_packet")
+    if context_packet and hasattr(context_packet, 'section_id'):
+        current_section = context_packet.section_id
+        logger.info(f"Generate decision node - Section: {current_section}")
+    else:
+        current_section = state['current_section']
+        logger.info(f"Generate decision node - Section: {current_section} (fallback)")
     
     # Get the last AI message (the reply we just generated)
     messages = state.get("messages", [])
@@ -78,7 +85,7 @@ async def generate_decision_node(state: ConceptPitchState, config: RunnableConfi
     
     # Use the template with proper formatting, including section prompt
     decision_prompt = get_decision_prompt_template().format(
-        current_section=state['current_section'].value,
+        current_section=current_section.value if hasattr(current_section, 'value') else str(current_section),
         last_ai_reply=last_ai_reply,
         conversation_history=conversation_history,
         section_prompt=current_section_prompt
@@ -159,50 +166,11 @@ async def generate_decision_node(state: ConceptPitchState, config: RunnableConfi
         # Trust the LLM's router_directive decision based on full context
         state["router_directive"] = agent_output.router_directive
 
-        # Handle section transition immediately if directive is "next"
+        # Handle section transition - just set the directive, let router_node handle the actual transition
         if agent_output.router_directive == "next":
-            from ..prompts import get_next_section
-            from ..enums import SectionID
-            from ..tools import get_context
-            from ..models import ContextPacket
-            
-            current_section_id = state["current_section"].value
-            logger.info(f"[DECISION] Current section: {current_section_id}")
-            
-            # Use get_next_section instead of get_next_unfinished_section
-            # because we know the current section is complete
-            next_section = get_next_section(state["current_section"])
-            logger.info(f"[DECISION] Next section: {next_section}")
-            
-            if next_section:
-                logger.info(f"[DECISION] Transitioning from {current_section_id} to {next_section.value}")
-                state["current_section"] = next_section
-                # Clear short_memory for new section
-                state["short_memory"] = []
-                logger.info(f"[DECISION] Updated current_section to {next_section.value}")
-                
-                # Immediately update context_packet for the new section
-                canvas_data = state.get("canvas_data")
-                canvas_data_dict = canvas_data.model_dump() if canvas_data else {}
-                
-                context = await get_context.ainvoke({
-                    "user_id": state.get("user_id", 1),
-                    "thread_id": state.get("thread_id"),
-                    "section_id": next_section.value,
-                    "canvas_data": canvas_data_dict,
-                })
-                
-                state["context_packet"] = ContextPacket(**context)
-                logger.info(f"[DECISION] Updated context_packet for {next_section.value}")
-                
-                # Generate new reply for the new section immediately
-                from ..nodes.generate_reply import generate_reply_node
-                logger.info(f"[DECISION] Generating new reply for {next_section.value}")
-                state = await generate_reply_node(state, config)
-                logger.info(f"[DECISION] Generated new reply for {next_section.value}")
-            else:
-                logger.info("[DECISION] No next section found, conversation complete")
-                state["finished"] = True
+            logger.info(f"[DECISION] Setting router_directive to 'next' for section transition")
+            # Don't do the transition here - let router_node handle it
+            # This prevents duplicate section transitions and state conflicts
 
         # Log when satisfaction might influence routing for debugging
         if agent_output.is_satisfied is not None:

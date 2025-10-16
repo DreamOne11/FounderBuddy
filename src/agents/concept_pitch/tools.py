@@ -114,6 +114,15 @@ async def get_context(user_id: int, thread_id: str | None, section_id: str, canv
                     logger.info("CONCEPT_PITCH_API_CALL: ✅ Retrieved agent context")
                     value_canvas_data["agent_context"] = agent_context
                 
+                # Check if we have meaningful Value Canvas data
+                meaningful_sections = [k for k, v in value_canvas_data.items() if k != "agent_context" and v and v.strip()]
+                
+                if not meaningful_sections:
+                    logger.warning("CONCEPT_PITCH_API_CALL: ⚠️ No Value Canvas data found - user needs to complete Value Canvas first")
+                    # Add a flag to indicate missing Value Canvas data
+                    value_canvas_data["_missing_data"] = True
+                    value_canvas_data["_message"] = "Please complete your Value Canvas first to generate concept pitches."
+                
                 context["value_canvas_data"] = value_canvas_data
                 logger.info(f"CONCEPT_PITCH_API_CALL: ✅ Retrieved Value Canvas data for {len(value_canvas_data)} sections")
                 
@@ -142,31 +151,151 @@ async def get_context(user_id: int, thread_id: str | None, section_id: str, canv
         # Use the section template's system prompt
         system_prompt = section_template.system_prompt_template
         
+        # Check if we have missing Value Canvas data and adjust prompt accordingly
+        if context.get("value_canvas_data", {}).get("_missing_data"):
+            if section_id == "summary_confirmation":
+                # Replace the summary confirmation prompt with a Value Canvas completion prompt
+                system_prompt = """You are helping the user understand they need to complete their Value Canvas first.
+
+⚠️ CRITICAL: You MUST use the EXACT format below. Do NOT paraphrase, summarize, or modify the wording.
+
+🚨 MANDATORY OUTPUT FORMAT - COPY EXACTLY:
+
+I'd love to help you create your Concept Pitch, but I need to see your Value Canvas first.
+
+It looks like you haven't completed your Value Canvas yet – that's where we get the key details about your ideal customer, their pain points, and what you're building to help them.
+
+Once you've filled out your Value Canvas, I'll be able to create three different pitch options tailored specifically to your idea.
+
+Would you like to go complete your Value Canvas now? I'll be here when you're ready!
+
+═══════════════════════════════════════════════════════════════
+
+MANDATORY RULES:
+1. ✅ MUST start with: "I'd love to help you create your Concept Pitch, but I need to see your Value Canvas first."
+2. ✅ MUST include: "It looks like you haven't completed your Value Canvas yet"
+3. ✅ MUST include: "Would you like to go complete your Value Canvas now?"
+4. ❌ DO NOT add greetings like "Hello!" or "Hi!"
+5. ❌ DO NOT paraphrase or rewrite the script
+6. ❌ DO NOT ask for information
+7. ❌ DO NOT skip any lines from the format
+"""
+        
         # Inject Value Canvas data into the prompt using template variables
-        if context["value_canvas_data"]:
+        if context["value_canvas_data"] and not context.get("value_canvas_data", {}).get("_missing_data"):
             vc_data = context["value_canvas_data"]
             
-            # Add Value Canvas context at the beginning
+            # DEBUG: Log the actual Value Canvas data structure
+            logger.info(f"CONCEPT_PITCH_DEBUG: Value Canvas data keys: {list(vc_data.keys())}")
+            for key, value in vc_data.items():
+                logger.info(f"CONCEPT_PITCH_DEBUG: {key}: {str(value)[:200]}...")
+            
+            # Format Value Canvas data into concise descriptions
+            def format_icp(icp_data):
+                if isinstance(icp_data, str):
+                    # Try to extract concise description from structured data
+                    if "Icp Nickname:" in icp_data:
+                        return icp_data.split("Icp Nickname: ")[1].split("Icp Role Identity:")[0].strip()
+                    elif "The " in icp_data and "Manager" in icp_data:
+                        return icp_data.split("The ")[1].split(" who")[0].strip()
+                    return icp_data
+                return "tech project managers"
+            
+            def format_pain(pain_data):
+                if isinstance(pain_data, str):
+                    # Try to extract concise description from structured data
+                    if "Pain1 Symptom:" in pain_data:
+                        return pain_data.split("Pain1 Symptom: ")[1].split("Pain1 Struggle:")[0].strip()
+                    elif "struggling with" in pain_data:
+                        return pain_data.split("struggling with ")[1].split(".")[0].strip()
+                    return pain_data
+                return "confusion and wasted time trying to integrate AI tools"
+            
+            def format_gain(gain_data):
+                if isinstance(gain_data, str):
+                    # Try to extract concise description from structured data
+                    if "Payoff1 Objective:" in gain_data:
+                        return gain_data.split("Payoff1 Objective: ")[1].split("Payoff1 Desire:")[0].strip()
+                    elif "achieve" in gain_data:
+                        return gain_data.split("achieve ")[1].split(",")[0].strip()
+                    return gain_data
+                return "seamless AI adoption with measurable productivity gains"
+            
+            def format_prize(prize_data):
+                if isinstance(prize_data, str):
+                    # Try to extract concise description from structured data
+                    if "Prize Statement:" in prize_data:
+                        return prize_data.split("Prize Statement: ")[1].strip()
+                    elif "gives them" in prize_data:
+                        return prize_data.split("gives them ")[1].split(" –")[0].strip()
+                    return prize_data
+                return "future-ready AI business"
+            
+            def format_solution(solution_data):
+                if isinstance(solution_data, str):
+                    # Try to extract concise description from structured data
+                    if "Method Name:" in solution_data:
+                        return solution_data.split("Method Name: ")[1].split("Sequenced Principles")[0].strip()
+                    elif "building" in solution_data:
+                        return solution_data.split("building ")[1].split(" for")[0].strip()
+                    return solution_data
+                return "AI Empowerment Engine"
+            
+            # Replace placeholders with formatted data
+            # If no Value Canvas data, use agent_context as fallback
+            logger.info(f"CONCEPT_PITCH_DEBUG: Checking fallback condition - icp: {vc_data.get('icp')}, agent_context: {vc_data.get('agent_context')}")
+            if not vc_data.get("icp") and vc_data.get("agent_context"):
+                logger.info("CONCEPT_PITCH_DEBUG: Using agent_context fallback")
+                agent_context = vc_data["agent_context"]
+                if isinstance(agent_context, dict):
+                    # Use agent context to create generic placeholders
+                    company_name = agent_context.get("company_name", "your business")
+                    full_name = agent_context.get("full_name", "business owner")
+                    
+                    system_prompt = system_prompt.replace("{{icp}}", f"business owners like {full_name}")
+                    system_prompt = system_prompt.replace("{{pain}}", "challenges in growing their business")
+                    system_prompt = system_prompt.replace("{{gain}}", "streamlined operations and growth")
+                    system_prompt = system_prompt.replace("{{prize}}", "a thriving, scalable business")
+                    system_prompt = system_prompt.replace("{{type_of_solution}}", f"strategic consulting service for {company_name}")
+                    logger.info("CONCEPT_PITCH_DEBUG: Replaced placeholders with agent_context data")
+                else:
+                    # Fallback to generic values
+                    system_prompt = system_prompt.replace("{{icp}}", "business owners")
+                    system_prompt = system_prompt.replace("{{pain}}", "challenges in growing their business")
+                    system_prompt = system_prompt.replace("{{gain}}", "streamlined operations and growth")
+                    system_prompt = system_prompt.replace("{{prize}}", "a thriving, scalable business")
+                    system_prompt = system_prompt.replace("{{type_of_solution}}", "strategic consulting service")
+                    logger.info("CONCEPT_PITCH_DEBUG: Replaced placeholders with generic values")
+            else:
+                logger.info("CONCEPT_PITCH_DEBUG: Using actual Value Canvas data")
+                # Use actual Value Canvas data
+                system_prompt = system_prompt.replace("{{icp}}", format_icp(vc_data.get("icp", "{{icp}}")))
+                system_prompt = system_prompt.replace("{{pain}}", format_pain(vc_data.get("pain", "{{pain}}")))
+                system_prompt = system_prompt.replace("{{gain}}", format_gain(vc_data.get("payoffs", "{{gain}}")))
+                system_prompt = system_prompt.replace("{{prize}}", format_prize(vc_data.get("prize", "{{prize}}")))
+                system_prompt = system_prompt.replace("{{type_of_solution}}", format_solution(vc_data.get("signature_method", "{{type_of_solution}}")))
+            
+            # Add Value Canvas context at the end for debugging
             value_canvas_context = "\n\nVALUE CANVAS CONTEXT (Use this data to personalize the pitch):\n"
             
             if vc_data.get("icp"):
-                value_canvas_context += f"- ICP: {vc_data['icp']}\n"
+                value_canvas_context += f"- ICP: {format_icp(vc_data['icp'])}\n"
             
             if vc_data.get("pain"):
-                value_canvas_context += f"- Pain: {vc_data['pain']}\n"
+                value_canvas_context += f"- Pain: {format_pain(vc_data['pain'])}\n"
             
             if vc_data.get("payoffs"):
-                value_canvas_context += f"- Gain: {vc_data['payoffs']}\n"
+                value_canvas_context += f"- Gain: {format_gain(vc_data['payoffs'])}\n"
             
             if vc_data.get("signature_method"):
-                value_canvas_context += f"- Signature Method: {vc_data['signature_method']}\n"
+                value_canvas_context += f"- Signature Method: {format_solution(vc_data['signature_method'])}\n"
             
             if vc_data.get("prize"):
-                value_canvas_context += f"- Prize: {vc_data['prize']}\n"
+                value_canvas_context += f"- Prize: {format_prize(vc_data['prize'])}\n"
             
             # Append Value Canvas context to the section prompt
             system_prompt = system_prompt + value_canvas_context
-            logger.info(f"CONCEPT_PITCH_GET_CONTEXT: ✅ Using section template for {section_id} with Value Canvas context")
+            logger.info(f"CONCEPT_PITCH_GET_CONTEXT: ✅ Using section template for {section_id} with formatted Value Canvas data")
         else:
             logger.info(f"CONCEPT_PITCH_GET_CONTEXT: ✅ Using section template for {section_id} (no Value Canvas data)")
         

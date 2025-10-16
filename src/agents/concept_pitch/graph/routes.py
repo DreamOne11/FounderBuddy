@@ -35,6 +35,15 @@ def route_decision(state: ConceptPitchState) -> Literal["generate_reply"] | None
         if state.get("awaiting_user_input", False):
             return None  # Halt execution, wait for user input
 
+        # Check if we just switched to a new section (router just processed NEXT directive)
+        # If so, continue to generate_reply for the new section
+        msgs = state.get("messages", [])
+        if msgs and isinstance(msgs[-1], AIMessage):
+            # Check if this is a transition message from previous section
+            last_msg_content = msgs[-1].content.lower()
+            if any(phrase in last_msg_content for phrase in ["perfect! now let's", "great! let's", "ready to dive"]):
+                return "generate_reply"  # Continue to new section
+
         # Otherwise, halt directly (typically when just initialized).
         return None  # Halt execution
     
@@ -48,12 +57,8 @@ def route_decision(state: ConceptPitchState) -> Literal["generate_reply"] | None
         if has_pending_user_input():
             return "generate_reply"
         
-        # If Generate Decision just set NEXT directive but user hasn't responded yet, halt and wait
-        msgs = state.get("messages", [])
-        if msgs and isinstance(msgs[-1], AIMessage):
-            return None  # Halt execution, wait for user input
-        
-        # Default case - go to generate_reply to ask first question of current section
+        # After router switches section, continue to generate_reply for new section
+        # (even if last message is AI - the transition message was from previous section)
         return "generate_reply"
     
     # 4. Default case - halt to prevent infinite loops

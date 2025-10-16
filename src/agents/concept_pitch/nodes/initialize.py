@@ -24,7 +24,7 @@ async def initialize_node(state: ConceptPitchState, config: RunnableConfig) -> C
     if "current_section" not in state:
         state["current_section"] = SectionID.SUMMARY_CONFIRMATION
     if "router_directive" not in state:
-        state["router_directive"] = RouterDirective.NEXT
+        state["router_directive"] = RouterDirective.STAY  # Stay in summary_confirmation to show Value Canvas data
     
     logger.info(f"Initialized Concept Pitch state for user {state['user_id']}")
     

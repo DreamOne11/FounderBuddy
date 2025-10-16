@@ -47,8 +47,28 @@ async def router_node(state: ConceptPitchState, config: RunnableConfig) -> Conce
     logger.debug(f"[ROUTER] Section: {current_section.value if current_section else 'unknown'}, Directive: {directive}")
 
     if directive == RouterDirective.STAY:
-        # Stay on current section, no context reload needed
+        # Stay on current section, but ensure context_packet is loaded
         logger.debug("Staying on current section")
+        
+        # If context_packet is missing, load it
+        if not state.get("context_packet"):
+            logger.debug("[ROUTER] Loading context_packet for current section")
+            current_section_id = state["current_section"].value
+            
+            # Get context for current section
+            canvas_data = state.get("canvas_data")
+            canvas_data_dict = canvas_data.model_dump() if canvas_data else {}
+            
+            context = await get_context.ainvoke({
+                "user_id": state.get("user_id", 1),
+                "thread_id": state.get("thread_id"),
+                "section_id": current_section_id,
+                "canvas_data": canvas_data_dict,
+            })
+            
+            state["context_packet"] = ContextPacket(**context)
+            logger.debug(f"[ROUTER] Loaded context_packet for {current_section_id}")
+        
         return state
     
     elif directive == RouterDirective.NEXT:
@@ -62,8 +82,10 @@ async def router_node(state: ConceptPitchState, config: RunnableConfig) -> Conce
             state["router_directive"] = RouterDirective.STAY
             return state
         
-        # Find next unfinished section
-        next_section = get_next_unfinished_section(state.get("section_states", {}))
+        # For NEXT directive, use get_next_section instead of get_next_unfinished_section
+        # because we know the current section is complete
+        from ..prompts import get_next_section
+        next_section = get_next_section(state["current_section"])
         
         if next_section:
             logger.section_transition(current_section_id, next_section.value, "next")

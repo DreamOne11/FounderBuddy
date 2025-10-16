@@ -233,9 +233,22 @@ Based on the conversation history and section context, determine:
    - If they seem unsatisfied or want changes, set is_satisfied=False
    
    🚨 CRITICAL: For SUMMARY_CONFIRMATION section:
-   - If user says "yes", "accurate", "sounds good", "correct", "that's right" → is_satisfied=True, router_directive="next"
-   - If user says "no", "not quite", "needs changes" → is_satisfied=False, router_directive="stay"
+   - If user says "yes", "accurate", "sounds good", "correct", "that's right", "okay", "ok", "great", "good", "perfect", "exactly", "right", "true", "yep", "yeah", "sure", "absolutely", "definitely", "ready", "let's go", "proceed", "continue", "next", "sounds great", "looks good", "that works", "fine", "acceptable", "approved", "confirmed" → is_satisfied=True, router_directive="next"
+   - If user says "no", "not quite", "needs changes", "wrong", "incorrect", "not right", "not accurate", "needs work", "modify", "change", "different", "revise", "edit", "update" → is_satisfied=False, router_directive="stay"
+   - If user says "hi", "hello" or other greetings → is_satisfied=None, router_directive="stay" (waiting for actual confirmation)
    - User confirmation means they're ready to move to PITCH_GENERATION
+
+   🚨 CRITICAL: For PITCH_GENERATION section:
+   - If user chooses "A", "B", or "C" → is_satisfied=None, router_directive="stay" (continue in pitch_generation to show selected option)
+   - If user says "refine", "refining", "improve", "better", "tweak", "adjust" → is_satisfied=None, router_directive="stay" (continue in pitch_generation for refinement)
+   - If user says "perfect", "good", "great", "ready", "save", "done", "finished" → is_satisfied=True, router_directive="stay" (continue in pitch_generation for final confirmation)
+   - If user says "no", "not quite", "needs changes", "wrong", "incorrect" → is_satisfied=False, router_directive="stay" (continue in pitch_generation for adjustments)
+   - User selection means continue in PITCH_GENERATION section - do NOT go back to SUMMARY_CONFIRMATION
+
+   🚨 CRITICAL: For REFINEMENT section:
+   - If user says "yes", "good", "perfect", "sounds good", "looks good", "that works", "fine", "great", "exactly", "right", "correct", "satisfied", "ready", "done", "finished", "complete", "approved", "confirmed", "okay", "ok", "sure", "absolutely", "definitely", "sounds great", "looks good", "that works", "fine", "acceptable" → is_satisfied=True, router_directive="stay"
+   - If user says "no", "not quite", "needs changes", "wrong", "incorrect", "not right", "not accurate", "needs work", "modify", "change", "different", "revise", "edit", "update", "tweak", "adjust", "improve" → is_satisfied=False, router_directive="stay"
+   - User satisfaction means show final pitch and END conversation - no more sections
 
 3. CONTENT SAVING: Should the current content be saved?
    - Set should_save_content=True when presenting a summary for user review

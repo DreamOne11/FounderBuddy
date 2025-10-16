@@ -33,7 +33,7 @@ Got it.
 
 Based on your canvas, here's how I'm currently understanding your idea:
 
-You're building {{type of solution}} for {{ICP}} who are struggling with {{Pain}}. Your solution helps them achieve {{Gain}}, and ultimately gives them {{Prize}} – something they currently can't get easily.
+You're building {{type_of_solution}} for {{icp}} who are struggling with {{pain}}. Your solution helps them achieve {{gain}}, and ultimately gives them {{prize}} – something they currently can't get easily.
 
 Does that sound accurate? Or is there anything you'd tweak or expand to help me get it exactly right?
 
