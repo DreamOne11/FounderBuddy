@@ -138,17 +138,68 @@ CRITICAL DECISION MAKING RULES:
    - Partial summaries or individual field confirmations
    
 4. DETERMINE IF CONTENT SHOULD BE SAVED (should_save_content):
-   
-   Set should_save_content = true ONLY when:
-   - AI just presented a COMPLETE output with ALL required fields
-   - The output matches the complete format specified in section prompt
-   - AI is asking for satisfaction with the complete output
-   
-   Set should_save_content = false when:
-   - Still collecting individual fields
-   - Showing previews or partial information
-   - In explanation or introduction phases
-   - Asking if user is ready to see summary
+
+   SIMPLE RULE: Is the last AI message showing a reviewable summary?
+
+   A "reviewable summary" has these characteristics:
+   ✓ Shows multiple collected data fields in structured format
+   ✓ Presents information for user to review (not asking for new data)
+   ✓ Asks for user's opinion/feedback on the shown content
+
+   THREE-STEP QUICK CHECK:
+
+   Step 1: Count structured fields in last AI message
+   - Look for markdown formatting with DATA VALUES: **, ###, bullet points with content
+   - Must have field labels AND their values shown together
+   - Valid examples: "**Name:** Lee", "**Company:** Acme Corp", "### ICP NICKNAME\nThe Startup Founder"
+   - Invalid: Pure text without field-value pairs, transition messages, single questions
+
+   CRITICAL: Structured fields must follow these patterns:
+   - "**FieldName:** value" (bold label + colon + value)
+   - "### Section Header\n[content]" (header + actual content below)
+   - "- **Label:** value" (list item with bold label + value)
+
+   Question: Does it show 2+ field-value pairs in these formats?
+   - If YES → likely a summary, proceed to Step 2
+   - If NO → NOT a summary, should_save_content = FALSE, STOP HERE
+
+   Common NON-SUMMARY patterns (should_save_content = FALSE):
+   - "Great! Your information has been saved..." (transition announcement)
+   - "Now let's work on..." (section transition)
+   - Single questions without showing collected data
+   - Acknowledgments or confirmations without data display
+
+   Step 2: Check the last sentence
+   - Is it asking for review/feedback on what was just shown?
+   - Review questions: "Is anything missing?", "Does this reflect...",
+     "Are you satisfied...", "How does this look?", "What needs changing?"
+   - If YES → proceed to Step 3
+   - If NO → probably not a summary, should_save_content = FALSE
+
+   Step 3: Determine the purpose
+   - Is AI asking for NEW information OR reviewing EXISTING information?
+   - Reviewing existing = summary presentation → should_save_content = TRUE
+   - Asking for new = data collection → should_save_content = FALSE
+
+   DECISION LOGIC:
+   If all 3 checks pass → should_save_content = TRUE
+   Otherwise → should_save_content = FALSE
+
+   EXAMPLES:
+
+   ✅ SUMMARY PRESENTATION (should_save_content = TRUE):
+   - "Ok, so now I've got: **Name:** Lee, **Company:** Minimum Viable Launch, **Industry:** Software, **Outcomes:** More leads. Is anything missing or off?"
+   - "Here's your ICP: ### Nickname: The Traction-Seeker... ### Role: Founder of early-stage SaaS... Does this reflect our conversation?"
+   - "### Pain Point 1: **Symptom:** Struggling with... ### Pain Point 2: **Symptom:** Facing... ### Pain Point 3: **Symptom:** Dealing with... Are you satisfied with this summary?"
+
+   ❌ DATA COLLECTION (should_save_content = FALSE):
+   - "What industry are you in?"
+   - "Tell me more about your ideal client's pain points"
+   - "Great! Now, what specific outcomes do they want to achieve?"
+
+   ❌ TRANSITION MESSAGE (should_save_content = FALSE):
+   - "Great! Your ICP has been saved. Now let's move on to pain points."
+   - "Excellent! I've captured your information. Ready for the next section?"
 
 5. ROUTER DIRECTIVE DECISION:
    
