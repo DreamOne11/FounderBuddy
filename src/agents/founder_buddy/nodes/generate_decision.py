@@ -74,7 +74,10 @@ async def generate_decision_node(state: FounderBuddyState, config: RunnableConfi
         "summary" in last_ai_reply.lower() or 
         "does this feel right" in last_ai_reply.lower() or
         "does this summary" in last_ai_reply.lower() or
-        "here's a summary" in last_ai_reply.lower()
+        "here's a summary" in last_ai_reply.lower() or
+        "here is a summary" in last_ai_reply.lower() or
+        "quick summary" in last_ai_reply.lower() or
+        "feel right to you" in last_ai_reply.lower()
     )
     
     # Determine if we should generate business plan

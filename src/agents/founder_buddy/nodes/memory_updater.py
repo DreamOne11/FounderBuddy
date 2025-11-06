@@ -76,11 +76,32 @@ async def memory_updater_node(state: FounderBuddyState, config: RunnableConfig) 
             
             # Update or create section state
             section_states = state.get("section_states", {})
+            
+            # If user confirmed final summary, force status to DONE
+            # Check if this is the last section and user confirmed summary
+            is_last_section = current_section == SectionID.INVEST_PLAN if current_section else False
+            if is_last_section and agent_out.is_satisfied:
+                # Check if the last AI message contains summary indicators
+                ai_content = last_ai_msg.content.lower()
+                has_summary = (
+                    "summary" in ai_content or 
+                    "does this feel right" in ai_content or
+                    "quick summary" in ai_content
+                )
+                if has_summary:
+                    # Force status to DONE when user confirms final summary
+                    logger.info(f"User confirmed final summary - forcing {current_section_id} to DONE")
+                    section_status = SectionStatus.DONE
+                else:
+                    section_status = SectionStatus(_status_from_output(agent_out.is_satisfied, RouterDirective(agent_out.router_directive)))
+            else:
+                section_status = SectionStatus(_status_from_output(agent_out.is_satisfied, RouterDirective(agent_out.router_directive)))
+            
             section_state = SectionState(
                 section_id=current_section,
                 content=section_content,
                 satisfaction_status="satisfied" if agent_out.is_satisfied else None,
-                status=SectionStatus(_status_from_output(agent_out.is_satisfied, RouterDirective(agent_out.router_directive)))
+                status=section_status
             )
             
             section_states[current_section_id] = section_state

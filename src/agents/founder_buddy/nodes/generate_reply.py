@@ -76,20 +76,28 @@ Is there anything else I can help you with regarding your business plan?"""
     # Check if user just confirmed the final summary - skip generating reply
     # Let memory_updater route to business plan generation instead
     messages = state.get("messages", [])
-    if messages and len(messages) >= 2:
-        last_msg = messages[-1]
-        second_last_msg = messages[-2]
+    if messages:
+        # Find the last user message and the last AI message before it
+        last_user_msg = None
+        last_ai_msg_before_user = None
         
-        if isinstance(last_msg, HumanMessage) and isinstance(second_last_msg, AIMessage):
-            user_content = last_msg.content.lower()
-            ai_content = second_last_msg.content.lower()
+        for msg in reversed(messages):
+            if isinstance(msg, HumanMessage) and last_user_msg is None:
+                last_user_msg = msg
+            elif isinstance(msg, AIMessage) and last_user_msg is not None and last_ai_msg_before_user is None:
+                last_ai_msg_before_user = msg
+                break
+        
+        if last_user_msg and last_ai_msg_before_user:
+            user_content = last_user_msg.content.lower()
+            ai_content = last_ai_msg_before_user.content.lower()
             
             # Check if user confirmed summary (expanded list)
             satisfaction_words = ["yes", "good", "great", "perfect", "right", "correct", "sounds good", "looks good", "that's right", "exactly", "yep", "yeah"]
             user_confirmed = any(word in user_content for word in satisfaction_words)
             
             # Check if AI showed summary (expanded detection)
-            # Match patterns like "Does this feel right", "Does this summary feel right", "Here's a summary", etc.
+            # Match patterns like "Does this feel right", "Does this summary feel right", "Here's a summary", "quick summary", etc.
             ai_showed_summary = (
                 "summary" in ai_content or 
                 "does this feel right" in ai_content or
@@ -98,7 +106,8 @@ Is there anything else I can help you with regarding your business plan?"""
                 "here is a summary" in ai_content or
                 "summary of your" in ai_content or
                 "feel right to you" in ai_content or
-                "does this summary feel right" in ai_content
+                "does this summary feel right" in ai_content or
+                "quick summary" in ai_content
             )
             
             # Check if we're in the last section
