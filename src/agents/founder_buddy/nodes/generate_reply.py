@@ -77,48 +77,87 @@ Is there anything else I can help you with regarding your business plan?"""
     # Let memory_updater route to business plan generation instead
     messages = state.get("messages", [])
     if messages:
-        # Find the last user message and the last AI message before it
-        last_user_msg = None
-        last_ai_msg_before_user = None
+        from ..enums import SectionID
         
+        # Find the last user message
+        last_user_msg = None
         for msg in reversed(messages):
-            if isinstance(msg, HumanMessage) and last_user_msg is None:
+            if isinstance(msg, HumanMessage):
                 last_user_msg = msg
-            elif isinstance(msg, AIMessage) and last_user_msg is not None and last_ai_msg_before_user is None:
-                last_ai_msg_before_user = msg
                 break
         
-        if last_user_msg and last_ai_msg_before_user:
+        if last_user_msg:
             user_content = last_user_msg.content.lower()
-            ai_content = last_ai_msg_before_user.content.lower()
             
-            # Check if user confirmed summary (expanded list)
-            satisfaction_words = ["yes", "good", "great", "perfect", "right", "correct", "sounds good", "looks good", "that's right", "exactly", "yep", "yeah"]
+            # Check if user confirmed summary (expanded list including combinations)
+            satisfaction_words = [
+                "yes", "good", "great", "perfect", "right", "correct", 
+                "sounds good", "looks good", "that's right", "exactly", 
+                "yep", "yeah", "that is right", "that's correct"
+            ]
             user_confirmed = any(word in user_content for word in satisfaction_words)
             
-            # Check if AI showed summary (expanded detection)
-            # Match patterns like "Does this feel right", "Does this summary feel right", "Here's a summary", "quick summary", etc.
-            ai_showed_summary = (
-                "summary" in ai_content or 
-                "does this feel right" in ai_content or
-                "does this summary" in ai_content or
-                "here's a summary" in ai_content or
-                "here is a summary" in ai_content or
-                "summary of your" in ai_content or
-                "feel right to you" in ai_content or
-                "does this summary feel right" in ai_content or
-                "quick summary" in ai_content
-            )
+            # Find the last AI message that contains summary indicators
+            # This is more robust than just finding the last AI message before user
+            # because AI might have generated a duplicate summary
+            summary_ai_msg = None
+            for msg in reversed(messages):
+                if isinstance(msg, AIMessage):
+                    ai_content = msg.content.lower()
+                    # Check if this AI message contains summary indicators
+                    has_summary = (
+                        "summary" in ai_content or 
+                        "does this feel right" in ai_content or
+                        "does this summary" in ai_content or
+                        "here's a summary" in ai_content or
+                        "here is a summary" in ai_content or
+                        "summary of your" in ai_content or
+                        "feel right to you" in ai_content or
+                        "does this summary feel right" in ai_content or
+                        "quick summary" in ai_content or
+                        "investment plan" in ai_content and ("summary" in ai_content or "feel right" in ai_content)
+                    )
+                    if has_summary:
+                        summary_ai_msg = msg
+                        break
+            
+            # Also check for duplicate summary pattern (AI repeating the same summary)
+            # If we detect this pattern, it means we're in a loop and should skip
+            if not summary_ai_msg and len(messages) >= 4:
+                # Check if last two AI messages are similar (duplicate summary)
+                ai_messages = [msg for msg in messages if isinstance(msg, AIMessage)]
+                if len(ai_messages) >= 2:
+                    last_ai = ai_messages[-1].content.lower()
+                    second_last_ai = ai_messages[-2].content.lower()
+                    # If last two AI messages are very similar and contain summary keywords
+                    if ("summary" in last_ai or "feel right" in last_ai) and \
+                       ("summary" in second_last_ai or "feel right" in second_last_ai):
+                        # Check similarity (simple check: if they share key phrases)
+                        key_phrases = ["investment plan", "funding amount", "valuation", "exit strategy"]
+                        shared_phrases = sum(1 for phrase in key_phrases if phrase in last_ai and phrase in second_last_ai)
+                        if shared_phrases >= 2:  # At least 2 key phrases match
+                            logger.warning("Detected duplicate summary pattern - forcing skip to break loop")
+                            summary_ai_msg = ai_messages[-1]  # Use last AI message
             
             # Check if we're in the last section
-            from ..enums import SectionID
             current_section = state.get("current_section")
             is_last_section = current_section == SectionID.INVEST_PLAN if current_section else False
+            
+            # If we found a summary AI message, check if user confirmed it
+            if summary_ai_msg:
+                ai_content = summary_ai_msg.content.lower()
+                ai_showed_summary = True
+            else:
+                ai_showed_summary = False
+                ai_content = ""
             
             # Log for debugging
             logger.info(f"Checking skip conditions: is_last_section={is_last_section}, ai_showed_summary={ai_showed_summary}, user_confirmed={user_confirmed}")
             logger.info(f"User message: {user_content[:100]}")
-            logger.info(f"AI message: {ai_content[:200]}")
+            if summary_ai_msg:
+                logger.info(f"Found summary AI message: {ai_content[:200]}")
+            else:
+                logger.warning("No summary AI message found in recent messages")
             
             # If user confirmed summary in last section, skip generating reply
             # This allows memory_updater to route to business plan generation

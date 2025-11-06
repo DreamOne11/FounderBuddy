@@ -70,14 +70,18 @@ async def generate_decision_node(state: FounderBuddyState, config: RunnableConfi
     is_satisfied = any(word in last_user_msg for word in satisfaction_words) if last_user_msg else None
     
     # Check if AI just showed a summary (looking for summary indicators)
+    # Enhanced detection to catch various summary patterns
+    ai_reply_lower = last_ai_reply.lower()
     ai_showed_summary = (
-        "summary" in last_ai_reply.lower() or 
-        "does this feel right" in last_ai_reply.lower() or
-        "does this summary" in last_ai_reply.lower() or
-        "here's a summary" in last_ai_reply.lower() or
-        "here is a summary" in last_ai_reply.lower() or
-        "quick summary" in last_ai_reply.lower() or
-        "feel right to you" in last_ai_reply.lower()
+        "summary" in ai_reply_lower or 
+        "does this feel right" in ai_reply_lower or
+        "does this summary" in ai_reply_lower or
+        "here's a summary" in ai_reply_lower or
+        "here is a summary" in ai_reply_lower or
+        "quick summary" in ai_reply_lower or
+        "feel right to you" in ai_reply_lower or
+        ("investment plan" in ai_reply_lower and ("summary" in ai_reply_lower or "feel right" in ai_reply_lower)) or
+        ("funding amount" in ai_reply_lower and "valuation" in ai_reply_lower and "exit strategy" in ai_reply_lower)
     )
     
     # Determine if we should generate business plan
