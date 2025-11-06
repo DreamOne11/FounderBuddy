@@ -5,6 +5,20 @@ export async function GET() {
       ? process.env.VALUE_CANVAS_API_URL_LOCAL 
       : process.env.VALUE_CANVAS_API_URL_PRODUCTION;
     
+    // 如果 API URL 未配置，返回 fallback
+    if (!apiUrl) {
+      console.warn('Backend API URL not configured. Using fallback agents list.');
+      const fallbackAgents = {
+        agents: [
+          {
+            key: 'founder-buddy',
+            description: 'A Founder Buddy agent that helps entrepreneurs validate and refine their startup ideas through structured conversations about mission, idea, team traction, and investment plan'
+          }
+        ]
+      };
+      return Response.json(fallbackAgents);
+    }
+    
     // Add timeout with AbortController
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout

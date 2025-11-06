@@ -82,6 +82,32 @@ export async function POST(req: Request) {
       ? process.env.VALUE_CANVAS_API_URL_LOCAL 
       : process.env.VALUE_CANVAS_API_URL_PRODUCTION;
     
+    // 检查 API URL 是否配置
+    if (!apiUrl) {
+      const errorMsg = isLocal 
+        ? 'Backend API URL not configured. Please set VALUE_CANVAS_API_URL_LOCAL environment variable.'
+        : 'Backend API URL not configured. Please set VALUE_CANVAS_API_URL_PRODUCTION environment variable in Vercel settings.';
+      
+      logApiCall('CONFIGURATION_ERROR', {
+        timestamp: new Date().toISOString(),
+        requestId: `req_${requestStartTime}`,
+        error: {
+          message: errorMsg,
+          isLocal: isLocal,
+          apiEnv: process.env.NEXT_PUBLIC_API_ENV
+        }
+      }, 'ERROR');
+      
+      return new Response(JSON.stringify({
+        content: `Configuration Error: ${errorMsg}`,
+        threadId: null,
+        userId: null
+      }), { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    
     const endpoint = mode === 'stream' ? 'stream' : 'invoke';
     const fullApiUrl = `${apiUrl}/${agentId}/${endpoint}`;
     
