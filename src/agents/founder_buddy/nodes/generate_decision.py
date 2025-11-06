@@ -76,8 +76,12 @@ async def generate_decision_node(state: FounderBuddyState, config: RunnableConfi
         router_directive = RouterDirective.STAY
     
     # Check if we should save content
-    # Save when user seems satisfied or when presenting summary
-    should_save_content = is_satisfied is True or "summary" in last_ai_reply.lower() or "总结" in last_ai_reply
+    # For the last section, don't require summary - just save when user confirms
+    # For other sections, save when satisfied or when presenting summary
+    if is_last_section:
+        should_save_content = is_satisfied is True
+    else:
+        should_save_content = is_satisfied is True or "summary" in last_ai_reply.lower() or "总结" in last_ai_reply
     
     decision = ChatAgentDecision(
         router_directive=router_directive.value,
