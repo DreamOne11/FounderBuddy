@@ -7,7 +7,7 @@ from langchain_core.runnables import RunnableConfig
 
 from core.llm import get_model
 
-from ..enums import RouterDirective, SectionID
+from ..enums import RouterDirective, SectionID, SectionStatus
 from ..models import ChatAgentDecision, ChatAgentOutput, FounderBuddyState
 
 logger = logging.getLogger(__name__)
@@ -61,15 +61,42 @@ async def generate_decision_node(state: FounderBuddyState, config: RunnableConfi
     satisfaction_words = ["yes", "good", "great", "perfect", "continue", "next", "satisfied", "looks good", "right", "proceed", "done", "finished", "complete"]
     is_satisfied = any(word in last_user_msg for word in satisfaction_words) if last_user_msg else None
     
-    # Special handling for completion signals
-    completion_words = ["satisfied", "done", "finished", "complete", "good", "right"]
-    is_completion_signal = any(word in last_user_msg for word in completion_words) if last_user_msg else False
+    # Check if AI just showed a summary (looking for summary indicators)
+    ai_showed_summary = (
+        "summary" in last_ai_reply.lower() or 
+        "does this feel right" in last_ai_reply.lower() or
+        "does this summary" in last_ai_reply.lower() or
+        "here's a summary" in last_ai_reply.lower()
+    )
+    
+    # Determine if we should generate business plan
+    # Set flag if:
+    # 1. We're in the last section
+    # 2. AI just showed a summary
+    # 3. User confirmed with "yes"
+    # Note: We don't check all_complete here because section states may not be updated yet
+    # memory_updater will verify all sections are complete before actually generating
+    should_generate_business_plan = (
+        is_last_section and 
+        ai_showed_summary and 
+        is_satisfied and 
+        not state.get("business_plan")
+    )
+    
+    if should_generate_business_plan:
+        logger.info("User confirmed final summary - setting preliminary flag to generate business plan")
+        state["should_generate_business_plan"] = True
+    else:
+        # Reset flag if conditions not met
+        state["should_generate_business_plan"] = False
     
     # Determine router directive
-    # If in last section and user is satisfied, we might be done
-    # Otherwise, move to next section if satisfied
-    if is_last_section and is_completion_signal:
+    # If we're generating business plan, stay to allow it to happen
+    if should_generate_business_plan:
         router_directive = RouterDirective.STAY  # Stay to allow business plan generation
+    elif is_last_section and is_satisfied and not ai_showed_summary:
+        # In last section, user satisfied but no summary shown yet - stay to show summary
+        router_directive = RouterDirective.STAY
     elif is_satisfied:
         router_directive = RouterDirective.NEXT
     else:
@@ -77,7 +104,13 @@ async def generate_decision_node(state: FounderBuddyState, config: RunnableConfi
     
     # Check if we should save content
     # Save when user seems satisfied or when presenting summary
-    should_save_content = is_satisfied is True or "summary" in last_ai_reply.lower() or "总结" in last_ai_reply
+    # If user confirmed summary, we should save and mark section as DONE
+    should_save_content = (
+        is_satisfied is True or 
+        "summary" in last_ai_reply.lower() or 
+        "总结" in last_ai_reply or
+        (is_last_section and ai_showed_summary and is_satisfied)  # User confirmed final summary
+    )
     
     decision = ChatAgentDecision(
         router_directive=router_directive.value,

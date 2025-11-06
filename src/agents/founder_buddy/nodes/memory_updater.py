@@ -117,15 +117,28 @@ async def memory_updater_node(state: FounderBuddyState, config: RunnableConfig) 
         user_done = any(keyword in str(last_user_msg) for keyword in done_keywords) if last_user_msg else False
     
     # Check if we should generate business plan (set flag for router to handle)
-    # 1. All sections are marked as DONE, OR
-    # 2. We're in the last section and user said they're satisfied
-    should_generate_plan = (
-        (all_complete and user_done) or 
-        (is_last_section and user_done)
-    ) and not state.get("business_plan")
+    # Only generate business plan if:
+    # 1. All sections are marked as DONE (including the current one we just saved), AND
+    # 2. User has confirmed the final summary (said "yes" after seeing the summary)
+    # We check the flag set by generate_decision, and verify all sections are complete
     
-    if should_generate_plan:
-        logger.info("All sections complete and user satisfied - setting flag to generate business plan")
+    # Check if generate_decision set the flag (user confirmed summary)
+    should_generate_from_decision = state.get("should_generate_business_plan", False)
+    
+    # Re-check all sections completion status (including any updates we just made)
+    section_states = state.get("section_states", {})
+    all_sections = [SectionID.MISSION, SectionID.IDEA, SectionID.TEAM_TRACTION, SectionID.INVEST_PLAN]
+    
+    # Check completion status (re-check after potential updates)
+    all_complete = all(
+        section_id.value in section_states and 
+        section_states[section_id.value].status == SectionStatus.DONE
+        for section_id in all_sections
+    )
+    
+    # Only set flag if decision node said so AND all sections are complete
+    if should_generate_from_decision and all_complete and not state.get("business_plan"):
+        logger.info("All sections complete and user confirmed summary - setting flag to generate business plan")
         state["should_generate_business_plan"] = True
     else:
         state["should_generate_business_plan"] = False
