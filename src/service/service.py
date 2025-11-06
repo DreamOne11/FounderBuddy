@@ -37,6 +37,8 @@ from agents.value_canvas.agent import initialize_value_canvas_state
 from agents.value_canvas.prompts import SECTION_TEMPLATES as VALUE_CANVAS_TEMPLATES
 from agents.concept_pitch.agent import initialize_concept_pitch_state
 from agents.concept_pitch.prompts import SECTION_TEMPLATES as CONCEPT_PITCH_TEMPLATES
+from agents.founder_buddy.agent import initialize_founder_buddy_state
+from agents.founder_buddy.prompts import SECTION_TEMPLATES as FOUNDER_BUDDY_TEMPLATES
 from core import settings
 from core.settings import DatabaseType
 from integrations.dentapp.dentapp_utils import SECTION_ID_MAPPING, get_section_string_id
@@ -294,6 +296,8 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph, agent_id: str)
             initial_state = await initialize_special_report_state(user_id=user_id)
         elif agent_id == "concept-pitch":
             initial_state = await initialize_concept_pitch_state(user_id=user_id)
+        elif agent_id == "founder-buddy":
+            initial_state = await initialize_founder_buddy_state(user_id=user_id)
         else:
             raise ValueError(f"Unknown agent: {agent_id}")
 
@@ -512,6 +516,10 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> Invoke
                 section_templates = SIGNATURE_PITCH_TEMPLATES
             elif agent_id == "special-report":
                 section_templates = SPECIAL_REPORT_TEMPLATES
+            elif agent_id == "concept-pitch":
+                section_templates = CONCEPT_PITCH_TEMPLATES
+            elif agent_id == "founder-buddy":
+                section_templates = FOUNDER_BUDDY_TEMPLATES
             else:  # default to value_canvas
                 section_templates = VALUE_CANVAS_TEMPLATES
             
@@ -809,6 +817,8 @@ async def message_generator(
                     section_templates = SPECIAL_REPORT_TEMPLATES
                 elif agent_id == "concept-pitch":
                     section_templates = CONCEPT_PITCH_TEMPLATES
+                elif agent_id == "founder-buddy":
+                    section_templates = FOUNDER_BUDDY_TEMPLATES
                 else:  # default to value_canvas
                     section_templates = VALUE_CANVAS_TEMPLATES
                 
@@ -1229,6 +1239,80 @@ async def health_check():
             health_status["langfuse"] = "disconnected"
 
     return health_status
+
+
+@router.post("/generate_business_plan/{agent_id}")
+async def generate_business_plan(
+    agent_id: str,
+    user_id: int,
+    thread_id: str,
+):
+    """
+    Manually trigger business plan generation for founder-buddy agent.
+    
+    This endpoint generates a comprehensive business plan based on all collected conversation data.
+    
+    Args:
+        agent_id: Agent identifier (must be "founder-buddy")
+        user_id: User identifier
+        thread_id: Thread/conversation identifier
+    
+    Returns:
+        Business plan document in markdown format
+    """
+    if agent_id != "founder-buddy":
+        raise HTTPException(
+            status_code=422,
+            detail=f"Business plan generation only supported for 'founder-buddy' agent"
+        )
+    
+    logger.info(f"=== GENERATE_BUSINESS_PLAN_REQUEST: agent_id={agent_id} ===")
+    logger.info(f"GENERATE_BUSINESS_PLAN: user_id={user_id}, thread_id={thread_id}")
+    
+    try:
+        agent: AgentGraph = get_agent(agent_id)
+        config = RunnableConfig(configurable={"thread_id": thread_id, "user_id": user_id})
+        
+        # Get current state
+        state_snapshot = await agent.aget_state(config=config)
+        state_values = state_snapshot.values if state_snapshot.values else {}
+        
+        # Check if business plan already exists
+        if state_values.get("business_plan"):
+            logger.info("Business plan already exists, returning existing plan")
+            return {
+                "success": True,
+                "business_plan": state_values["business_plan"],
+                "message": "Business plan retrieved successfully"
+            }
+        
+        # Import and call generate_business_plan_node
+        from agents.founder_buddy.nodes.generate_business_plan import generate_business_plan_node
+        
+        # Create a temporary state dict for the node
+        temp_state = dict(state_values)
+        temp_state = await generate_business_plan_node(temp_state, config)
+        
+        business_plan = temp_state.get("business_plan")
+        
+        if business_plan:
+            logger.info(f"=== GENERATE_BUSINESS_PLAN_SUCCESS ===")
+            logger.info(f"GENERATE_BUSINESS_PLAN: plan_length={len(business_plan)}")
+            return {
+                "success": True,
+                "business_plan": business_plan,
+                "message": "Business plan generated successfully"
+            }
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to generate business plan"
+            )
+            
+    except Exception as e:
+        logger.error(f"=== GENERATE_BUSINESS_PLAN_ERROR ===")
+        logger.error(f"GENERATE_BUSINESS_PLAN_ERROR: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate business plan: {str(e)}")
 
 
 app.include_router(router)

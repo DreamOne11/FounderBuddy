@@ -208,3 +208,18 @@ CLAUDE.md
 CLAUDE.local.md
 *_GUIDE.md
 *_CONTEXT.md
+
+# Node.js
+node_modules/
+frontend/node_modules/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Next.js
+frontend/.next/
+frontend/out/
+frontend/.env.local
+frontend/.env*.local
