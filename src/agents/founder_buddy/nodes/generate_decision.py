@@ -31,10 +31,22 @@ async def generate_decision_node(state: FounderBuddyState, config: RunnableConfi
         current_section = state['current_section']
         logger.info(f"Generate decision node - Section: {current_section} (fallback)")
     
-    # Get the last AI message (the reply we just generated)
+    # Get messages
     messages = state.get("messages", [])
-    if not messages or not isinstance(messages[-1], AIMessage):
-        logger.error("DECISION_NODE: No AI reply found to analyze")
+    
+    # Get last user message
+    user_messages = [msg for msg in messages if isinstance(msg, HumanMessage)]
+    last_user_msg = user_messages[-1].content.lower() if user_messages else ""
+    
+    # Get the last AI message (could be the reply we just generated, or previous one if generate_reply was skipped)
+    last_ai_msg = None
+    for msg in reversed(messages):
+        if isinstance(msg, AIMessage):
+            last_ai_msg = msg
+            break
+    
+    if not last_ai_msg:
+        logger.error("DECISION_NODE: No AI message found to analyze")
         default_decision = ChatAgentDecision(
             router_directive="stay",
             user_satisfaction_feedback=None,
@@ -48,11 +60,7 @@ async def generate_decision_node(state: FounderBuddyState, config: RunnableConfi
         state["router_directive"] = "stay"
         return state
     
-    last_ai_reply = messages[-1].content
-    
-    # Get last user message
-    user_messages = [msg for msg in messages if isinstance(msg, HumanMessage)]
-    last_user_msg = user_messages[-1].content.lower() if user_messages else ""
+    last_ai_reply = last_ai_msg.content
     
     # Check if we're in the last section (invest_plan)
     is_last_section = current_section == SectionID.INVEST_PLAN if hasattr(current_section, 'value') else str(current_section) == "invest_plan"

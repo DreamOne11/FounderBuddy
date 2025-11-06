@@ -41,6 +41,41 @@ Is there anything else I can help you with regarding your business plan?"""
         logger.info("Generated completion message for finished conversation")
         return state
     
+    # Check if user just confirmed the final summary - skip generating reply
+    # Let memory_updater route to business plan generation instead
+    messages = state.get("messages", [])
+    if messages and len(messages) >= 2:
+        last_msg = messages[-1]
+        second_last_msg = messages[-2]
+        
+        if isinstance(last_msg, HumanMessage) and isinstance(second_last_msg, AIMessage):
+            user_content = last_msg.content.lower()
+            ai_content = second_last_msg.content.lower()
+            
+            # Check if user confirmed summary
+            satisfaction_words = ["yes", "good", "great", "perfect", "right", "correct"]
+            user_confirmed = any(word in user_content for word in satisfaction_words)
+            
+            # Check if AI showed summary
+            ai_showed_summary = (
+                "summary" in ai_content or 
+                "does this feel right" in ai_content or
+                "here's a summary" in ai_content
+            )
+            
+            # Check if we're in the last section
+            from ..enums import SectionID
+            current_section = state.get("current_section")
+            is_last_section = current_section == SectionID.INVEST_PLAN if current_section else False
+            
+            # If user confirmed summary in last section, skip generating reply
+            # This allows memory_updater to route to business plan generation
+            if is_last_section and ai_showed_summary and user_confirmed:
+                logger.info("User confirmed final summary - skipping reply generation to allow business plan generation")
+                # Don't generate a reply, just return state
+                # The memory_updater will handle routing to business plan generation
+                return state
+    
     context_packet = state.get('context_packet')
     
     # Get LLM - no tools, no structured output for streaming
