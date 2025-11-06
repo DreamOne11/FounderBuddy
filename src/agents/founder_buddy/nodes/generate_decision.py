@@ -93,9 +93,11 @@ async def generate_decision_node(state: FounderBuddyState, config: RunnableConfi
     
     if should_generate_business_plan:
         logger.info("User confirmed final summary - setting preliminary flag to generate business plan")
+        logger.info(f"Conditions: is_last_section={is_last_section}, ai_showed_summary={ai_showed_summary}, is_satisfied={is_satisfied}, business_plan_exists={bool(state.get('business_plan'))}")
         state["should_generate_business_plan"] = True
     else:
         # Reset flag if conditions not met
+        logger.debug(f"Not setting business plan flag: is_last_section={is_last_section}, ai_showed_summary={ai_showed_summary}, is_satisfied={is_satisfied}, business_plan_exists={bool(state.get('business_plan'))}")
         state["should_generate_business_plan"] = False
     
     # Determine router directive
@@ -119,6 +121,10 @@ async def generate_decision_node(state: FounderBuddyState, config: RunnableConfi
         "总结" in last_ai_reply or
         (is_last_section and ai_showed_summary and is_satisfied)  # User confirmed final summary
     )
+    
+    # Log for debugging
+    if is_last_section and ai_showed_summary and is_satisfied:
+        logger.info(f"User confirmed final summary - should_save_content={should_save_content}, is_satisfied={is_satisfied}")
     
     decision = ChatAgentDecision(
         router_directive=router_directive.value,

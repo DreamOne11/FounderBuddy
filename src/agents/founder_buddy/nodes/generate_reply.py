@@ -52,15 +52,18 @@ Is there anything else I can help you with regarding your business plan?"""
             user_content = last_msg.content.lower()
             ai_content = second_last_msg.content.lower()
             
-            # Check if user confirmed summary
-            satisfaction_words = ["yes", "good", "great", "perfect", "right", "correct"]
+            # Check if user confirmed summary (expanded list)
+            satisfaction_words = ["yes", "good", "great", "perfect", "right", "correct", "sounds good", "looks good", "that's right", "exactly", "yep", "yeah"]
             user_confirmed = any(word in user_content for word in satisfaction_words)
             
-            # Check if AI showed summary
+            # Check if AI showed summary (expanded detection)
             ai_showed_summary = (
                 "summary" in ai_content or 
                 "does this feel right" in ai_content or
-                "here's a summary" in ai_content
+                "does this summary" in ai_content or
+                "here's a summary" in ai_content or
+                "here is a summary" in ai_content or
+                "summary of your" in ai_content
             )
             
             # Check if we're in the last section
@@ -68,10 +71,16 @@ Is there anything else I can help you with regarding your business plan?"""
             current_section = state.get("current_section")
             is_last_section = current_section == SectionID.INVEST_PLAN if current_section else False
             
+            # Log for debugging
+            logger.info(f"Checking skip conditions: is_last_section={is_last_section}, ai_showed_summary={ai_showed_summary}, user_confirmed={user_confirmed}")
+            logger.info(f"User message: {user_content[:100]}")
+            logger.info(f"AI message: {ai_content[:200]}")
+            
             # If user confirmed summary in last section, skip generating reply
             # This allows memory_updater to route to business plan generation
             if is_last_section and ai_showed_summary and user_confirmed:
                 logger.info("User confirmed final summary - skipping reply generation to allow business plan generation")
+                logger.info(f"Conditions: is_last_section={is_last_section}, ai_showed_summary={ai_showed_summary}, user_confirmed={user_confirmed}")
                 # Don't generate a reply, just return state
                 # The memory_updater will handle routing to business plan generation
                 return state

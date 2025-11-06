@@ -42,6 +42,7 @@ async def memory_updater_node(state: FounderBuddyState, config: RunnableConfig) 
     # Update section state if we should save content
     if agent_out.should_save_content:
         current_section_id = current_section.value if current_section else "unknown"
+        logger.info(f"Should save content for section {current_section_id}, is_satisfied={agent_out.is_satisfied}, directive={agent_out.router_directive}")
         
         # Get the last AI message content
         messages = state.get("messages", [])
@@ -86,6 +87,10 @@ async def memory_updater_node(state: FounderBuddyState, config: RunnableConfig) 
             state["section_states"] = section_states
             
             logger.info(f"Updated section state for {current_section_id} with status {section_state.status.value}")
+        else:
+            logger.warning(f"No AI message found to save for section {current_section_id}")
+    else:
+        logger.debug(f"Not saving content for section {current_section.value if current_section else 'unknown'}, should_save_content={agent_out.should_save_content}")
     
     # Check if all sections are complete and generate business plan
     section_states = state.get("section_states", {})
@@ -139,8 +144,11 @@ async def memory_updater_node(state: FounderBuddyState, config: RunnableConfig) 
     # Only set flag if decision node said so AND all sections are complete
     if should_generate_from_decision and all_complete and not state.get("business_plan"):
         logger.info("All sections complete and user confirmed summary - setting flag to generate business plan")
+        logger.info(f"Section states: {[(sid.value, state.get('section_states', {}).get(sid.value, {}).get('status', 'NOT_SET')) for sid in all_sections]}")
         state["should_generate_business_plan"] = True
     else:
+        logger.info(f"Not generating business plan: should_generate_from_decision={should_generate_from_decision}, all_complete={all_complete}, business_plan_exists={bool(state.get('business_plan'))}")
+        logger.info(f"Section states: {[(sid.value, state.get('section_states', {}).get(sid.value, {}).get('status', 'NOT_SET')) for sid in all_sections]}")
         state["should_generate_business_plan"] = False
     
     # Manage short_memory size (keep last 10 messages)
