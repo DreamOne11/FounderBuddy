@@ -1,5 +1,7 @@
 'use client';
 
+import { useRouter, useSearchParams } from 'next/navigation';
+
 interface Section {
   database_id: number;
   name: string;
@@ -9,6 +11,9 @@ interface Section {
 interface ProgressSidebarProps {
   currentSection: Section | null;
   selectedAgent: string;
+  threadId?: string | null;
+  userId?: number;
+  onEditBusinessPlan?: () => void;
 }
 
 // Define all sections for founder-buddy
@@ -19,7 +24,14 @@ const FOUNDER_BUDDY_SECTIONS = [
   { id: 'invest_plan', name: 'Investment Plan', displayName: 'Investment Plan' }
 ];
 
-export default function ProgressSidebar({ currentSection, selectedAgent }: ProgressSidebarProps) {
+export default function ProgressSidebar({ 
+  currentSection, 
+  selectedAgent, 
+  threadId, 
+  userId,
+  onEditBusinessPlan
+}: ProgressSidebarProps) {
+  const router = useRouter();
 
   // Get status for a section
   const getSectionStatus = (sectionId: string): 'pending' | 'in_progress' | 'completed' => {
@@ -169,6 +181,65 @@ export default function ProgressSidebar({ currentSection, selectedAgent }: Progr
             </div>
           );
         })}
+        
+        {/* Edit Full Business Plan Button - Show at bottom if threadId and userId are available */}
+        {threadId && userId && (
+          <div style={{
+            marginTop: '16px',
+            paddingTop: '16px',
+            borderTop: '1px solid #e2e8f0'
+          }}>
+            <button
+              onClick={() => {
+                if (onEditBusinessPlan) {
+                  onEditBusinessPlan();
+                } else {
+                  router.push(`/business-plan/edit?thread_id=${threadId}&user_id=${userId}`);
+                }
+              }}
+              style={{
+                width: '100%',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: 'white',
+                backgroundColor: '#6366f1',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 2px 4px rgba(99, 102, 241, 0.2)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#4f46e5';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 4px 6px rgba(99, 102, 241, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#6366f1';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 2px 4px rgba(99, 102, 241, 0.2)';
+              }}
+              title="Edit the complete business plan after all sections are finished"
+            >
+              <span>📝</span>
+              <span>Edit Full Business Plan</span>
+            </button>
+            <div style={{
+              fontSize: '11px',
+              color: '#64748b',
+              marginTop: '8px',
+              textAlign: 'center',
+              fontStyle: 'italic'
+            }}>
+              Available after plan is generated
+            </div>
+          </div>
+        )}
       </div>
     );
   }

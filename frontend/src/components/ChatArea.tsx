@@ -134,10 +134,6 @@ export default function ChatArea({
 
   const getAgentName = (agentId: string) => {
     const names: Record<string, string> = {
-      'value-canvas': 'Value Canvas Agent',
-      'social-pitch': 'Social Pitch Agent',
-      'mission-pitch': 'Mission Pitch Agent',
-      'special-report': 'Special Report Agent',
       'founder-buddy': 'Founder Buddy'
     };
     return names[agentId] || 'AI Agent';
@@ -145,10 +141,6 @@ export default function ChatArea({
 
   const getPlaceholderText = (agentId: string) => {
     const placeholders: Record<string, string> = {
-      'value-canvas': 'Try: "I want to create my value canvas"',
-      'social-pitch': 'Try: "I want to create my social pitch"',
-      'mission-pitch': 'Try: "I want to discover my mission pitch"',
-      'special-report': 'Try: "Help me create a business report"',
       'founder-buddy': 'Try: "I want to validate my startup idea"'
     };
     return placeholders[agentId] || 'Type your message...';
@@ -444,10 +436,6 @@ export default function ChatArea({
                color: '#64748b',
                margin: '4px 0 0 0'
              }}>
-               {selectedAgent === 'value-canvas' && 'Create powerful marketing frameworks'}
-               {selectedAgent === 'social-pitch' && 'Craft compelling social pitches'}
-               {selectedAgent === 'mission-pitch' && 'Discover your purpose and vision'}
-               {selectedAgent === 'special-report' && 'Comprehensive business reports and analysis'}
                {selectedAgent === 'founder-buddy' && 'Validate and refine your startup idea'}
              </p>
            )}

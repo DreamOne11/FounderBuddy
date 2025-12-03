@@ -13,6 +13,7 @@ from typing import Annotated, Any
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, status
+from starlette.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -26,18 +27,6 @@ from langsmith import Client as LangsmithClient
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info
-from agents.mission_pitch.agent import initialize_mission_pitch_state
-from agents.mission_pitch.prompts import SECTION_TEMPLATES as MISSION_PITCH_TEMPLATES
-from agents.signature_pitch.agent import initialize_signature_pitch_state
-from agents.signature_pitch.prompts import SECTION_TEMPLATES as SIGNATURE_PITCH_TEMPLATES
-from agents.social_pitch.agent import initialize_social_pitch_state
-from agents.social_pitch.prompts import SECTION_TEMPLATES as SOCIAL_PITCH_TEMPLATES
-from agents.special_report.agent import initialize_special_report_state
-from agents.special_report.prompts import SECTION_TEMPLATES as SPECIAL_REPORT_TEMPLATES
-from agents.value_canvas.agent import initialize_value_canvas_state
-from agents.value_canvas.prompts import SECTION_TEMPLATES as VALUE_CANVAS_TEMPLATES
-from agents.concept_pitch.agent import initialize_concept_pitch_state
-from agents.concept_pitch.prompts import SECTION_TEMPLATES as CONCEPT_PITCH_TEMPLATES
 from agents.founder_buddy.agent import initialize_founder_buddy_state
 from agents.founder_buddy.prompts import SECTION_TEMPLATES as FOUNDER_BUDDY_TEMPLATES
 from core import settings
@@ -178,6 +167,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Configurable lifespan that initializes the appropriate database checkpointer and store
     based on settings.
     """
+    # Initialize Realtime worker if enabled
+    realtime_worker = None
+    if settings.USE_SUPABASE_REALTIME:
+        try:
+            from integrations.supabase.realtime_worker import RealtimeWorker
+            realtime_worker = RealtimeWorker()
+            await realtime_worker.start()
+            app.state.realtime_worker = realtime_worker
+            logger.info("✅ Realtime worker started")
+        except Exception as e:
+            logger.error(f"Failed to start Realtime worker: {e}", exc_info=True)
+            # Continue without Realtime worker
+    
     try:
         if settings.DATABASE_TYPE == DatabaseType.POSTGRES:
             # Initialize PostgreSQL connection pool
@@ -219,6 +221,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.error(f"Error during database/store initialization: {e}")
         raise
+    finally:
+        # Stop Realtime worker on shutdown
+        if realtime_worker:
+            await realtime_worker.stop()
+            logger.info("✅ Realtime worker stopped")
 
 
 app = FastAPI(lifespan=lifespan)
@@ -253,25 +260,25 @@ async def info() -> ServiceMetadata:
                 method="POST",
                 description="Sync LangGraph state with manually edited section content from database. Uses LLM to extract structured data from Tiptap text and updates agent state. Common section IDs: 45=interview, 46=icp, 48=pain, 49=deep_fear, 50=payoffs, 52=signature_method, 53=mistakes, 54=prize.",
                 parameters={
-                    "agent_id": "Agent identifier (currently only 'value-canvas' supported)",
+                    "agent_id": "Agent identifier (currently only 'founder-buddy' supported)",
                     "section_id": "Section ID integer from database (e.g., 48 for pain, 46 for icp, 45 for interview)",
                     "user_id": "User identifier (required query parameter)",
                     "thread_id": "Thread/conversation identifier (required query parameter)"
                 },
-                example="/sync_section/value-canvas/48?user_id=12&thread_id=3ab280c6-44ee-416d-87f9-73aad616c8ec"
+                example="/sync_section/founder-buddy/48?user_id=12&thread_id=3ab280c6-44ee-416d-87f9-73aad616c8ec"
             ),
             EndpointInfo(
                 path="/refine_section/{agent_id}/{section_id}",
                 method="POST",
                 description="Refine section content using AI. Accepts JSON body with user_id, thread_id, and refinement_prompt. Returns refined content (plain text + Tiptap format). Does NOT save to database. Common section IDs: 45=interview, 46=icp, 48=pain, 49=deep_fear, 50=payoffs, 52=signature_method, 53=mistakes, 54=prize.",
                 parameters={
-                    "agent_id": "Agent identifier - path parameter (currently only 'value-canvas' supported)",
+                    "agent_id": "Agent identifier - path parameter (currently only 'founder-buddy' supported)",
                     "section_id": "Section ID integer from database - path parameter (e.g., 48 for pain, 46 for icp, 45 for interview)",
                     "body.user_id": "User identifier (integer, required in JSON body)",
                     "body.thread_id": "Thread/conversation identifier (string, required in JSON body)",
                     "body.refinement_prompt": "User's refinement instruction (string, can be long text, required in JSON body)"
                 },
-                example='curl -X POST http://localhost:8080/refine_section/value-canvas/48 -H "Content-Type: application/json" -d \'{"user_id": 12, "thread_id": "3ab280c6-44ee-416d-87f9-73aad616c8ec", "refinement_prompt": "Make it more concise"}\''
+                example='curl -X POST http://localhost:8080/refine_section/founder-buddy/48 -H "Content-Type: application/json" -d \'{"user_id": 12, "thread_id": "3ab280c6-44ee-416d-87f9-73aad616c8ec", "refinement_prompt": "Make it more concise"}\''
             ),
         ]
     )
@@ -294,19 +301,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph, agent_id: str)
     initial_state = None
     if not thread_id:
         # This is a new conversation, so we need to initialize a new state
-        if agent_id == "value-canvas":
-            initial_state = await initialize_value_canvas_state(user_id=user_id)
-        elif agent_id == "mission-pitch":
-            initial_state = await initialize_mission_pitch_state(user_id=user_id)
-        elif agent_id == "social-pitch":
-            initial_state = await initialize_social_pitch_state(user_id=user_id)
-        elif agent_id == "signature-pitch":
-            initial_state = await initialize_signature_pitch_state(user_id=user_id)
-        elif agent_id == "special-report":
-            initial_state = await initialize_special_report_state(user_id=user_id)
-        elif agent_id == "concept-pitch":
-            initial_state = await initialize_concept_pitch_state(user_id=user_id)
-        elif agent_id == "founder-buddy":
+        if agent_id == "founder-buddy":
             initial_state = await initialize_founder_buddy_state(user_id=user_id)
         else:
             raise ValueError(f"Unknown agent: {agent_id}")
@@ -426,73 +421,28 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> Invoke
     # you'd want to include it. You could update the API to return a list of ChatMessages
     # in that case.
     
-    # Use custom graph for concept-pitch agent
-    if agent_id == 'concept-pitch':
-        from agents.concept_pitch.agent import initialize_concept_pitch_state, graph as concept_pitch_graph
-        
-        # Initialize the state using the proper LangGraph state initialization
-        init_state = await initialize_concept_pitch_state(
-            user_id=user_input.user_id or 1,
-            thread_id=user_input.thread_id
-        )
-        
-        # Add the user message to the state
-        if user_input.message:
-            init_state["messages"].append(HumanMessage(content=user_input.message))
-        
-        # Build config for the agent
-        config = {
-            "configurable": {
-                "thread_id": init_state["thread_id"],
-                "user_id": init_state["user_id"],
-            }
-        }
-        
-        # Run the LangGraph agent
-        response_events = await concept_pitch_graph.ainvoke(init_state, config=config, stream_mode=["updates", "values"])
-        response_type, response = response_events[-1]
-        
-        if response_type == "values":
-            # Normal response, the agent completed successfully
-            output = langchain_to_chat_message(response["messages"][-1])
-            
-            # Extract concept pitch data if available
-            concept_pitch_data = {}
-            if "concept_pitch" in response:
-                concept_pitch_data = response["concept_pitch"]
-            
-            # Add concept pitch data to custom_data
-            if concept_pitch_data:
-                output.custom_data["concept_pitch"] = concept_pitch_data
-            
-        elif response_type == "updates" and "__interrupt__" in response:
-            # The last thing to occur was an interrupt
-            output = langchain_to_chat_message(
-                AIMessage(content=response["__interrupt__"][0].value)
-            )
-        else:
-            raise ValueError(f"Unexpected response type: {response_type}")
-        
-        # Create response
-        invoke_response = InvokeResponse(
-            output=output,
-            thread_id=init_state["thread_id"],
-            user_id=init_state["user_id"],
-        )
-        
-        logger.info(f"=== CONCEPT_PITCH_RESPONSE_SUCCESS ===")
-        logger.info(f"CONCEPT_PITCH_RESPONSE: thread_id={init_state['thread_id']}")
-        logger.info(f"CONCEPT_PITCH_RESPONSE: user_id={init_state['user_id']}")
-        logger.info(f"CONCEPT_PITCH_RESPONSE: response_type={response_type}")
-        logger.info(f"CONCEPT_PITCH_RESPONSE: has_concept_pitch={bool(output.custom_data.get('concept_pitch'))}")
-        
-        return invoke_response
-    else:
-        agent: AgentGraph = get_agent(agent_id)
-        kwargs, run_id = await _handle_input(user_input, agent, agent_id)
+    agent: AgentGraph = get_agent(agent_id)
+    kwargs, run_id = await _handle_input(user_input, agent, agent_id)
     
     logger.info(f"INVOKE_REQUEST: run_id={run_id}")
     logger.info(f"INVOKE_REQUEST: config_thread_id={kwargs['config']['configurable']['thread_id']}")
+    
+    # Subscribe to Realtime for this thread if enabled
+    if settings.USE_SUPABASE_REALTIME:
+        try:
+            realtime_worker = app.state.realtime_worker
+            thread_id = kwargs['config']['configurable']['thread_id']
+            user_id = user_input.user_id or 1
+            await realtime_worker.subscribe_to_thread(
+                user_id=user_id,
+                thread_id=thread_id,
+                agent_id=agent_id
+            )
+        except AttributeError:
+            # Realtime worker not initialized
+            pass
+        except Exception as e:
+            logger.warning(f"Failed to subscribe to Realtime for thread {thread_id}: {e}")
 
     try:
         response_events: list[tuple[str, Any]] = await agent.ainvoke(**kwargs, stream_mode=["updates", "values"])  # type: ignore # fmt: skip
@@ -518,20 +468,10 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> Invoke
             current_section_id = current_section_enum.value  # Use the string value
             section_state = state.values.get("section_states", {}).get(current_section_id)
             # Choose the right section templates based on agent_id
-            if agent_id == "mission-pitch":
-                section_templates = MISSION_PITCH_TEMPLATES
-            elif agent_id == "social-pitch":
-                section_templates = SOCIAL_PITCH_TEMPLATES
-            elif agent_id == "signature-pitch":
-                section_templates = SIGNATURE_PITCH_TEMPLATES
-            elif agent_id == "special-report":
-                section_templates = SPECIAL_REPORT_TEMPLATES
-            elif agent_id == "concept-pitch":
-                section_templates = CONCEPT_PITCH_TEMPLATES
-            elif agent_id == "founder-buddy":
+            if agent_id == "founder-buddy":
                 section_templates = FOUNDER_BUDDY_TEMPLATES
-            else:  # default to value_canvas
-                section_templates = VALUE_CANVAS_TEMPLATES
+            else:
+                raise ValueError(f"Unknown agent: {agent_id}")
             
             section_template = section_templates.get(current_section_id)
 
@@ -567,7 +507,7 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> Invoke
 
 
 async def message_generator(
-    user_input: StreamInput, agent_id: str = DEFAULT_AGENT
+    user_input: StreamInput, agent_id: str = DEFAULT_AGENT, request: Request | None = None
 ) -> AsyncGenerator[str, None]:
     """
     Generate a stream of messages from the agent.
@@ -575,12 +515,27 @@ async def message_generator(
     This is the workhorse method for the /stream endpoint.
     """
     # Log stream request summary
-    logger.info(f"[STREAM] Start: agent={agent_id}, user={user_input.user_id}, thread={user_input.thread_id[:8] if user_input.thread_id else 'new'}...")
+    thread_id_display = user_input.thread_id if user_input.thread_id else 'new'
+    logger.info(f"[STREAM] Start: agent={agent_id}, user={user_input.user_id}, thread_id={thread_id_display}")
     
     agent: AgentGraph = get_agent(agent_id)
     kwargs, run_id = await _handle_input(user_input, agent, agent_id)
     
     logger.debug(f"Stream run_id: {run_id}")
+    
+    # Subscribe to Realtime for this thread if enabled
+    if settings.USE_SUPABASE_REALTIME and request and hasattr(request.app.state, 'realtime_worker'):
+        realtime_worker = request.app.state.realtime_worker
+        thread_id = kwargs['config']['configurable']['thread_id']
+        user_id = user_input.user_id or 1
+        try:
+            await realtime_worker.subscribe_to_thread(
+                user_id=user_id,
+                thread_id=thread_id,
+                agent_id=agent_id
+            )
+        except Exception as e:
+            logger.warning(f"Failed to subscribe to Realtime for thread {thread_id}: {e}")
 
     # Get the current thread's message history length to filter out historical messages
     try:
@@ -879,7 +834,7 @@ def _sse_response_example() -> dict[int | str, Any]:
     responses=_sse_response_example(),
 )
 @router.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
-async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> StreamingResponse:
+async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT, request: Request = None) -> StreamingResponse:
     """
     Stream an agent's response to a user input, including intermediate messages and tokens.
 
@@ -891,7 +846,7 @@ async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> Stre
     Set `stream_tokens=false` to return intermediate messages but not token-by-token.
     """
     return StreamingResponse(
-        message_generator(user_input, agent_id),
+        message_generator(user_input, agent_id, request),
         media_type="text/event-stream",
     )
 
@@ -978,7 +933,7 @@ async def notify_section_update(
     - Returns an AI prompt (single message) and the latest section status/draft
 
     Args:
-        agent_id: Agent identifier (e.g., "value-canvas")
+        agent_id: Agent identifier (e.g., "founder-buddy")
         section_id: Section ID integer from database (e.g., 48 for pain, 46 for icp)
         user_id: User identifier
         thread_id: Thread/conversation identifier (required)
@@ -998,18 +953,10 @@ async def notify_section_update(
         raise HTTPException(status_code=422, detail="Missing required parameter: thread_id")
     
     # Choose the right section templates based on agent_id
-    if agent_id == "mission-pitch":
-        section_templates = MISSION_PITCH_TEMPLATES
-    elif agent_id == "social-pitch":
-        section_templates = SOCIAL_PITCH_TEMPLATES
-    elif agent_id == "signature-pitch":
-        section_templates = SIGNATURE_PITCH_TEMPLATES
-    elif agent_id == "special-report":
-        section_templates = SPECIAL_REPORT_TEMPLATES
-    elif agent_id == "concept-pitch":
-        section_templates = CONCEPT_PITCH_TEMPLATES
-    else:  # default to value_canvas
-        section_templates = VALUE_CANVAS_TEMPLATES
+    if agent_id == "founder-buddy":
+        section_templates = FOUNDER_BUDDY_TEMPLATES
+    else:
+        raise ValueError(f"Unknown agent: {agent_id}")
     
     # Validate section_id
     if section_id_str not in section_templates:
@@ -1065,7 +1012,7 @@ async def sync_section(
     and we need to sync the structured state with their changes.
 
     Args:
-        agent_id: Agent identifier (e.g., "value-canvas")
+        agent_id: Agent identifier (e.g., "founder-buddy")
         section_id: Section ID integer from database (e.g., 48 for pain, 46 for icp)
         user_id: User identifier
         thread_id: Thread/conversation identifier
@@ -1087,26 +1034,450 @@ async def sync_section(
     if not thread_id:
         raise HTTPException(status_code=422, detail="Missing required parameter: thread_id")
 
-    # Only value-canvas agent is supported for now
-    if agent_id != "value-canvas":
-        raise HTTPException(
-            status_code=422,
-            detail=f"Sync not yet supported for agent: {agent_id}. Currently only 'value-canvas' is supported."
-        )
+    # Sync is not supported for founder-buddy agent
+    raise HTTPException(
+        status_code=422,
+        detail=f"Sync not supported for agent: {agent_id}. This feature is not available for founder-buddy."
+    )
 
-    # Get agent
+
+@router.get("/check_agent_state/{agent_id}")
+async def check_agent_state(
+    agent_id: str,
+    user_id: int,
+    thread_id: str,
+    section_id: str | None = None,
+):
+    """
+    Check if agent has read the latest database updates.
+    
+    This endpoint compares:
+    1. Current section content in Supabase database
+    2. Current section content in LangGraph agent state
+    
+    Returns a comparison showing if they match.
+    
+    Args:
+        agent_id: Agent identifier (e.g., "founder-buddy")
+        user_id: User identifier
+        thread_id: Thread/conversation identifier
+        section_id: Optional section ID to check (e.g., "mission", "idea")
+                    If not provided, checks all sections
+    
+    Returns:
+        Comparison result showing database vs agent state
+    """
+    logger.info(f"=== CHECK_AGENT_STATE: agent_id={agent_id}, thread_id={thread_id} ===")
+    
     try:
+        # Get agent
         agent: AgentGraph = get_agent(agent_id)
+        
+        # Get agent state
+        config = RunnableConfig(
+            configurable={
+                "thread_id": thread_id,
+                "user_id": user_id
+            }
+        )
+        
+        state_snapshot = await agent.aget_state(config)
+        if not state_snapshot or not state_snapshot.values:
+            return {
+                "success": False,
+                "message": "No agent state found for this thread",
+                "thread_id": thread_id,
+            }
+        
+        agent_state = state_snapshot.values
+        agent_section_states = agent_state.get("section_states", {})
+        
+        # Get database state from Supabase
+        from integrations.supabase.supabase_client import SupabaseClient
+        client = SupabaseClient()
+        
+        # Build query
+        query = client.client.table("section_states")\
+            .select("*")\
+            .eq("user_id", user_id)\
+            .eq("thread_id", thread_id)\
+            .eq("agent_id", agent_id)
+        
+        if section_id:
+            query = query.eq("section_id", section_id)
+        
+        result = query.execute()
+        db_section_states = result.data if result.data else []
+        
+        # Compare database vs agent state
+        comparison = []
+        
+        if section_id:
+            # Check specific section
+            db_state = next((s for s in db_section_states if s["section_id"] == section_id), None)
+            agent_state_data = agent_section_states.get(section_id)
+            
+            if db_state:
+                db_content = db_state.get("content", {})
+                db_plain_text = db_state.get("plain_text", "")
+                db_updated = db_state.get("updated_at")
+                
+                if agent_state_data:
+                    # agent_state_data is a SectionState Pydantic model, not a dict
+                    agent_content = agent_state_data.content
+                    if agent_content:
+                        agent_plain_text = agent_content.plain_text or ""
+                        # Extract text from TiptapDocument if needed
+                        if hasattr(agent_content, 'content') and agent_content.content:
+                            # Try to extract text from Tiptap structure
+                            def get_text_from_tiptap(node):
+                                if hasattr(node, 'content') and node.content:
+                                    if hasattr(node, 'text'):
+                                        return node.text
+                                    return "".join(get_text_from_tiptap(c) for c in node.content)
+                                return ""
+                            agent_plain_text = "".join(get_text_from_tiptap(p) for p in agent_content.content.content) if agent_content.content.content else agent_plain_text
+                    else:
+                        agent_plain_text = ""
+                    agent_status = agent_state_data.status.value if hasattr(agent_state_data.status, 'value') else str(agent_state_data.status)
+                else:
+                    agent_content = None
+                    agent_plain_text = ""
+                    agent_status = "not_in_state"
+                
+                # Extract text for comparison
+                def extract_text(data):
+                    if isinstance(data, str):
+                        return data
+                    if isinstance(data, dict):
+                        if "plain_text" in data:
+                            return data["plain_text"]
+                        if "text" in data:
+                            return data["text"]
+                        # Try to extract from Tiptap structure
+                        if "content" in data and isinstance(data["content"], list):
+                            def get_text(node):
+                                if isinstance(node, dict):
+                                    if "text" in node:
+                                        return node["text"]
+                                    if "content" in node:
+                                        return "".join(get_text(c) for c in node["content"])
+                                return ""
+                            return "".join(get_text(n) for n in data["content"])
+                    return ""
+                
+                db_text = extract_text(db_content) or db_plain_text
+                agent_text = agent_plain_text or extract_text(agent_content)
+                
+                comparison.append({
+                    "section_id": section_id,
+                    "database": {
+                        "has_content": bool(db_content),
+                        "text_preview": db_text[:200] if db_text else None,
+                        "text_length": len(db_text),
+                        "updated_at": db_updated,
+                    },
+                    "agent_state": {
+                        "has_content": bool(agent_content),
+                        "text_preview": agent_text[:200] if agent_text else None,
+                        "text_length": len(agent_text),
+                        "status": agent_status,
+                    },
+                    "match": db_text.strip() == agent_text.strip() if (db_text and agent_text) else False,
+                    "synced": bool(agent_content) and db_text.strip() == agent_text.strip(),
+                })
+            else:
+                comparison.append({
+                    "section_id": section_id,
+                    "database": {"has_content": False},
+                    "agent_state": {
+                        "has_content": bool(agent_state_data),
+                        "status": agent_state_data.status.value if agent_state_data and hasattr(agent_state_data.status, 'value') else (str(agent_state_data.status) if agent_state_data else "not_in_state"),
+                    },
+                    "match": False,
+                    "synced": False,
+                    "message": "Section not found in database",
+                })
+        else:
+            # Check all sections
+            db_sections_by_id = {s["section_id"]: s for s in db_section_states}
+            
+            all_section_ids = set(list(db_sections_by_id.keys()) + list(agent_section_states.keys()))
+            
+            for sid in all_section_ids:
+                db_state = db_sections_by_id.get(sid)
+                agent_state_data = agent_section_states.get(sid)
+                
+                if db_state:
+                    db_content = db_state.get("content", {})
+                    db_plain_text = db_state.get("plain_text", "")
+                    db_updated = db_state.get("updated_at")
+                    
+                    def extract_text(data):
+                        if isinstance(data, str):
+                            return data
+                        if isinstance(data, dict):
+                            if "plain_text" in data:
+                                return data["plain_text"]
+                            if "text" in data:
+                                return data["text"]
+                        return ""
+                    
+                    db_text = extract_text(db_content) or db_plain_text
+                    
+                    if agent_state_data:
+                        # agent_state_data is a SectionState Pydantic model, not a dict
+                        agent_content = agent_state_data.content
+                        if agent_content:
+                            agent_plain_text = agent_content.plain_text or ""
+                            # Extract text from TiptapDocument if needed
+                            if hasattr(agent_content, 'content') and agent_content.content:
+                                def get_text_from_tiptap(node):
+                                    if hasattr(node, 'content') and node.content:
+                                        if hasattr(node, 'text'):
+                                            return node.text
+                                        return "".join(get_text_from_tiptap(c) for c in node.content)
+                                    return ""
+                                agent_plain_text = "".join(get_text_from_tiptap(p) for p in agent_content.content.content) if agent_content.content.content else agent_plain_text
+                        else:
+                            agent_plain_text = ""
+                        agent_text = agent_plain_text or extract_text(agent_content) if agent_content else ""
+                        agent_status = agent_state_data.status.value if hasattr(agent_state_data.status, 'value') else str(agent_state_data.status)
+                    else:
+                        agent_text = ""
+                        agent_status = "not_in_state"
+                    
+                    comparison.append({
+                        "section_id": sid,
+                        "database": {
+                            "has_content": bool(db_content),
+                            "text_length": len(db_text),
+                            "updated_at": db_updated,
+                        },
+                        "agent_state": {
+                            "has_content": bool(agent_state_data),
+                            "text_length": len(agent_text),
+                            "status": agent_status,
+                        },
+                        "match": db_text.strip() == agent_text.strip() if (db_text and agent_text) else False,
+                        "synced": bool(agent_state_data) and db_text.strip() == agent_text.strip(),
+                    })
+                else:
+                    comparison.append({
+                        "section_id": sid,
+                        "database": {"has_content": False},
+                    "agent_state": {
+                        "has_content": bool(agent_state_data),
+                        "status": agent_state_data.status.value if agent_state_data and hasattr(agent_state_data.status, 'value') else (str(agent_state_data.status) if agent_state_data else "not_in_state"),
+                    },
+                        "match": False,
+                        "synced": False,
+                    })
+        
+        # Check business_plan from business_plans table
+        business_plan_comparison = {
+            "database": {"has_content": False},
+            "agent_state": {"has_content": False},
+            "match": False,
+            "synced": False,
+        }
+        try:
+            bp_result = client.client.table("business_plans")\
+                .select("*")\
+                .eq("user_id", user_id)\
+                .eq("thread_id", thread_id)\
+                .eq("agent_id", agent_id)\
+                .maybe_single()\
+                .execute()
+            
+            db_business_plan = bp_result.data if bp_result.data else None
+            agent_business_plan = agent_state.get("business_plan")
+            
+            # Always create comparison, even if both are None
+            db_bp_content = db_business_plan.get("content") if db_business_plan else None
+            db_bp_markdown = db_business_plan.get("markdown_content") if db_business_plan else None
+            db_bp_text = db_bp_markdown or db_bp_content or ""
+            
+            agent_bp_text = agent_business_plan or ""
+            
+            # Normalize for comparison (strip whitespace)
+            db_bp_text_normalized = db_bp_text.strip() if db_bp_text else ""
+            agent_bp_text_normalized = agent_bp_text.strip() if agent_bp_text else ""
+            
+            business_plan_comparison = {
+                "database": {
+                    "has_content": bool(db_bp_text),
+                    "text_length": len(db_bp_text),
+                    "text_preview": db_bp_text[:500] if db_bp_text else None,
+                    "updated_at": db_business_plan.get("updated_at") if db_business_plan else None,
+                },
+                "agent_state": {
+                    "has_content": bool(agent_bp_text),
+                    "text_length": len(agent_bp_text),
+                    "text_preview": agent_bp_text[:500] if agent_bp_text else None,
+                },
+                "match": db_bp_text_normalized == agent_bp_text_normalized if (db_bp_text_normalized and agent_bp_text_normalized) else False,
+                "synced": bool(agent_bp_text) and db_bp_text_normalized == agent_bp_text_normalized,
+            }
+        except Exception as e:
+            logger.warning(f"Could not check business_plan: {e}")
+            import traceback
+            logger.debug(f"Business plan check error traceback: {traceback.format_exc()}")
+            # Keep default comparison with has_content: False
+        
+        # Summary
+        synced_count = sum(1 for c in comparison if c.get("synced", False))
+        total_count = len(comparison)
+        
+        result = {
+            "success": True,
+            "thread_id": thread_id,
+            "user_id": user_id,
+            "summary": {
+                "total_sections": total_count,
+                "synced_sections": synced_count,
+                "unsynced_sections": total_count - synced_count,
+                "all_synced": synced_count == total_count and total_count > 0,
+            },
+            "comparison": comparison,
+        }
+        
+        # Always include business_plan comparison
+        result["business_plan"] = business_plan_comparison
+        if business_plan_comparison.get("synced"):
+            result["summary"]["business_plan_synced"] = True
+        else:
+            result["summary"]["business_plan_synced"] = False
+        
+        return result
+        
     except Exception as e:
-        logger.error(f"SYNC_ERROR: Failed to get agent {agent_id}: {e}")
-        raise HTTPException(status_code=404, detail=f"Agent not found: {agent_id}")
+        logger.error(f"Error checking agent state: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error checking agent state: {str(e)}")
 
-    # Import sync function (only for value-canvas)
+
+@router.get("/get_agent_state/{agent_id}")
+async def get_agent_state(
+    agent_id: str,
+    user_id: int,
+    thread_id: str,
+):
+    """
+    Get the complete agent state including all section texts.
+    
+    This endpoint returns the full LangGraph agent state, including:
+    - All section states with their content
+    - Current section
+    - Messages
+    - Any other state data
+    
+    Args:
+        agent_id: Agent identifier (e.g., "founder-buddy")
+        user_id: User identifier
+        thread_id: Thread/conversation identifier
+    
+    Returns:
+        Complete agent state with all section texts
+    """
+    logger.info(f"=== GET_AGENT_STATE: agent_id={agent_id}, thread_id={thread_id} ===")
+    
     try:
-        from agents.value_canvas.sync import sync_section_from_database
-    except ImportError as e:
-        logger.error(f"SYNC_ERROR: Failed to import sync module: {e}")
-        raise HTTPException(status_code=500, detail="Sync module not available")
+        # Get agent
+        agent: AgentGraph = get_agent(agent_id)
+        
+        # Get agent state
+        config = RunnableConfig(
+            configurable={
+                "thread_id": thread_id,
+                "user_id": user_id
+            }
+        )
+        
+        state_snapshot = await agent.aget_state(config)
+        if not state_snapshot or not state_snapshot.values:
+            return {
+                "success": False,
+                "message": "No agent state found for this thread",
+                "thread_id": thread_id,
+            }
+        
+        agent_state = state_snapshot.values
+        
+        # Extract section states with readable text
+        section_states = {}
+        if "section_states" in agent_state:
+            for section_id, section_data in agent_state["section_states"].items():
+                # section_data is a SectionState Pydantic model, not a dict
+                content = section_data.content if hasattr(section_data, 'content') else None
+                plain_text = None
+                
+                # Extract plain text from content
+                if content:
+                    plain_text = content.plain_text if hasattr(content, 'plain_text') else None
+                    if not plain_text and hasattr(content, 'content') and content.content:
+                        # Try to extract from Tiptap structure
+                        def extract_text(node):
+                            if isinstance(node, str):
+                                return node
+                            if hasattr(node, 'text'):
+                                return node.text
+                            if hasattr(node, 'content') and node.content:
+                                return "".join(extract_text(c) for c in node.content)
+                            if isinstance(node, dict):
+                                if "text" in node:
+                                    return node["text"]
+                                if "content" in node and isinstance(node["content"], list):
+                                    return "".join(extract_text(c) for c in node["content"])
+                            return ""
+                        if hasattr(content, 'content') and content.content:
+                            if hasattr(content.content, 'content'):
+                                plain_text = "".join(extract_text(c) for c in content.content.content)
+                            else:
+                                plain_text = extract_text(content.content)
+                
+                # section_data is a SectionState Pydantic model
+                status_value = section_data.status.value if hasattr(section_data.status, 'value') else str(section_data.status)
+                satisfaction_status = section_data.satisfaction_status if hasattr(section_data, 'satisfaction_status') else None
+                
+                section_states[section_id] = {
+                    "section_id": section_id,
+                    "status": status_value,
+                    "satisfaction_status": satisfaction_status,
+                    "plain_text": plain_text or "",
+                    "content_preview": str(content)[:500] if content else None,
+                    "has_content": bool(content),
+                }
+        
+        # Extract messages (last few for context)
+        messages = []
+        if "messages" in agent_state:
+            for msg in agent_state["messages"][-5:]:  # Last 5 messages
+                if hasattr(msg, "content"):
+                    content = msg.content
+                elif isinstance(msg, dict):
+                    content = msg.get("content", "")
+                else:
+                    content = str(msg)
+                
+                messages.append({
+                    "type": type(msg).__name__,
+                    "content": content[:200] if isinstance(content, str) else str(content)[:200],
+                })
+        
+        return {
+            "success": True,
+            "thread_id": thread_id,
+            "user_id": user_id,
+            "current_section": str(agent_state.get("current_section", "unknown")),
+            "section_states": section_states,
+            "messages_count": len(agent_state.get("messages", [])),
+            "recent_messages": messages,
+            "state_keys": list(agent_state.keys()),
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting agent state: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error getting agent state: {str(e)}")
 
     # Execute sync
     try:
@@ -1159,7 +1530,7 @@ async def refine_section(
     4. If user accepts, frontend saves to DentApp API and calls /sync_section
 
     Args:
-        agent_id: Agent identifier (e.g., "value-canvas") - path parameter
+        agent_id: Agent identifier (e.g., "founder-buddy") - path parameter
         section_id: Section ID integer from database (e.g., 48 for pain, 46 for icp) - path parameter
         request: Request body containing user_id, thread_id, and refinement_prompt
 
@@ -1186,26 +1557,11 @@ async def refine_section(
     if not refinement_prompt.strip():
         raise HTTPException(status_code=422, detail="refinement_prompt cannot be empty or whitespace only")
 
-    # Only value-canvas agent is supported for now
-    if agent_id != "value-canvas":
-        raise HTTPException(
-            status_code=422,
-            detail=f"Refine not yet supported for agent: {agent_id}. Currently only 'value-canvas' is supported."
-        )
-
-    # Get agent
-    try:
-        agent: AgentGraph = get_agent(agent_id)
-    except Exception as e:
-        logger.error(f"REFINE_ERROR: Failed to get agent {agent_id}: {e}")
-        raise HTTPException(status_code=404, detail=f"Agent not found: {agent_id}")
-
-    # Import refine function (only for value-canvas)
-    try:
-        from agents.value_canvas.refine import refine_section_content
-    except ImportError as e:
-        logger.error(f"REFINE_ERROR: Failed to import refine module: {e}")
-        raise HTTPException(status_code=500, detail="Refine module not available")
+    # Refine is not supported for founder-buddy agent
+    raise HTTPException(
+        status_code=422,
+        detail=f"Refine not supported for agent: {agent_id}. This feature is not available for founder-buddy."
+    )
 
     # Execute refinement
     try:
@@ -1249,6 +1605,187 @@ async def health_check():
             health_status["langfuse"] = "disconnected"
 
     return health_status
+
+
+@router.post("/realtime/subscribe")
+async def subscribe_to_realtime(
+    request: Request,
+    user_id: int | None = None,
+    thread_id: str | None = None,
+    agent_id: str = "founder-buddy",
+):
+    """
+    Manually subscribe to Realtime events for a specific thread.
+    
+    This endpoint is useful when:
+    - User refreshes the page and needs to re-establish subscription
+    - User opens BusinessPlanEditor and wants to ensure subscription is active
+    - Frontend wants to explicitly establish subscription before editing
+    
+    Args:
+        user_id: User identifier
+        thread_id: Thread/conversation identifier
+        agent_id: Agent identifier (default: "founder-buddy")
+        request: FastAPI Request object (for accessing app.state)
+    
+    Returns:
+        Success status and subscription info
+    """
+    # Try to get parameters from request body if not provided as query params
+    if user_id is None or thread_id is None:
+        try:
+            body = await request.json()
+            user_id = user_id or body.get("user_id")
+            thread_id = thread_id or body.get("thread_id")
+            agent_id = body.get("agent_id", agent_id)
+        except:
+            pass
+    
+    # Validate required parameters
+    if not user_id or not thread_id:
+        raise HTTPException(
+            status_code=422,
+            detail="Missing required parameters: user_id and thread_id are required"
+        )
+    
+    if not settings.USE_SUPABASE_REALTIME:
+        return {
+            "success": False,
+            "message": "Realtime is disabled. Set USE_SUPABASE_REALTIME=true to enable."
+        }
+    
+    if not request or not hasattr(request.app.state, 'realtime_worker'):
+        return {
+            "success": False,
+            "message": "Realtime worker not initialized"
+        }
+    
+    try:
+        realtime_worker = request.app.state.realtime_worker
+        
+        # Check if already subscribed
+        if thread_id in realtime_worker.subscriptions:
+            logger.info(f"Already subscribed to thread {thread_id}")
+            return {
+                "success": True,
+                "message": "Already subscribed",
+                "thread_id": thread_id,
+                "subscription_count": realtime_worker.get_subscription_count()
+            }
+        
+        # Subscribe
+        await realtime_worker.subscribe_to_thread(
+            user_id=user_id,
+            thread_id=thread_id,
+            agent_id=agent_id
+        )
+        
+        logger.info(f"✅ Manual subscription established for thread {thread_id}")
+        return {
+            "success": True,
+            "message": "Subscription established",
+            "thread_id": thread_id,
+            "subscription_count": realtime_worker.get_subscription_count()
+        }
+    except Exception as e:
+        logger.error(f"❌ Failed to establish subscription: {e}", exc_info=True)
+        return {
+            "success": False,
+            "message": f"Failed to establish subscription: {str(e)}"
+        }
+
+
+@router.get("/business_plan/{agent_id}")
+async def get_business_plan(
+    agent_id: str,
+    user_id: int,
+    thread_id: str,
+    request: Request,
+):
+    """
+    Get business plan from database for founder-buddy agent.
+    
+    Args:
+        agent_id: Agent identifier (must be "founder-buddy")
+        user_id: User identifier
+        thread_id: Thread/conversation identifier
+        request: FastAPI Request object (for accessing app.state)
+    
+    Returns:
+        Business plan document from database
+    """
+    if agent_id != "founder-buddy":
+        raise HTTPException(
+            status_code=422,
+            detail=f"Business plan retrieval only supported for 'founder-buddy' agent"
+        )
+    
+    logger.info(f"=== GET_BUSINESS_PLAN_REQUEST: agent_id={agent_id} ===")
+    logger.info(f"GET_BUSINESS_PLAN: user_id={user_id}, thread_id={thread_id}")
+    
+    # Subscribe to Realtime for this thread if enabled
+    # This ensures that when user opens BusinessPlanEditor, subscription is established
+    if settings.USE_SUPABASE_REALTIME and hasattr(request.app.state, 'realtime_worker'):
+        realtime_worker = request.app.state.realtime_worker
+        try:
+            await realtime_worker.subscribe_to_thread(
+                user_id=user_id,
+                thread_id=thread_id,
+                agent_id=agent_id
+            )
+            logger.info(f"✅ GET_BUSINESS_PLAN: Realtime subscription established for thread {thread_id}")
+        except Exception as e:
+            logger.warning(f"⚠️ GET_BUSINESS_PLAN: Failed to subscribe to Realtime for thread {thread_id}: {e}")
+    
+    try:
+        from integrations.supabase import SupabaseClient
+        import asyncio
+        
+        supabase = SupabaseClient()
+        loop = asyncio.get_event_loop()
+        
+        plan = await loop.run_in_executor(
+            None,
+            lambda: supabase.get_business_plan(user_id, thread_id)
+        )
+        
+        if plan:
+            logger.info(f"=== GET_BUSINESS_PLAN_SUCCESS ===")
+            return {
+                "success": True,
+                "business_plan": plan.get("content"),
+                "markdown_content": plan.get("markdown_content"),
+                "created_at": plan.get("created_at"),
+                "updated_at": plan.get("updated_at")
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Business plan not found"
+            }
+    except ImportError:
+        logger.debug("Supabase not configured, checking agent state")
+        # Fallback to agent state if Supabase not configured
+        agent: AgentGraph = get_agent(agent_id)
+        config = RunnableConfig(configurable={"thread_id": thread_id, "user_id": user_id})
+        state_snapshot = await agent.aget_state(config=config)
+        state_values = state_snapshot.values if state_snapshot.values else {}
+        
+        if state_values.get("business_plan"):
+            return {
+                "success": True,
+                "business_plan": state_values["business_plan"],
+                "message": "Business plan retrieved from agent state"
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Business plan not found"
+            }
+    except Exception as e:
+        logger.error(f"=== GET_BUSINESS_PLAN_ERROR ===")
+        logger.error(f"GET_BUSINESS_PLAN_ERROR: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get business plan: {str(e)}")
 
 
 @router.post("/generate_business_plan/{agent_id}")

@@ -18,10 +18,6 @@ def route_after_memory_updater(state: FounderBuddyState) -> Literal["generate_bu
 
 def route_decision(state: FounderBuddyState) -> Literal["generate_reply"] | None:
     """Determine the next node to go to based on current state."""
-    # All sections complete → End
-    if state.get("finished", False):
-        return None
-    
     # Helper: determine if there's an unresponded user message
     def has_pending_user_input() -> bool:
         msgs = state.get("messages", [])
@@ -29,6 +25,17 @@ def route_decision(state: FounderBuddyState) -> Literal["generate_reply"] | None
             return False
         last_msg = msgs[-1]
         return isinstance(last_msg, HumanMessage)
+    
+    # IMPORTANT: Even if finished=True, if user sends a new message, we should respond
+    # This allows users to continue conversation after business plan is generated
+    if state.get("finished", False):
+        # If there's a pending user message, we should still respond
+        if has_pending_user_input():
+            # Reset finished flag to allow conversation to continue
+            # User might want to modify sections or discuss the plan
+            return "generate_reply"
+        # Otherwise, end the conversation
+        return None
     
     directive = state.get("router_directive")
     

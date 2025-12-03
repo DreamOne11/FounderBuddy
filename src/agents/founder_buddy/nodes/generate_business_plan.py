@@ -102,6 +102,64 @@ Please generate a complete business plan based on the above conversation content
     # Add business plan to state
     state["business_plan"] = business_plan_content
     
+    # Save to Supabase database
+    try:
+        from integrations.supabase import SupabaseClient
+        supabase = SupabaseClient()
+        
+        # Get user_id and thread_id from state
+        # These should be set by initialize_node, but we'll also check config as fallback
+        user_id = state.get("user_id")
+        thread_id = state.get("thread_id")
+        
+        # Fallback: If not in state, try to get from config (shouldn't be necessary if initialize_node works correctly)
+        if not user_id or not thread_id:
+            logger.warning(f"⚠️ user_id or thread_id missing from state! user_id={user_id}, thread_id={thread_id}")
+            if config:
+                # Handle both dict and RunnableConfig types
+                if isinstance(config, dict):
+                    configurable = config.get("configurable", {})
+                else:
+                    configurable = getattr(config, "configurable", {})
+                
+                if not user_id:
+                    user_id = configurable.get("user_id")
+                if not thread_id:
+                    thread_id = configurable.get("thread_id")
+                logger.info(f"Retrieved from config - user_id: {user_id}, thread_id: {thread_id}")
+        
+        logger.info(f"Attempting to save business plan - user_id: {user_id}, thread_id: {thread_id}")
+        
+        if user_id and thread_id:
+            # Save business plan to database (Supabase client is synchronous)
+            import asyncio
+            loop = asyncio.get_event_loop()
+            logger.info(f"Calling Supabase save_business_plan for user {user_id}, thread {thread_id}")
+            save_result = await loop.run_in_executor(
+                None,
+                lambda: supabase.save_business_plan(
+                    user_id=user_id,
+                    thread_id=thread_id,
+                    content=business_plan_content,
+                    markdown_content=business_plan_content,  # Same content for now
+                    agent_id="founder-buddy"
+                )
+            )
+            
+            logger.info(f"Supabase save_business_plan returned: {save_result}")
+            
+            if save_result.get("success"):
+                logger.info(f"✅ Business plan saved to Supabase for user {user_id}, thread {thread_id}")
+            else:
+                logger.warning(f"❌ Failed to save business plan to Supabase: {save_result.get('error')}")
+        else:
+            logger.warning(f"⚠️ Cannot save business plan: user_id={user_id}, thread_id={thread_id} (one or both are None)")
+    except ImportError as e:
+        logger.warning(f"⚠️ Supabase not configured, skipping database save: {e}")
+    except Exception as e:
+        logger.error(f"❌ Failed to save business plan to Supabase: {e}", exc_info=True)
+        # Don't fail the node if DB save fails
+    
     # Get the last AI message to append business plan to it
     messages = state.get("messages", [])
     last_ai_message = None

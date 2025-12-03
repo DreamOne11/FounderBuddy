@@ -3,12 +3,16 @@
 import { useState, useEffect } from 'react';
 
 interface SectionData {
-  section_id: number;
+  section_id: number | string; // number for value-canvas, string for founder-buddy
   section_name: string;
+  name?: string; // Display name
   is_completed: boolean;
   has_content: boolean;
   current_version: number;
   ai_interaction_count: number;
+  status?: string; // 'pending', 'in_progress', 'done'
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface SectionContent {
@@ -28,7 +32,7 @@ interface SectionDisplayPanelProps {
   threadId: string | null;
 }
 
-const SECTION_DISPLAY_NAMES: Record<number, string> = {
+const SECTION_DISPLAY_NAMES: Record<number | string, string> = {
   // Value Canvas sections
   45: 'Initial Interview',
   46: 'Ideal Customer Persona (ICP)',
@@ -44,7 +48,12 @@ const SECTION_DISPLAY_NAMES: Record<number, string> = {
   9001: 'Summary Confirmation',
   9002: 'Pitch Generation',
   9003: 'Pitch Selection',
-  9004: 'Refinement'
+  9004: 'Refinement',
+  // Founder Buddy sections
+  'mission': 'Mission',
+  'idea': 'Idea',
+  'team_traction': 'Team & Traction',
+  'invest_plan': 'Investment Plan',
 };
 
 const REFINE_STYLES: Record<string, string> = {
@@ -59,7 +68,7 @@ export default function SectionDisplayPanel({ userId, selectedAgent, currentSect
   const [sections, setSections] = useState<SectionData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
+  const [selectedSectionId, setSelectedSectionId] = useState<number | string | null>(null);
   const [sectionContent, setSectionContent] = useState<SectionContent | null>(null);
   const [loadingContent, setLoadingContent] = useState(false);
   const [showRefineModal, setShowRefineModal] = useState(false);
@@ -68,35 +77,23 @@ export default function SectionDisplayPanel({ userId, selectedAgent, currentSect
   const [selectedStyle, setSelectedStyle] = useState<string>('');
 
   useEffect(() => {
-    if (userId && (selectedAgent === 'value-canvas' || selectedAgent === 'concept-pitch')) {
+    if (userId && selectedAgent === 'founder-buddy') {
       fetchSections();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, selectedAgent, currentSection]);
+  }, [userId, selectedAgent, currentSection, threadId]);
 
   const fetchSections = async () => {
     setLoading(true);
     setError(null);
     try {
-      // For Concept Pitch, use mock sections since they're not in DentApp yet
-      if (selectedAgent === 'concept-pitch') {
-        const mockSections: SectionData[] = [
-          { section_id: 9001, section_name: 'Summary Confirmation', is_completed: false, has_content: false, current_version: 1, ai_interaction_count: 0 },
-          { section_id: 9002, section_name: 'Pitch Generation', is_completed: false, has_content: false, current_version: 1, ai_interaction_count: 0 },
-          { section_id: 9003, section_name: 'Pitch Selection', is_completed: false, has_content: false, current_version: 1, ai_interaction_count: 0 },
-          { section_id: 9004, section_name: 'Refinement', is_completed: false, has_content: false, current_version: 1, ai_interaction_count: 0 }
-        ];
-        setSections(mockSections);
-        setLoading(false);
-        return;
-      }
-
-      // For Value Canvas, fetch from DentApp API
+      // For Founder Buddy, fetch from Supabase via API
       const response = await fetch('/api/sections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: userId,
+          threadId: threadId, // Pass threadId to get sections for current conversation
           action: 'get-all-sections'
         })
       });
@@ -106,65 +103,119 @@ export default function SectionDisplayPanel({ userId, selectedAgent, currentSect
       }
 
       const data = await response.json();
-      if (data.success && data.data?.sections) {
-        setSections(data.data.sections);
+      if (data.success) {
+        // Handle empty sections list gracefully
+        if (data.data?.sections && Array.isArray(data.data.sections) && data.data.sections.length > 0) {
+          setSections(data.data.sections);
+        } else {
+          // No sections yet - this is normal for new conversations
+          setSections([]);
+          setError(null); // Clear any previous errors
+        }
       } else {
-        throw new Error(data.message || 'Invalid response format');
+        // API returned an error, but don't show it as a critical error
+        // Just set empty sections
+        console.warn('Sections API returned error:', data.message);
+        setSections([]);
+        setError(null);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-      console.error('Error fetching sections:', err);
+      // Network or other errors - show warning but don't block UI
+      console.warn('Error fetching sections:', err);
+      setSections([]);
+      setError(null); // Don't show error for network issues
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchSectionContent = async (sectionId: number) => {
+  const fetchSectionContent = async (sectionId: number | string) => {
     setLoadingContent(true);
     setSectionContent(null);
+    setError(null);
+    
+    if (!threadId) {
+      console.error('No threadId available for fetching section content');
+      setError('No active conversation. Please start a conversation first.');
+      setLoadingContent(false);
+      return;
+    }
+    
+    console.log('Fetching section content:', { userId, threadId, sectionId });
+    
     try {
-      // For Concept Pitch, show placeholder message (no DentApp integration yet)
-      if (selectedAgent === 'concept-pitch') {
-        setSectionContent({
-          content: { text: 'Concept Pitch sections are currently in development.\n\nSection content will be available once DentApp API integration is complete.' },
-          is_completed: false,
-          current_version: 1,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-        setLoadingContent(false);
-        return;
-      }
-
-      // For Value Canvas, fetch from DentApp API
+      // For Founder Buddy, fetch from Supabase via API
       const response = await fetch('/api/sections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: userId,
+          threadId: threadId, // Required for get-section-content
           action: 'get-section-content',
           sectionId: sectionId
         })
       });
+      
+      console.log('Fetch response status:', response.status, response.statusText);
 
       if (!response.ok) {
         throw new Error('Failed to fetch section content');
       }
 
       const data = await response.json();
-      if (data.success && data.data) {
-        setSectionContent(data.data);
+      console.log('Section content API response:', { success: data.success, data: data.data, sectionId });
+      
+      if (data.success) {
+        if (data.data) {
+          // Handle different data formats from Supabase API
+          const apiData = data.data;
+          console.log('API data structure:', { 
+            hasContent: !!apiData.content, 
+            contentType: typeof apiData.content,
+            contentKeys: typeof apiData.content === 'object' ? Object.keys(apiData.content || {}) : null
+          });
+          
+          // Supabase API returns: { content: { text: "..." }, is_completed: true, ... }
+          const contentText = typeof apiData.content === 'string' 
+            ? apiData.content 
+            : apiData.content?.text || apiData.content || '';
+          
+          console.log('Extracted content text length:', contentText?.length || 0);
+          
+          // Normalize to expected format
+          const normalizedContent: SectionContent = {
+            content: {
+              text: contentText
+            },
+            is_completed: apiData.is_completed || false,
+            current_version: apiData.current_version || 1,
+            created_at: apiData.created_at || new Date().toISOString(),
+            updated_at: apiData.updated_at || new Date().toISOString()
+          };
+          setSectionContent(normalizedContent);
+          setError(null);
+        } else {
+          // Section not found in database - this is normal for new sections
+          console.log('No section data found in response');
+          setSectionContent(null);
+          setError(null);
+        }
+      } else {
+        // API returned an error
+        console.error('API error:', data.message);
+        throw new Error(data.message || 'Failed to fetch section content');
       }
     } catch (err) {
       console.error('Error fetching section content:', err);
-      setError('Failed to load section content');
+      setError(err instanceof Error ? err.message : 'Failed to load section content');
     } finally {
       setLoadingContent(false);
     }
   };
 
   const handleSectionChange = (sectionId: string) => {
-    const id = parseInt(sectionId);
+    // Handle both numeric (value-canvas) and string (founder-buddy) section IDs
+    const id = isNaN(Number(sectionId)) ? sectionId : Number(sectionId);
     setSelectedSectionId(id);
     if (id) {
       fetchSectionContent(id);
@@ -207,7 +258,13 @@ export default function SectionDisplayPanel({ userId, selectedAgent, currentSect
 
       const data = await response.json();
       if (data.success && data.data?.refined_content) {
-        setRefinedContent(data.data.refined_content.text);
+        // Handle both formats: refined_content.text (legacy) or refined_content.plain_text (new)
+        const refinedText = data.data.refined_content.text || data.data.refined_content.plain_text;
+        if (refinedText) {
+          setRefinedContent(refinedText);
+        } else {
+          throw new Error('Refined content format not recognized');
+        }
       } else {
         throw new Error(data.message || 'Invalid response format');
       }
@@ -266,7 +323,7 @@ export default function SectionDisplayPanel({ userId, selectedAgent, currentSect
     }
   };
 
-  if (selectedAgent !== 'value-canvas' && selectedAgent !== 'concept-pitch') {
+  if (selectedAgent !== 'founder-buddy') {
     return null;
   }
 
@@ -329,13 +386,16 @@ export default function SectionDisplayPanel({ userId, selectedAgent, currentSect
             onBlur={(e) => e.currentTarget.style.borderColor = '#e2e8f0'}
           >
             <option value="">Select a section to view</option>
-            {sections.map((section) => (
-              <option key={section.section_id} value={section.section_id}>
-                #{section.section_id} - {SECTION_DISPLAY_NAMES[section.section_id]}
-                {section.is_completed ? ' ✓' : ''}
-                (v{section.current_version})
-              </option>
-            ))}
+            {sections.map((section) => {
+              const displayName = section.name || SECTION_DISPLAY_NAMES[section.section_id] || section.section_name;
+              return (
+                <option key={section.section_id} value={String(section.section_id)}>
+                  {typeof section.section_id === 'string' ? '' : `#${section.section_id} - `}{displayName}
+                  {section.is_completed ? ' ✓' : ''}
+                  {section.status && section.status !== 'pending' ? ` (${section.status})` : ''}
+                </option>
+              );
+            })}
           </select>
 
           <button
@@ -370,13 +430,13 @@ export default function SectionDisplayPanel({ userId, selectedAgent, currentSect
           <div style={{
             margin: '20px',
             padding: '16px',
-            backgroundColor: '#fee2e2',
+            backgroundColor: '#fef3c7',
             borderRadius: '8px',
             fontSize: '13px',
-            color: '#991b1b',
-            border: '1px solid #fecaca'
+            color: '#92400e',
+            border: '1px solid #fde68a'
           }}>
-            ❌ {error}
+            ⚠️ {error}
           </div>
         )}
 
@@ -399,6 +459,24 @@ export default function SectionDisplayPanel({ userId, selectedAgent, currentSect
               marginBottom: '16px'
             }}></div>
             <p style={{ fontSize: '13px', margin: 0 }}>Loading sections...</p>
+          </div>
+        ) : sections.length === 0 ? (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '60px 20px',
+            color: '#94a3b8',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
+            <p style={{ fontSize: '14px', fontWeight: '500', color: '#64748b', margin: '0 0 8px 0' }}>
+              No sections available yet
+            </p>
+            <p style={{ fontSize: '12px', margin: 0 }}>
+              Sections will appear here as you progress through the conversation
+            </p>
           </div>
         ) : !selectedSectionId ? (
           <div style={{
@@ -530,32 +608,32 @@ export default function SectionDisplayPanel({ userId, selectedAgent, currentSect
                 </div>
                 <button
                   onClick={handleRefineClick}
-                  disabled={!threadId || !sectionContent?.content.text}
+                  disabled={!threadId || !sectionContent?.content?.text}
                   style={{
                     padding: '6px 12px',
-                    backgroundColor: (!threadId || !sectionContent?.content.text) ? '#e2e8f0' : '#8b5cf6',
-                    color: (!threadId || !sectionContent?.content.text) ? '#94a3b8' : 'white',
+                    backgroundColor: (!threadId || !sectionContent?.content?.text) ? '#e2e8f0' : '#8b5cf6',
+                    color: (!threadId || !sectionContent?.content?.text) ? '#94a3b8' : 'white',
                     border: 'none',
                     borderRadius: '6px',
                     fontSize: '12px',
                     fontWeight: '600',
-                    cursor: (!threadId || !sectionContent?.content.text) ? 'not-allowed' : 'pointer',
+                    cursor: (!threadId || !sectionContent?.content?.text) ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
                     transition: 'all 0.2s ease'
                   }}
                   onMouseEnter={(e) => {
-                    if (threadId && sectionContent?.content.text) {
+                    if (threadId && sectionContent?.content?.text) {
                       e.currentTarget.style.backgroundColor = '#7c3aed';
                     }
                   }}
                   onMouseLeave={(e) => {
-                    if (threadId && sectionContent?.content.text) {
+                    if (threadId && sectionContent?.content?.text) {
                       e.currentTarget.style.backgroundColor = '#8b5cf6';
                     }
                   }}
-                  title={!threadId ? 'Active conversation required' : 'Refine this section with AI'}
+                  title={!threadId ? 'Active conversation required. Start a conversation first.' : (!sectionContent?.content?.text ? 'No content to refine' : 'Refine this section with AI')}
                 >
                   ✨ Refine
                 </button>
@@ -573,7 +651,7 @@ export default function SectionDisplayPanel({ userId, selectedAgent, currentSect
                 maxHeight: '500px',
                 overflowY: 'auto'
               }}>
-                {sectionContent.content.text || (
+                {sectionContent?.content?.text || (
                   <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>
                     No content available for this section
                   </span>

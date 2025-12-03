@@ -6,6 +6,7 @@ import ChatArea from '@/components/ChatArea';
 import ProgressSidebar from '@/components/ProgressSidebar';
 import ConversationHistory from '@/components/ConversationHistory';
 import SectionDisplayPanel from '@/components/SectionDisplayPanel';
+import BusinessPlanEditor from '@/components/BusinessPlanEditor';
 import { ConversationRecord, Message } from '@/utils/conversationStorage';
 
 interface Section {
@@ -22,6 +23,7 @@ export default function Chat() {
   const [currentSection, setCurrentSection] = useState<Section | null>(null);
   const [loadedMessages, setLoadedMessages] = useState<Message[]>([]);
   const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
+  const [isBusinessPlanEditorOpen, setIsBusinessPlanEditorOpen] = useState<boolean>(false);
 
   const handleAgentChange = (agentId: string) => {
     setSelectedAgent(agentId);
@@ -172,6 +174,9 @@ export default function Chat() {
             <ProgressSidebar
               currentSection={currentSection}
               selectedAgent={selectedAgent}
+              threadId={threadId}
+              userId={userId}
+              onEditBusinessPlan={() => setIsBusinessPlanEditorOpen(true)}
             />
           </div>
         )}
@@ -198,12 +203,20 @@ export default function Chat() {
         onSectionUpdate={handleSectionUpdate}
       />
 
-      {/* Right Sidebar - Section Display Panel */}
+      {/* Right Sidebar - Section Display Panel or Business Plan Editor */}
       <SectionDisplayPanel
         userId={userId}
         selectedAgent={selectedAgent}
         currentSection={currentSection}
         threadId={threadId}
+      />
+      
+      {/* Business Plan Editor - Fixed right panel */}
+      <BusinessPlanEditor
+        threadId={threadId}
+        userId={userId}
+        isOpen={isBusinessPlanEditorOpen}
+        onClose={() => setIsBusinessPlanEditorOpen(false)}
       />
 
       <style jsx>{`

@@ -24,3 +24,4 @@ class SectionID(str, Enum):
     TEAM_TRACTION = "team_traction"  # Section 3: Team & Traction
     INVEST_PLAN = "invest_plan"      # Section 4: Investment Plan
 
+

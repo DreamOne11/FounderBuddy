@@ -38,11 +38,17 @@ async def router_node(state: FounderBuddyState, config: RunnableConfig) -> Found
         second_last_msg = msgs[-2]
         if isinstance(last_msg, HumanMessage) and isinstance(second_last_msg, AIMessage):
             state["awaiting_user_input"] = False
+    
+    # IMPORTANT: If business plan has been generated and user sends a new message, reset finished flag
+    if state.get("finished", False) and state.get("business_plan"):
+        if msgs and isinstance(msgs[-1], HumanMessage):
+            logger.info("[ROUTER] Business plan generated but user sent new message - resetting finished flag")
+            state["finished"] = False
 
     current_section = state.get('current_section')
     directive = state.get("router_directive", RouterDirective.STAY)
     
-    logger.debug(f"[ROUTER] Section: {current_section.value if current_section else 'unknown'}, Directive: {directive}")
+    logger.debug(f"[ROUTER] Section: {current_section.value if current_section else 'unknown'}, Directive: {directive}, Finished: {state.get('finished', False)}")
 
     if directive == RouterDirective.STAY:
         logger.debug("Staying on current section")

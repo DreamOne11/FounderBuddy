@@ -119,6 +119,13 @@ class Settings(BaseSettings):
     MONGO_PASSWORD: SecretStr | None = None
     MONGO_AUTH_SOURCE: str | None = None
 
+    # Supabase Configuration
+    SUPABASE_URL: str | None = None
+    SUPABASE_ANON_KEY: SecretStr | None = None
+    SUPABASE_SERVICE_ROLE_KEY: SecretStr | None = None
+    SUPABASE_DB_URL: str | None = None
+    USE_SUPABASE_REALTIME: bool = False
+
     # Note: LLM configuration moved to src/core/llm_config.py
 
     # Azure OpenAI Settings
