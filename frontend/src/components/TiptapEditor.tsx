@@ -67,7 +67,7 @@ export default function TiptapEditor({
       // Only update if content actually changed (avoid infinite loops)
       if (currentContent !== newContent) {
         // Use setContent with emitUpdate: false to prevent triggering onUpdate
-        editor.commands.setContent(content, false);
+        editor.commands.setContent(content, { emitUpdate: false });
       }
     }
   }, [editor, content]);
