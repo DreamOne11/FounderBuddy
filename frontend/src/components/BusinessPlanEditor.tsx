@@ -177,7 +177,9 @@ export default function BusinessPlanEditor({
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (supabase) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [threadId, isOpen]);
 
