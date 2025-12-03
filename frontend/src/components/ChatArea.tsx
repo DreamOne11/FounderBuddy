@@ -379,7 +379,7 @@ export default function ChatArea({
 
   const copyAllConversation = async () => {
     const conversationText = messages.map(msg => {
-      const role = msg.role === 'user' ? '👤 用户' : `🤖 ${getAgentName(selectedAgent)}`;
+      const role = msg.role === 'user' ? '👤 User' : `🤖 ${getAgentName(selectedAgent)}`;
       return `${role}:\n${msg.content}`;
     }).join('\n\n' + '='.repeat(50) + '\n\n');
     

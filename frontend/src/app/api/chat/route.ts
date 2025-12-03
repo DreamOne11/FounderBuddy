@@ -2,7 +2,7 @@ const logApiCall = (phase: string, data: Record<string, unknown>, level: 'INFO' 
   const timestamp = new Date().toISOString();
   const logLevel = process.env.NODE_ENV === 'development' ? 'DEBUG' : 'INFO';
   
-  // 在生产环境中，只记录ERROR和WARN级别的日志，除非明确启用DEBUG
+  // In production, only log ERROR and WARN levels unless DEBUG is explicitly enabled
   if (process.env.NODE_ENV === 'production' && level === 'INFO' && process.env.ENABLE_DEBUG_LOGS !== 'true') {
     return;
   }
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     const { messages, userId, threadId, mode = 'stream', agentId = 'value-canvas' } = await req.json();
     const latestMessage = messages[messages.length - 1]?.content || '';
     
-    // 详细的请求开始日志
+    // Detailed request start log
     logApiCall('REQUEST_START', {
       timestamp: new Date().toISOString(),
       requestId: `req_${requestStartTime}`,
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
       user_id: finalUserId
     };
     
-    // 只有stream模式才需要stream_tokens
+    // Only stream mode needs stream_tokens
     if (mode === 'stream') {
       requestBody.stream_tokens = true;
     }
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
       ? process.env.VALUE_CANVAS_API_URL_LOCAL 
       : process.env.VALUE_CANVAS_API_URL_PRODUCTION;
     
-    // 检查 API URL 是否配置
+    // Check if API URL is configured
     if (!apiUrl) {
       const errorMsg = isLocal 
         ? 'Backend API URL not configured. Please set VALUE_CANVAS_API_URL_LOCAL environment variable.'
@@ -111,7 +111,7 @@ export async function POST(req: Request) {
     const endpoint = mode === 'stream' ? 'stream' : 'invoke';
     const fullApiUrl = `${apiUrl}/${agentId}/${endpoint}`;
     
-    // 详细的外部API请求日志
+    // Detailed external API request log
     logApiCall('EXTERNAL_API_REQUEST', {
       timestamp: new Date().toISOString(),
       requestId: `req_${requestStartTime}`,
@@ -144,7 +144,7 @@ export async function POST(req: Request) {
       body: JSON.stringify(requestBody),
     });
 
-    // 详细的外部API响应日志
+    // Detailed external API response log
     const responseTime = Date.now() - requestStartTime;
     logApiCall('EXTERNAL_API_RESPONSE', {
       timestamp: new Date().toISOString(),
@@ -178,7 +178,7 @@ export async function POST(req: Request) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    // 处理invoke模式的同步响应
+    // Handle invoke mode synchronous response
     if (mode === 'invoke') {
       const invokeResponse = await response.json();
       
@@ -201,7 +201,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // 返回流式响应
+    // Return streaming response
     const encoder = new TextEncoder();
     let finalContent = '';
     let finalThreadId: string | null = null;
@@ -215,11 +215,11 @@ export async function POST(req: Request) {
       async start(controller) {
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
-        const STREAM_TIMEOUT = 30000; // 30秒超时
+        const STREAM_TIMEOUT = 30000; // 30 second timeout
         let timeoutId: NodeJS.Timeout | null = null;
-        let isClosed = false; // 添加标志防止重复关闭
+        let isClosed = false; // Flag to prevent duplicate close
 
-        // 安全地写入数据
+        // Safely write data
         const safeEnqueue = (data: Uint8Array) => {
           if (!isClosed) {
             try {
@@ -230,7 +230,7 @@ export async function POST(req: Request) {
           }
         };
 
-        // 安全地关闭流
+        // Safely close stream
         const safeClose = () => {
           if (!isClosed) {
             isClosed = true;
@@ -243,7 +243,7 @@ export async function POST(req: Request) {
           }
         };
 
-        // 设置流超时监控
+        // Set stream timeout monitoring
         const resetTimeout = () => {
           if (timeoutId) clearTimeout(timeoutId);
           if (!isClosed) {
@@ -315,7 +315,7 @@ export async function POST(req: Request) {
 
             chunkCount++;
             lastActivityTime = Date.now();
-            resetTimeout(); // 重置超时计时器
+            resetTimeout(); // Reset timeout timer
             const chunk = decoder.decode(value, { stream: true });
             const lines = chunk.split('\n');
 
@@ -336,7 +336,7 @@ export async function POST(req: Request) {
               if (line.startsWith('data: ')) {
                 const data = line.slice(6);
                 if (data === '[DONE]') {
-                  // 发送最终的完整响应数据
+                  // Send final complete response data
                   const finalResponseData = {
                     type: 'final_response',
                     content: finalContent,
@@ -379,7 +379,7 @@ export async function POST(req: Request) {
                     }
                   });
                   
-                  // 处理不同类型的流式数据
+                  // Handle different types of streaming data
                   if (parsed.type === 'token') {
                     tokenCount++;
                     finalContent += parsed.content;
@@ -396,7 +396,7 @@ export async function POST(req: Request) {
                     finalSection = parsed.content;
                   }
                   
-                  // 转发流式数据
+                  // Forward streaming data
                   safeEnqueue(encoder.encode(`data: ${JSON.stringify(parsed)}\n\n`));
                 } catch (e) {
                   logApiCall('STREAM_PARSE_ERROR', {
@@ -409,7 +409,7 @@ export async function POST(req: Request) {
                       lineNumber: lines.indexOf(line)
                     }
                   }, 'WARN');
-                  console.error('解析流数据失败:', e, data);
+                  console.error('Failed to parse stream data:', e, data);
                 }
               }
             }

@@ -5,7 +5,7 @@ export async function GET() {
       ? process.env.VALUE_CANVAS_API_URL_LOCAL 
       : process.env.VALUE_CANVAS_API_URL_PRODUCTION;
     
-    // 如果 API URL 未配置，返回 fallback
+    // If API URL is not configured, return fallback
     if (!apiUrl) {
       console.warn('Backend API URL not configured. Using fallback agents list.');
       const fallbackAgents = {
